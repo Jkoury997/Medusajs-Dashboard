@@ -40,7 +40,7 @@ import {
   useEventSearch,
   useEvents,
   useHeatmap,
-  useHeatmapImage,
+  buildHeatmapHtmlUrl,
   useScrollDepth,
   useProductVisibility,
 } from "@/hooks/use-events"
@@ -122,7 +122,7 @@ export default function AnalyticsPage() {
   // Behavior analytics (per-page)
   const [selectedPageUrl, setSelectedPageUrl] = useState("")
   const { data: heatmap, isLoading: heatmapLoading } = useHeatmap(selectedPageUrl, dateRange.from, dateRange.to)
-  const { data: heatmapImageUrl, isLoading: heatmapImageLoading } = useHeatmapImage(selectedPageUrl, dateRange.from, dateRange.to)
+  const heatmapHtmlUrl = buildHeatmapHtmlUrl(selectedPageUrl, dateRange.from, dateRange.to)
   const { data: scrollDepth, isLoading: scrollLoading } = useScrollDepth(selectedPageUrl, dateRange.from, dateRange.to)
   const { data: productVisibility, isLoading: visibilityLoading } = useProductVisibility(selectedPageUrl, dateRange.from, dateRange.to)
 
@@ -663,7 +663,7 @@ export default function AnalyticsPage() {
                   {heatmapLoading ? (
                     <Skeleton className="h-[350px]" />
                   ) : heatmap ? (
-                    <HeatmapChart data={heatmap} imageUrl={heatmapImageUrl} imageLoading={heatmapImageLoading} />
+                    <HeatmapChart data={heatmap} heatmapUrl={heatmapHtmlUrl} />
                   ) : (
                     <Card>
                       <CardContent className="py-6 text-center text-gray-500">

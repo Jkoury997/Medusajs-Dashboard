@@ -11,17 +11,15 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
-import { Skeleton } from "@/components/ui/skeleton"
 import type { HeatmapStats } from "@/types/events"
 import { formatNumber } from "@/lib/format"
 
 interface HeatmapChartProps {
   data: HeatmapStats
-  imageUrl?: string | null
-  imageLoading?: boolean
+  heatmapUrl?: string | null
 }
 
-export function HeatmapChart({ data, imageUrl, imageLoading }: HeatmapChartProps) {
+export function HeatmapChart({ data, heatmapUrl }: HeatmapChartProps) {
   // Agrupar clicks por el_tag + el_text para tabla de elementos
   const elementGroups = useMemo(() => {
     const groups = new Map<string, { el_tag: string; el_text: string; count: number }>()
@@ -126,34 +124,29 @@ export function HeatmapChart({ data, imageUrl, imageLoading }: HeatmapChartProps
       </Card>
     </div>
 
-    {/* Mapa Visual de Calor (imagen generada por el backend) */}
-    {(imageUrl || imageLoading) && (
+    {/* Mapa Visual de Calor (reporte HTML generado por el backend) */}
+    {heatmapUrl && (
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Mapa Visual de Calor</CardTitle>
-            {imageUrl && (
-              <a
-                href={imageUrl}
-                download="heatmap.png"
-                className="text-xs text-pink-500 hover:text-pink-600 underline"
-              >
-                Descargar PNG
-              </a>
-            )}
+            <a
+              href={heatmapUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-pink-500 hover:text-pink-600 underline"
+            >
+              Abrir en nueva pestaña
+            </a>
           </div>
         </CardHeader>
         <CardContent>
-          {imageLoading ? (
-            <Skeleton className="h-[400px] w-full" />
-          ) : imageUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={imageUrl}
-              alt="Mapa de calor visual"
-              className="w-full rounded border"
-            />
-          ) : null}
+          <iframe
+            src={heatmapUrl}
+            title="Mapa de calor visual"
+            className="w-full rounded border"
+            style={{ height: 700, border: "none" }}
+          />
         </CardContent>
       </Card>
     )}

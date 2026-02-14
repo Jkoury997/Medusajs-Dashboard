@@ -27,9 +27,9 @@ export async function GET(
       return NextResponse.json(error, { status: response.status })
     }
 
-    // Si la respuesta es una imagen, devolver el buffer con el content-type correcto
+    // Si la respuesta NO es JSON (imagen, HTML, etc.) devolver el contenido directo
     const contentType = response.headers.get("content-type") || ""
-    if (contentType.startsWith("image/")) {
+    if (contentType.startsWith("image/") || contentType.startsWith("text/html")) {
       const buffer = await response.arrayBuffer()
       return new NextResponse(buffer, {
         status: 200,

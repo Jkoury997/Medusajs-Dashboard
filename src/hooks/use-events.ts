@@ -149,21 +149,16 @@ export function useProductVisibility(pageUrl: string, from: Date, to: Date) {
   })
 }
 
-export function useHeatmapImage(pageUrl: string, from: Date, to: Date) {
-  return useQuery({
-    queryKey: ["events", "heatmap-image", pageUrl, from.toISOString(), to.toISOString()],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        page_url: pageUrl,
-        from: formatDateParam(from),
-        to: formatToParam(to),
-      })
-      const res = await fetch(`/api/events-proxy/stats/heatmap-image?${params.toString()}`)
-      if (!res.ok) throw new Error("Error al obtener imagen de heatmap")
-      const blob = await res.blob()
-      return URL.createObjectURL(blob)
-    },
-    enabled: !!pageUrl,
-    staleTime: 5 * 60 * 1000, // 5 min — la imagen no cambia seguido
+/**
+ * Construye la URL del reporte visual de heatmap (HTML).
+ * No necesita React Query porque es un iframe que carga solo.
+ */
+export function buildHeatmapHtmlUrl(pageUrl: string, from: Date, to: Date): string | null {
+  if (!pageUrl) return null
+  const params = new URLSearchParams({
+    page_url: pageUrl,
+    from: formatDateParam(from),
+    to: formatToParam(to),
   })
+  return `/api/events-proxy/stats/heatmap-image?${params.toString()}`
 }
