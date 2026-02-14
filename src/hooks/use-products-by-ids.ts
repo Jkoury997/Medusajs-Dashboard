@@ -1,6 +1,7 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
+import { sdk } from "@/lib/medusa-sdk"
 
 export interface ProductInfo {
   id: string
@@ -11,8 +12,9 @@ export interface ProductInfo {
 }
 
 /**
- * Dado un array de product IDs, consulta Medusa para obtener nombre, thumbnail y external_id.
- * Los resultados se devuelven como un Map<product_id, ProductInfo> para lookup rápido.
+ * Dado un array de product IDs, consulta Medusa Admin API para obtener
+ * nombre, thumbnail y external_id. Usa el mismo SDK autenticado con JWT
+ * que usan las órdenes y clientes.
  */
 export function useProductsByIds(productIds: string[]) {
   return useQuery({
@@ -20,25 +22,36 @@ export function useProductsByIds(productIds: string[]) {
     queryFn: async () => {
       if (!productIds.length) return new Map<string, ProductInfo>()
 
-      const res = await fetch("/api/products/by-ids", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: productIds }),
-      })
-
-      if (!res.ok) {
-        console.error("Error al obtener productos por IDs")
-        return new Map<string, ProductInfo>()
-      }
-
-      const data = (await res.json()) as { products: ProductInfo[] }
       const map = new Map<string, ProductInfo>()
-      for (const p of data.products) {
-        map.set(p.id, p)
+
+      // Medusa Admin API acepta id[] como filtro
+      // Hacemos batches de 50 para no sobrepasar límites
+      const batchSize = 50
+      for (let i = 0; i < productIds.length; i += batchSize) {
+        const batch = productIds.slice(i, i + batchSize)
+
+        const response = (await sdk.client.fetch("/admin/products", {
+          query: {
+            id: batch,
+            fields: "id,title,thumbnail,handle,external_id,metadata",
+            limit: batchSize,
+          },
+        })) as { products: any[] }
+
+        for (const p of response.products || []) {
+          map.set(p.id, {
+            id: p.id,
+            title: p.title || "",
+            thumbnail: p.thumbnail || null,
+            handle: p.handle || "",
+            external_id: p.external_id || p.metadata?.external_id || "",
+          })
+        }
       }
+
       return map
     },
     enabled: productIds.length > 0,
-    staleTime: 5 * 60 * 1000, // 5 minutos — los productos no cambian tan seguido
+    staleTime: 5 * 60 * 1000, // 5 minutos
   })
 }
