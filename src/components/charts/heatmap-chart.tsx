@@ -11,14 +11,17 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
+import { Skeleton } from "@/components/ui/skeleton"
 import type { HeatmapStats } from "@/types/events"
 import { formatNumber } from "@/lib/format"
 
 interface HeatmapChartProps {
   data: HeatmapStats
+  imageUrl?: string | null
+  imageLoading?: boolean
 }
 
-export function HeatmapChart({ data }: HeatmapChartProps) {
+export function HeatmapChart({ data, imageUrl, imageLoading }: HeatmapChartProps) {
   // Agrupar clicks por el_tag + el_text para tabla de elementos
   const elementGroups = useMemo(() => {
     const groups = new Map<string, { el_tag: string; el_text: string; count: number }>()
@@ -48,6 +51,7 @@ export function HeatmapChart({ data }: HeatmapChartProps) {
     }))
 
   return (
+    <div className="space-y-6">
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
         <CardHeader>
@@ -120,6 +124,39 @@ export function HeatmapChart({ data }: HeatmapChartProps) {
           )}
         </CardContent>
       </Card>
+    </div>
+
+    {/* Mapa Visual de Calor (imagen generada por el backend) */}
+    {(imageUrl || imageLoading) && (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Mapa Visual de Calor</CardTitle>
+            {imageUrl && (
+              <a
+                href={imageUrl}
+                download="heatmap.png"
+                className="text-xs text-pink-500 hover:text-pink-600 underline"
+              >
+                Descargar PNG
+              </a>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {imageLoading ? (
+            <Skeleton className="h-[400px] w-full" />
+          ) : imageUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={imageUrl}
+              alt="Mapa de calor visual"
+              className="w-full rounded border"
+            />
+          ) : null}
+        </CardContent>
+      </Card>
+    )}
     </div>
   )
 }

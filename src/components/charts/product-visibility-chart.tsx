@@ -82,6 +82,9 @@ export function ProductVisibilityChart({ data }: ProductVisibilityChartProps) {
           <CardContent className="pt-6">
             <p className="text-2xl font-bold">{data.visibility_rate}</p>
             <p className="text-sm text-gray-500">Tasa de Visibilidad</p>
+            <p className="text-xs text-gray-400 mt-1">
+              ~{Math.round(data.avg_products_seen)} de {Math.round(data.avg_products_total)} productos vistos
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -170,6 +173,9 @@ export function ProductVisibilityChart({ data }: ProductVisibilityChartProps) {
                       <TableCell className="text-right">{formatNumber(p.times_seen)}</TableCell>
                       <TableCell className="text-right">
                         <Badge variant="outline">{p.visibility_rate}</Badge>
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          {formatNumber(p.times_seen)} / {formatNumber(data.total_observations)} obs.
+                        </p>
                       </TableCell>
                     </TableRow>
                   )
