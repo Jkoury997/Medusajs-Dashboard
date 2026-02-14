@@ -39,9 +39,16 @@ import {
   useEventProducts,
   useEventSearch,
   useEvents,
+  useHeatmap,
+  useScrollDepth,
+  useProductVisibility,
 } from "@/hooks/use-events"
 import { formatNumber, formatCurrency } from "@/lib/format"
 import { AIInsightWidget } from "@/components/dashboard/ai-insight-widget"
+import { PageUrlSelector } from "@/components/dashboard/page-url-selector"
+import { HeatmapChart } from "@/components/charts/heatmap-chart"
+import { ScrollDepthChart } from "@/components/charts/scroll-depth-chart"
+import { ProductVisibilityChart } from "@/components/charts/product-visibility-chart"
 import type { EventFilters } from "@/types/events"
 
 const EVENT_LABELS: Record<string, string> = {
@@ -110,6 +117,12 @@ export default function AnalyticsPage() {
   const { data: funnel, isLoading: funnelLoading } = useEventFunnel(dateRange.from, dateRange.to)
   const { data: products, isLoading: productsLoading } = useEventProducts(dateRange.from, dateRange.to)
   const { data: search, isLoading: searchLoading } = useEventSearch(dateRange.from, dateRange.to)
+
+  // Behavior analytics (per-page)
+  const [selectedPageUrl, setSelectedPageUrl] = useState("")
+  const { data: heatmap, isLoading: heatmapLoading } = useHeatmap(selectedPageUrl, dateRange.from, dateRange.to)
+  const { data: scrollDepth, isLoading: scrollLoading } = useScrollDepth(selectedPageUrl, dateRange.from, dateRange.to)
+  const { data: productVisibility, isLoading: visibilityLoading } = useProductVisibility(selectedPageUrl, dateRange.from, dateRange.to)
 
   // Raw events filters
   const [eventType, setEventType] = useState<string>("all")
@@ -193,6 +206,7 @@ export default function AnalyticsPage() {
             <TabsTrigger value="busquedas">Búsquedas</TabsTrigger>
             <TabsTrigger value="abandonos">Abandonos</TabsTrigger>
             <TabsTrigger value="eventos">Eventos</TabsTrigger>
+            <TabsTrigger value="comportamiento">Comportamiento</TabsTrigger>
           </TabsList>
 
           {/* TAB: Resumen */}
@@ -624,6 +638,73 @@ export default function AnalyticsPage() {
               </Card>
             )}
           </TabsContent>
+
+          {/* TAB: Comportamiento por Página */}
+          <TabsContent value="comportamiento" className="space-y-6 mt-4">
+            <PageUrlSelector
+              value={selectedPageUrl}
+              onChange={setSelectedPageUrl}
+              dateRange={dateRange}
+            />
+
+            {!selectedPageUrl ? (
+              <Card>
+                <CardContent className="py-8 text-center text-gray-500">
+                  Seleccioná una página para ver las métricas de comportamiento
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {/* Mapa de Clics */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Mapa de Clics</h3>
+                  {heatmapLoading ? (
+                    <Skeleton className="h-[350px]" />
+                  ) : heatmap ? (
+                    <HeatmapChart data={heatmap} />
+                  ) : (
+                    <Card>
+                      <CardContent className="py-6 text-center text-gray-500">
+                        No hay datos de heatmap para esta página
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Profundidad de Scroll */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Profundidad de Scroll</h3>
+                  {scrollLoading ? (
+                    <Skeleton className="h-[300px]" />
+                  ) : scrollDepth ? (
+                    <ScrollDepthChart data={scrollDepth} />
+                  ) : (
+                    <Card>
+                      <CardContent className="py-6 text-center text-gray-500">
+                        No hay datos de scroll para esta página
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Visibilidad de Productos */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Visibilidad de Productos</h3>
+                  {visibilityLoading ? (
+                    <Skeleton className="h-[400px]" />
+                  ) : productVisibility ? (
+                    <ProductVisibilityChart data={productVisibility} />
+                  ) : (
+                    <Card>
+                      <CardContent className="py-6 text-center text-gray-500">
+                        No hay datos de visibilidad de productos para esta página
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </>
+            )}
+          </TabsContent>
         </Tabs>
 
         <AIInsightWidget
@@ -649,6 +730,24 @@ export default function AnalyticsPage() {
                 tasaAbandono: abandonRate,
                 valorEstimadoPerdido: estimatedLostValue,
               },
+              comportamiento: selectedPageUrl && (heatmap || scrollDepth || productVisibility) ? {
+                paginaAnalizada: selectedPageUrl,
+                heatmap: heatmap ? {
+                  totalClicks: heatmap.total_clicks,
+                  topElementos: heatmap.by_element.slice(0, 5),
+                  viewport: heatmap.viewport,
+                } : null,
+                scroll: scrollDepth ? {
+                  totalSesiones: scrollDepth.total_sessions,
+                  promedioMaximo: scrollDepth.avg_max_depth,
+                  llegaAlFinal: scrollDepth.milestones.find(m => m.depth_pct === 100)?.rate || "0",
+                } : null,
+                visibilidad: productVisibility ? {
+                  tasaVisibilidad: productVisibility.visibility_rate,
+                  promedioProductosVistos: productVisibility.avg_products_seen,
+                  totalProductos: productVisibility.total_products,
+                } : null,
+              } : null,
             }
           }}
           isDataLoading={statsLoading}

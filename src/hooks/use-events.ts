@@ -8,6 +8,9 @@ import type {
   SearchStats,
   EventsList,
   EventFilters,
+  HeatmapStats,
+  ScrollDepthStats,
+  ProductVisibilityStats,
 } from "@/types/events"
 
 function formatDateParam(date: Date): string {
@@ -92,5 +95,56 @@ export function useEvents(filters: EventFilters = {}) {
       if (!res.ok) throw new Error("Error al obtener eventos")
       return res.json() as Promise<EventsList>
     },
+  })
+}
+
+export function useHeatmap(pageUrl: string, from: Date, to: Date) {
+  return useQuery({
+    queryKey: ["events", "heatmap", pageUrl, from.toISOString(), to.toISOString()],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page_url: pageUrl,
+        from: formatDateParam(from),
+        to: formatToParam(to),
+      })
+      const res = await fetch(`/api/events-proxy/stats/heatmap?${params.toString()}`)
+      if (!res.ok) throw new Error("Error al obtener datos de heatmap")
+      return res.json() as Promise<HeatmapStats>
+    },
+    enabled: !!pageUrl,
+  })
+}
+
+export function useScrollDepth(pageUrl: string, from: Date, to: Date) {
+  return useQuery({
+    queryKey: ["events", "scroll-depth", pageUrl, from.toISOString(), to.toISOString()],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page_url: pageUrl,
+        from: formatDateParam(from),
+        to: formatToParam(to),
+      })
+      const res = await fetch(`/api/events-proxy/stats/scroll-depth?${params.toString()}`)
+      if (!res.ok) throw new Error("Error al obtener datos de scroll")
+      return res.json() as Promise<ScrollDepthStats>
+    },
+    enabled: !!pageUrl,
+  })
+}
+
+export function useProductVisibility(pageUrl: string, from: Date, to: Date) {
+  return useQuery({
+    queryKey: ["events", "product-visibility", pageUrl, from.toISOString(), to.toISOString()],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page_url: pageUrl,
+        from: formatDateParam(from),
+        to: formatToParam(to),
+      })
+      const res = await fetch(`/api/events-proxy/stats/product-visibility?${params.toString()}`)
+      if (!res.ok) throw new Error("Error al obtener datos de visibilidad de productos")
+      return res.json() as Promise<ProductVisibilityStats>
+    },
+    enabled: !!pageUrl,
   })
 }
