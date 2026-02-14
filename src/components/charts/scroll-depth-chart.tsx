@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   BarChart,
@@ -19,14 +20,25 @@ interface ScrollDepthChartProps {
 }
 
 const MILESTONE_COLORS = ["#ff75a8", "#ff8fb8", "#ffaacb", "#ffc4dd"]
+const MILESTONE_KEYS = ["25", "50", "75", "100"]
 
 export function ScrollDepthChart({ data }: ScrollDepthChartProps) {
-  const chartData = data.milestones.map((m, idx) => ({
-    milestone: `${m.depth_pct}%`,
-    sessions: m.sessions,
-    rate: parseFloat(m.rate),
-    color: MILESTONE_COLORS[idx] || MILESTONE_COLORS[0],
-  }))
+  const chartData = useMemo(() => {
+    return MILESTONE_KEYS
+      .filter((key) => data.milestones[key] !== undefined)
+      .map((key, idx) => {
+        const sessions = data.milestones[key]
+        const rate = data.total_sessions > 0
+          ? ((sessions / data.total_sessions) * 100).toFixed(1)
+          : "0"
+        return {
+          milestone: `${key}%`,
+          sessions,
+          rate,
+          color: MILESTONE_COLORS[idx] || MILESTONE_COLORS[0],
+        }
+      })
+  }, [data])
 
   return (
     <Card>
@@ -34,7 +46,7 @@ export function ScrollDepthChart({ data }: ScrollDepthChartProps) {
         <CardTitle className="text-base">
           Profundidad de Scroll
           <span className="text-sm font-normal text-gray-500 ml-2">
-            ({formatNumber(data.total_sessions)} sesiones · promedio {data.avg_max_depth}%)
+            ({formatNumber(data.total_sessions)} sesiones · promedio {data.avg_max_depth.toFixed(1)}%)
           </span>
         </CardTitle>
       </CardHeader>
@@ -60,9 +72,9 @@ export function ScrollDepthChart({ data }: ScrollDepthChartProps) {
             </div>
 
             <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-600">
-              {data.milestones.map((m) => (
-                <span key={m.depth_pct}>
-                  <strong>{m.depth_pct}%:</strong> {m.rate}% de usuarios
+              {chartData.map((m) => (
+                <span key={m.milestone}>
+                  <strong>{m.milestone}:</strong> {m.rate}% de usuarios
                 </span>
               ))}
             </div>

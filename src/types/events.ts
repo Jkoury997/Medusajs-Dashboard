@@ -82,55 +82,46 @@ export interface EventFilters {
 }
 
 // Heatmap — clicks por zona y elemento en una página
-export interface HeatmapZone {
+export interface HeatmapClick {
   x_pct: number
-  y_pct: number
+  y_abs: number
+  el_tag: string
+  el_text: string
   count: number
-  element_tag: string
-  element_text: string
 }
 
-export interface HeatmapElement {
-  element_tag: string
-  element_text: string
-  count: number
+export interface HeatmapViewportBreakdown {
+  vw_range: string
+  clicks: number
 }
 
 export interface HeatmapStats {
   page_url: string
   total_clicks: number
-  zones: HeatmapZone[]
-  by_element: HeatmapElement[]
-  viewport: { mobile: number; tablet: number; desktop: number }
+  clicks: HeatmapClick[]
+  viewport_breakdown: HeatmapViewportBreakdown[]
 }
 
 // Scroll Depth — profundidad de scroll por milestone
-export interface ScrollMilestone {
-  depth_pct: number
-  sessions: number
-  rate: string
-}
-
 export interface ScrollDepthStats {
   page_url: string
   total_sessions: number
-  milestones: ScrollMilestone[]
-  avg_max_depth: string
+  milestones: Record<string, number> // { "25": 11, "50": 8, "75": 6, "100": 2 }
+  avg_max_depth: number
 }
 
 // Product Visibility — visibilidad de productos en una página
 export interface ProductVisibilityItem {
   product_id: string
-  title: string
   times_seen: number
-  total_loads: number
-  visibility_pct: string
+  visibility_rate: string
 }
 
 export interface ProductVisibilityStats {
   page_url: string
-  total_products: number
+  total_observations: number
   avg_products_seen: number
+  avg_products_total: number
   visibility_rate: string
-  products: ProductVisibilityItem[]
+  product_visibility: ProductVisibilityItem[]
 }

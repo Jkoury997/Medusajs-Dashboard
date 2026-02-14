@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -18,11 +19,33 @@ interface HeatmapChartProps {
 }
 
 export function HeatmapChart({ data }: HeatmapChartProps) {
-  const viewportData = [
-    { name: "Móvil", value: data.viewport.mobile, color: "#ff75a8" },
-    { name: "Tablet", value: data.viewport.tablet, color: "#16a34a" },
-    { name: "Escritorio", value: data.viewport.desktop, color: "#eab308" },
-  ].filter((item) => item.value > 0)
+  // Agrupar clicks por el_tag + el_text para tabla de elementos
+  const elementGroups = useMemo(() => {
+    const groups = new Map<string, { el_tag: string; el_text: string; count: number }>()
+    data.clicks.forEach((c) => {
+      const key = `${c.el_tag}|${c.el_text}`
+      const existing = groups.get(key)
+      if (existing) {
+        existing.count += c.count
+      } else {
+        groups.set(key, { el_tag: c.el_tag, el_text: c.el_text, count: c.count })
+      }
+    })
+    return Array.from(groups.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+  }, [data.clicks])
+
+  // Colores para viewport breakdown
+  const VIEWPORT_COLORS = ["#ff75a8", "#16a34a", "#eab308", "#3b82f6", "#8b5cf6"]
+
+  const viewportData = data.viewport_breakdown
+    .filter((v) => v.clicks > 0)
+    .map((v, idx) => ({
+      name: v.vw_range,
+      value: v.clicks,
+      color: VIEWPORT_COLORS[idx % VIEWPORT_COLORS.length],
+    }))
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -36,21 +59,21 @@ export function HeatmapChart({ data }: HeatmapChartProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {data.by_element.length > 0 ? (
+          {elementGroups.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Elemento</TableHead>
-                  <TableHead>Texto/ID</TableHead>
+                  <TableHead>Texto</TableHead>
                   <TableHead className="text-right">Clicks</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.by_element.slice(0, 10).map((el, idx) => (
+                {elementGroups.map((el, idx) => (
                   <TableRow key={idx}>
-                    <TableCell className="font-mono text-xs">{el.element_tag}</TableCell>
+                    <TableCell className="font-mono text-xs">{el.el_tag}</TableCell>
                     <TableCell className="text-sm max-w-[200px] truncate">
-                      {el.element_text}
+                      {el.el_text || "-"}
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatNumber(el.count)}
@@ -67,7 +90,7 @@ export function HeatmapChart({ data }: HeatmapChartProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Distribución por Dispositivo</CardTitle>
+          <CardTitle className="text-base">Distribución por Viewport</CardTitle>
         </CardHeader>
         <CardContent>
           {viewportData.length > 0 ? (

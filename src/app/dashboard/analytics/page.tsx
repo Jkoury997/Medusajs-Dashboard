@@ -734,18 +734,18 @@ export default function AnalyticsPage() {
                 paginaAnalizada: selectedPageUrl,
                 heatmap: heatmap ? {
                   totalClicks: heatmap.total_clicks,
-                  topElementos: heatmap.by_element.slice(0, 5),
-                  viewport: heatmap.viewport,
+                  topElementos: heatmap.clicks.slice(0, 5).map(c => ({ tag: c.el_tag, texto: c.el_text, clicks: c.count })),
+                  viewport: heatmap.viewport_breakdown,
                 } : null,
                 scroll: scrollDepth ? {
                   totalSesiones: scrollDepth.total_sessions,
                   promedioMaximo: scrollDepth.avg_max_depth,
-                  llegaAlFinal: scrollDepth.milestones.find(m => m.depth_pct === 100)?.rate || "0",
+                  llegaAlFinal: scrollDepth.milestones["100"] || 0,
                 } : null,
                 visibilidad: productVisibility ? {
                   tasaVisibilidad: productVisibility.visibility_rate,
                   promedioProductosVistos: productVisibility.avg_products_seen,
-                  totalProductos: productVisibility.total_products,
+                  totalProductos: productVisibility.avg_products_total,
                 } : null,
               } : null,
             }

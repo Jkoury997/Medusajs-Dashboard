@@ -26,20 +26,33 @@ export function PageUrlSelector({ value, onChange, dateRange }: PageUrlSelectorP
 
   const toNext = new Date(dateRange.to)
   toNext.setDate(toNext.getDate() + 1)
+  const fromStr = dateRange.from.toISOString().split("T")[0]
+  const toStr = toNext.toISOString().split("T")[0]
 
-  const { data: pageEvents } = useEvents({
-    event: "page.viewed",
-    from: dateRange.from.toISOString().split("T")[0],
-    to: toNext.toISOString().split("T")[0],
-    limit: 500,
-    sort: "desc",
+  // Buscar eventos de interacción que tienen page_url en data
+  const { data: clickEvents } = useEvents({
+    event: "interaction.click",
+    from: fromStr, to: toStr, limit: 500, sort: "desc",
+  })
+  const { data: scrollEvents } = useEvents({
+    event: "interaction.scroll_depth",
+    from: fromStr, to: toStr, limit: 500, sort: "desc",
+  })
+  const { data: visibilityEvents } = useEvents({
+    event: "interaction.products_visible",
+    from: fromStr, to: toStr, limit: 500, sort: "desc",
   })
 
   const popularUrls = useMemo(() => {
-    if (!pageEvents?.events) return []
-
     const urlCounts = new Map<string, number>()
-    pageEvents.events.forEach((ev) => {
+
+    const allEvents = [
+      ...(clickEvents?.events || []),
+      ...(scrollEvents?.events || []),
+      ...(visibilityEvents?.events || []),
+    ]
+
+    allEvents.forEach((ev) => {
       const url = ev.data?.page_url as string | undefined
       if (url) {
         urlCounts.set(url, (urlCounts.get(url) || 0) + 1)
@@ -50,7 +63,7 @@ export function PageUrlSelector({ value, onChange, dateRange }: PageUrlSelectorP
       .map(([url, count]) => ({ url, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 20)
-  }, [pageEvents])
+  }, [clickEvents, scrollEvents, visibilityEvents])
 
   const handleApplyCustom = () => {
     if (customUrl.trim()) {
