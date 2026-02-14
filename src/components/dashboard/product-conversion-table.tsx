@@ -22,12 +22,19 @@ interface ProductConversionRow {
   opportunityScore: number
 }
 
+// Mostrar columna Clicks solo si al menos 1 producto tiene clicks > 0
+function hasClicksData(data: ProductConversionRow[]): boolean {
+  return data.some((r) => r.clicks > 0)
+}
+
 interface ProductConversionTableProps {
   data: ProductConversionRow[]
 }
 
 export function ProductConversionTable({ data }: ProductConversionTableProps) {
   if (data.length === 0) return null
+
+  const showClicks = hasClicksData(data)
 
   return (
     <Card>
@@ -46,7 +53,7 @@ export function ProductConversionTable({ data }: ProductConversionTableProps) {
               <TableRow>
                 <TableHead>Producto</TableHead>
                 <TableHead className="text-right">Vistas</TableHead>
-                <TableHead className="text-right">Clicks</TableHead>
+                {showClicks && <TableHead className="text-right">Clicks</TableHead>}
                 <TableHead className="text-right">Al Carrito</TableHead>
                 <TableHead className="text-right">Vendidos</TableHead>
                 <TableHead className="text-right">Ingresos</TableHead>
@@ -84,7 +91,7 @@ export function ProductConversionTable({ data }: ProductConversionTableProps) {
                       {row.name}
                     </TableCell>
                     <TableCell className="text-right">{formatNumber(row.views)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(row.clicks)}</TableCell>
+                    {showClicks && <TableCell className="text-right">{formatNumber(row.clicks)}</TableCell>}
                     <TableCell className="text-right">{formatNumber(row.addedToCart)}</TableCell>
                     <TableCell className="text-right font-medium">{formatNumber(row.actualSold)}</TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(row.actualRevenue)}</TableCell>
