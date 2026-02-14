@@ -5,6 +5,14 @@ const MEDUSA_BACKEND_URL =
   "https://backend.marcelakoury.com";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+    ],
+  },
   async rewrites() {
     return [
       {
