@@ -184,9 +184,6 @@ export default function DashboardPage() {
     if (ga4Overview?.sessions) {
       steps.push({ name: "Sesiones Web", count: ga4Overview.sessions, source: "GA4" })
     }
-    if (eventStats?.by_source?.storefront) {
-      steps.push({ name: "Eventos Storefront", count: eventStats.by_source.storefront, source: "Events" })
-    }
     if (eventStats?.by_type?.["product.viewed"]) {
       steps.push({ name: "Productos Vistos", count: eventStats.by_type["product.viewed"], source: "Events" })
     }
