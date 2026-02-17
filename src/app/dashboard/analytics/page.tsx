@@ -29,6 +29,15 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+} from "recharts"
 import { EventsByDay } from "@/components/charts/events-by-day"
 import { EventsByType } from "@/components/charts/events-by-type"
 import { EventsBySource } from "@/components/charts/events-by-source"
@@ -191,6 +200,19 @@ export default function AnalyticsPage() {
     }, 0)
   }, [abandonedList])
 
+  // Abandonos agrupados por día (para gráfico)
+  const abandonsByDay = useMemo(() => {
+    if (!abandonedList?.events?.length) return []
+    const byDay = new Map<string, number>()
+    for (const ev of abandonedList.events) {
+      const day = new Date(ev.timestamp).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
+      byDay.set(day, (byDay.get(day) || 0) + 1)
+    }
+    return Array.from(byDay.entries())
+      .map(([date, count]) => ({ date, count }))
+      .reverse()
+  }, [abandonedList])
+
   return (
     <div>
       <Header
@@ -222,6 +244,7 @@ export default function AnalyticsPage() {
               </div>
             ) : stats ? (
               <>
+                {/* Fila 1: KPIs principales */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <MetricCard
                     title="Total Eventos"
@@ -229,16 +252,43 @@ export default function AnalyticsPage() {
                     icon="📡"
                   />
                   <MetricCard
-                    title="Tipos de Evento"
-                    value={formatNumber(Object.keys(stats.by_type).length)}
-                    icon="🏷️"
+                    title="Productos Únicos Vistos"
+                    value={formatNumber(products?.products?.length || 0)}
+                    icon="📦"
                   />
                   <MetricCard
-                    title="Fuentes"
-                    value={formatNumber(Object.keys(stats.by_source).length)}
-                    icon="🔌"
+                    title="Tasa de Abandono"
+                    value={abandonRate}
+                    changeType={parseFloat(abandonRate) > 30 ? "negative" : parseFloat(abandonRate) > 0 ? "positive" : "neutral"}
+                    icon="🚪"
                   />
                 </div>
+
+                {/* Fila 2: KPIs de comportamiento */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard
+                    title="Vistas de Producto"
+                    value={formatNumber(stats.by_type?.["product.viewed"] || 0)}
+                    icon="👀"
+                  />
+                  <MetricCard
+                    title="Agregados al Carrito"
+                    value={formatNumber(stats.by_type?.["product.added_to_cart"] || 0)}
+                    icon="🛒"
+                  />
+                  <MetricCard
+                    title="Checkouts Iniciados"
+                    value={formatNumber(stats.by_type?.["checkout.started"] || 0)}
+                    icon="💳"
+                  />
+                  <MetricCard
+                    title="Búsquedas sin Resultado"
+                    value={formatNumber(stats.by_type?.["search.no_results"] || 0)}
+                    changeType={(stats.by_type?.["search.no_results"] || 0) > 0 ? "negative" : "neutral"}
+                    icon="🔍"
+                  />
+                </div>
+
                 <EventsByDay data={stats.by_day} />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <EventsByType data={stats.by_type} />
@@ -275,43 +325,62 @@ export default function AnalyticsPage() {
             {productsLoading ? (
               <Skeleton className="h-[400px]" />
             ) : products?.products?.length ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Rendimiento de Productos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Producto</TableHead>
-                        <TableHead className="text-right">Vistas</TableHead>
-                        <TableHead className="text-right">Clicks</TableHead>
-                        <TableHead className="text-right">Al Carrito</TableHead>
-                        <TableHead className="text-right">Comprados</TableHead>
-                        <TableHead className="text-right">Conversión</TableHead>
-                        <TableHead className="text-right">Ingresos</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {products.products.map((p) => (
-                        <TableRow key={p.product_id}>
-                          <TableCell className="font-medium max-w-[200px] truncate">
-                            {p.title || p.product_id}
-                          </TableCell>
-                          <TableCell className="text-right">{formatNumber(p.views)}</TableCell>
-                          <TableCell className="text-right">{formatNumber(p.clicks)}</TableCell>
-                          <TableCell className="text-right">{formatNumber(p.added_to_cart)}</TableCell>
-                          <TableCell className="text-right">{formatNumber(p.purchased)}</TableCell>
-                          <TableCell className="text-right">
-                            <Badge variant="outline">{p.conversion_rate}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right">{formatCurrency(p.revenue)}</TableCell>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <MetricCard
+                    title="Productos Únicos"
+                    value={formatNumber(products.products.length)}
+                    icon="📦"
+                  />
+                  <MetricCard
+                    title="Total Vistas"
+                    value={formatNumber(products.products.reduce((s, p) => s + p.views, 0))}
+                    icon="👀"
+                  />
+                  <MetricCard
+                    title="Total Ingresos"
+                    value={formatCurrency(products.products.reduce((s, p) => s + p.revenue, 0))}
+                    icon="💰"
+                  />
+                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">
+                      Rendimiento de Productos ({formatNumber(products.products.length)})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Producto</TableHead>
+                          <TableHead className="text-right">Vistas</TableHead>
+                          <TableHead className="text-right">Al Carrito</TableHead>
+                          <TableHead className="text-right">Comprados</TableHead>
+                          <TableHead className="text-right">Conversión</TableHead>
+                          <TableHead className="text-right">Ingresos</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+                      </TableHeader>
+                      <TableBody>
+                        {products.products.map((p) => (
+                          <TableRow key={p.product_id}>
+                            <TableCell className="font-medium max-w-[250px] truncate">
+                              {p.title || p.product_id}
+                            </TableCell>
+                            <TableCell className="text-right">{formatNumber(p.views)}</TableCell>
+                            <TableCell className="text-right">{formatNumber(p.added_to_cart)}</TableCell>
+                            <TableCell className="text-right">{formatNumber(p.purchased)}</TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant="outline">{p.conversion_rate}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">{formatCurrency(p.revenue)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </>
             ) : (
               <Card>
                 <CardContent className="py-8 text-center text-gray-500">
@@ -424,6 +493,7 @@ export default function AnalyticsPage() {
                   <MetricCard
                     title="Tasa de Abandono"
                     value={abandonRate}
+                    changeType={parseFloat(abandonRate) > 30 ? "negative" : parseFloat(abandonRate) > 0 ? "positive" : "neutral"}
                     icon="📉"
                   />
                   <MetricCard
@@ -432,6 +502,28 @@ export default function AnalyticsPage() {
                     icon="💸"
                   />
                 </div>
+
+                {/* Gráfico de abandonos por día */}
+                {abandonsByDay.length > 1 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Abandonos por Día</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-[200px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={abandonsByDay}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="date" fontSize={11} />
+                            <YAxis fontSize={11} allowDecimals={false} />
+                            <RechartsTooltip formatter={(value) => [formatNumber(Number(value)), "Abandonos"]} />
+                            <Bar dataKey="count" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {abandonedList?.events?.length ? (
                   <Card>
@@ -454,7 +546,6 @@ export default function AnalyticsPage() {
                             <TableHead className="text-right">Items</TableHead>
                             <TableHead className="text-right">Total</TableHead>
                             <TableHead>Último Paso</TableHead>
-                            <TableHead>Sesión</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -463,7 +554,7 @@ export default function AnalyticsPage() {
                               <TableCell className="text-xs whitespace-nowrap">
                                 {new Date(ev.timestamp).toLocaleString("es-AR")}
                               </TableCell>
-                              <TableCell className="text-xs max-w-[150px] truncate">
+                              <TableCell className="text-xs max-w-[180px] truncate">
                                 {(ev.data?.email as string) ||
                                   (ev.data?.customer_id as string) ||
                                   ev.customer_id ||
@@ -472,16 +563,13 @@ export default function AnalyticsPage() {
                               <TableCell className="text-right">
                                 {(ev.data?.items_count as number) || "-"}
                               </TableCell>
-                              <TableCell className="text-right">
+                              <TableCell className="text-right font-medium">
                                 {ev.data?.total ? formatCurrency(Number(ev.data.total)) : "-"}
                               </TableCell>
                               <TableCell>
                                 <Badge variant="outline" className="text-xs">
                                   {(ev.data?.last_step as string) || "-"}
                                 </Badge>
-                              </TableCell>
-                              <TableCell className="text-xs max-w-[100px] truncate text-gray-500">
-                                {ev.session_id || "-"}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -657,6 +745,29 @@ export default function AnalyticsPage() {
               </Card>
             ) : (
               <>
+                {/* KPIs de la página seleccionada */}
+                {(heatmap || scrollDepth || productVisibility) && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <MetricCard
+                      title="Total Clics"
+                      value={formatNumber(heatmap?.total_clicks || 0)}
+                      icon="🖱️"
+                    />
+                    <MetricCard
+                      title="Sesiones con Scroll"
+                      value={formatNumber(scrollDepth?.total_sessions || 0)}
+                      subtitle={scrollDepth ? `Promedio: ${scrollDepth.avg_max_depth.toFixed(0)}%` : undefined}
+                      icon="📜"
+                    />
+                    <MetricCard
+                      title="Visibilidad Productos"
+                      value={productVisibility?.visibility_rate || "N/A"}
+                      subtitle={productVisibility ? `${Math.round(productVisibility.avg_products_seen)} de ${Math.round(productVisibility.avg_products_total)} productos` : undefined}
+                      icon="👁️"
+                    />
+                  </div>
+                )}
+
                 {/* Mapa de Clics */}
                 <div>
                   <h3 className="text-lg font-semibold mb-3">Mapa de Clics</h3>

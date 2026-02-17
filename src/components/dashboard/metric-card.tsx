@@ -7,9 +7,10 @@ interface MetricCardProps {
   change?: string
   changeType?: "positive" | "negative" | "neutral"
   icon?: string
+  subtitle?: string
 }
 
-export function MetricCard({ title, value, change, changeType = "neutral", icon }: MetricCardProps) {
+export function MetricCard({ title, value, change, changeType = "neutral", icon, subtitle }: MetricCardProps) {
   return (
     <Card>
       <CardContent className="p-6">
@@ -18,6 +19,9 @@ export function MetricCard({ title, value, change, changeType = "neutral", icon 
           {icon && <span className="text-2xl">{icon}</span>}
         </div>
         <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
+        {subtitle && (
+          <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
+        )}
         {change && (
           <p
             className={cn(

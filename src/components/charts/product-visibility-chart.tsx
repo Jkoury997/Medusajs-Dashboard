@@ -11,6 +11,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Cell,
 } from "recharts"
 import {
   Table,
@@ -20,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import type { ProductVisibilityStats } from "@/types/events"
 import { formatNumber } from "@/lib/format"
 import { useProductsByIds } from "@/hooks/use-products-by-ids"
@@ -29,6 +29,21 @@ interface ProductVisibilityChartProps {
   data: ProductVisibilityStats
   /** Fallback: mapa product_id → title del Events backend (para cuando Medusa SDK falla) */
   titleFallbacks?: Map<string, string>
+}
+
+// Semáforo de visibilidad: verde >70%, amarillo 40-70%, rojo <40%
+function getVisibilityColor(rate: string): { bg: string; text: string; label: string } {
+  const num = parseFloat(rate)
+  if (num >= 70) return { bg: "bg-green-100", text: "text-green-700", label: "Alta" }
+  if (num >= 40) return { bg: "bg-yellow-100", text: "text-yellow-700", label: "Media" }
+  return { bg: "bg-red-100", text: "text-red-700", label: "Baja" }
+}
+
+// Color para barras del chart
+function getBarColor(rate: number): string {
+  if (rate >= 70) return "#22c55e"
+  if (rate >= 40) return "#eab308"
+  return "#ef4444"
 }
 
 export function ProductVisibilityChart({ data, titleFallbacks }: ProductVisibilityChartProps) {
@@ -84,13 +99,31 @@ export function ProductVisibilityChart({ data, titleFallbacks }: ProductVisibili
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-2xl font-bold">{data.visibility_rate}</p>
+            {(() => {
+              const color = getVisibilityColor(data.visibility_rate)
+              return (
+                <p className={`text-2xl font-bold ${color.text}`}>{data.visibility_rate}</p>
+              )
+            })()}
             <p className="text-sm text-gray-500">Tasa de Visibilidad</p>
             <p className="text-xs text-gray-400 mt-1">
               ~{Math.round(data.avg_products_seen)} de {Math.round(data.avg_products_total)} productos vistos
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Leyenda semáforo */}
+      <div className="flex items-center gap-4 text-xs text-gray-500">
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-green-500" /> Alta (&gt;70%)
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-yellow-500" /> Media (40-70%)
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-red-500" /> Baja (&lt;40%)
+        </span>
       </div>
 
       {chartData.length > 0 && (
@@ -112,7 +145,11 @@ export function ProductVisibilityChart({ data, titleFallbacks }: ProductVisibili
                       return item?.fullName || label
                     }}
                   />
-                  <Bar dataKey="visibility" fill="#ff75a8" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="visibility" radius={[0, 4, 4, 0]}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={index} fill={getBarColor(entry.visibility)} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -176,7 +213,15 @@ export function ProductVisibilityChart({ data, titleFallbacks }: ProductVisibili
                       </TableCell>
                       <TableCell className="text-right">{formatNumber(p.times_seen)}</TableCell>
                       <TableCell className="text-right">
-                        <Badge variant="outline">{p.visibility_rate}</Badge>
+                        {(() => {
+                          const color = getVisibilityColor(p.visibility_rate)
+                          return (
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${color.bg} ${color.text}`}>
+                              {p.visibility_rate}
+                              <span className="text-[10px] font-normal opacity-70">{color.label}</span>
+                            </span>
+                          )
+                        })()}
                         <p className="text-[10px] text-gray-400 mt-0.5">
                           {formatNumber(p.times_seen)} / {formatNumber(data.total_observations)} obs.
                         </p>
