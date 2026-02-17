@@ -187,7 +187,7 @@ export default function DashboardPage() {
       steps.push({ name: "Sesiones Web", count: ga4Overview.sessions, source: "GA4" })
     }
     if (eventStats?.by_type?.["product.viewed"]) {
-      steps.push({ name: "Productos Vistos", count: eventStats.by_type["product.viewed"], source: "Events" })
+      steps.push({ name: "Vistas de Producto", count: eventStats.by_type["product.viewed"], source: "Events" })
     }
     if (eventStats?.by_type?.["product.added_to_cart"]) {
       steps.push({ name: "Agregado al Carrito", count: eventStats.by_type["product.added_to_cart"], source: "Events" })
