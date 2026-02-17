@@ -156,6 +156,7 @@ export default function DashboardPage() {
 
   const crossMetrics = useMemo(() => {
     const productViews = eventStats?.by_type?.["product.viewed"] || 0
+    const uniqueProductsViewed = eventProducts?.products?.length || 0
     const checkoutsStarted = eventStats?.by_type?.["checkout.started"] || 0
     const checkoutsAbandoned = eventStats?.by_type?.["checkout.abandoned"] || 0
     const paidOrders = metrics?.paidOrders || 0
@@ -172,10 +173,11 @@ export default function DashboardPage() {
         ? ((paidOrders / productViews) * 100).toFixed(2)
         : "0.00",
       productViews,
+      uniqueProductsViewed,
       checkoutsStarted,
       checkoutsAbandoned,
     }
-  }, [eventStats, metrics, metaOverview])
+  }, [eventStats, eventProducts, metrics, metaOverview])
 
   // ── Embudo completo (journey) ──
 
@@ -458,7 +460,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <MetricCard
                 title="Productos Vistos"
-                value={formatNumber(crossMetrics.productViews)}
+                value={formatNumber(crossMetrics.uniqueProductsViewed)}
                 icon="👀"
               />
               <MetricCard
