@@ -27,9 +27,11 @@ import { useProductsByIds } from "@/hooks/use-products-by-ids"
 
 interface ProductVisibilityChartProps {
   data: ProductVisibilityStats
+  /** Fallback: mapa product_id → title del Events backend (para cuando Medusa SDK falla) */
+  titleFallbacks?: Map<string, string>
 }
 
-export function ProductVisibilityChart({ data }: ProductVisibilityChartProps) {
+export function ProductVisibilityChart({ data, titleFallbacks }: ProductVisibilityChartProps) {
   // Extraer IDs únicos para buscar en Medusa
   const productIds = useMemo(
     () => data.product_visibility.map((p) => p.product_id),
@@ -41,7 +43,9 @@ export function ProductVisibilityChart({ data }: ProductVisibilityChartProps) {
   const getName = (id: string) => {
     const info = productsMap?.get(id)
     if (info?.title) return info.title
-    // Fallback: ID truncado
+    // Fallback: título del Events backend
+    if (titleFallbacks?.has(id)) return titleFallbacks.get(id)!
+    // Último recurso: ID truncado
     return id.length > 20 ? "..." + id.slice(-12) : id
   }
 

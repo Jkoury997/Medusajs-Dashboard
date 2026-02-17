@@ -217,14 +217,14 @@ export default function DashboardPage() {
   const productConversionData = useMemo(() => {
     if (!eventProducts?.products || !topProducts.length) return []
 
+    // Indexar por product_id para cruce directo (no por nombre)
     const orderProductMap = new Map<string, { revenue: number; quantity: number }>()
     for (const p of topProducts) {
-      orderProductMap.set(p.name.toLowerCase().trim(), { revenue: p.revenue, quantity: p.quantity })
+      orderProductMap.set(p.product_id, { revenue: p.revenue, quantity: p.quantity })
     }
 
     return eventProducts.products.map((ep) => {
-      const key = (ep.title || "").toLowerCase().trim()
-      const orderData = orderProductMap.get(key) || { revenue: 0, quantity: 0 }
+      const orderData = orderProductMap.get(ep.product_id) || { revenue: 0, quantity: 0 }
       return {
         name: ep.title || ep.product_id,
         views: ep.views,

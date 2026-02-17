@@ -97,11 +97,11 @@ export function aggregateByFulfillmentStatus(
  */
 export function aggregateTopProducts(
   orders: any[]
-): { name: string; revenue: number; quantity: number }[] {
+): { product_id: string; name: string; revenue: number; quantity: number }[] {
   const paidOrders = filterPaidOrders(orders)
   const byProduct = new Map<
     string,
-    { name: string; revenue: number; quantity: number }
+    { product_id: string; name: string; revenue: number; quantity: number }
   >()
 
   for (const order of paidOrders) {
@@ -109,6 +109,7 @@ export function aggregateTopProducts(
     for (const item of order.items) {
       const id = item.product_id || item.variant_id || item.title
       const existing = byProduct.get(id) || {
+        product_id: id,
         name: item.product_title || item.title || "Sin nombre",
         revenue: 0,
         quantity: 0,

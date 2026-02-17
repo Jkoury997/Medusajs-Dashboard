@@ -5,6 +5,11 @@ import { Header } from "@/components/dashboard/header"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { CustomerFilters } from "@/components/customers/customer-filters"
 import { CustomerTable } from "@/components/customers/customer-table"
+import {
+  DateRangePicker,
+  getDefaultDateRange,
+  type DateRange,
+} from "@/components/dashboard/date-range-picker"
 import { useAllCustomers, useCustomerGroups, extractCustomerGroups, buildGroupNameMap, resolveCustomerGroups } from "@/hooks/use-customers"
 import { useAllOrders } from "@/hooks/use-orders"
 import { getCustomerMetrics } from "@/lib/aggregations"
@@ -15,6 +20,7 @@ import { exportToCSV, formatDateCSV, formatCurrencyCSV } from "@/lib/export"
 import { AIInsightWidget } from "@/components/dashboard/ai-insight-widget"
 
 export default function CustomersPage() {
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange())
   const [search, setSearch] = useState("")
   const [selectedGroup, setSelectedGroup] = useState("all")
   const [daysSinceFilter, setDaysSinceFilter] = useState("all")
@@ -23,7 +29,10 @@ export default function CustomersPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
 
   const { data: customers, isLoading: customersLoading } = useAllCustomers()
-  const { data: ordersData, isLoading: ordersLoading } = useAllOrders()
+  const { data: ordersData, isLoading: ordersLoading } = useAllOrders({
+    from: dateRange.from,
+    to: dateRange.to,
+  })
   const { data: customerGroupsData } = useCustomerGroups()
 
   // Mapa ID → nombre de grupos nativos de Medusa
@@ -161,6 +170,8 @@ export default function CustomersPage() {
         description="Analisis de clientes, segmentacion y riesgo de churn"
       />
       <div className="p-6 space-y-6">
+        <DateRangePicker value={dateRange} onChange={setDateRange} />
+
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {[...Array(5)].map((_, i) => (

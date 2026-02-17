@@ -695,7 +695,13 @@ export default function AnalyticsPage() {
                   {visibilityLoading ? (
                     <Skeleton className="h-[400px]" />
                   ) : productVisibility ? (
-                    <ProductVisibilityChart data={productVisibility} />
+                    <ProductVisibilityChart
+                      data={productVisibility}
+                      titleFallbacks={products?.products
+                        ? new Map(products.products.map((p) => [p.product_id, p.title]))
+                        : undefined
+                      }
+                    />
                   ) : (
                     <Card>
                       <CardContent className="py-6 text-center text-gray-500">
