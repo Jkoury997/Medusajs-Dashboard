@@ -36,6 +36,7 @@ import {
   useAbandonedCartList,
   useEmailConfig,
   useProcessAbandonedCarts,
+  useForceSendEmail,
   useUpdateGlobalConfig,
   useUpdateGroupConfig,
   useDeleteGroupConfig,
@@ -91,6 +92,7 @@ export default function EmailMarketingPage() {
 
   // Mutations
   const processMutation = useProcessAbandonedCarts()
+  const forceSendMutation = useForceSendEmail()
   const updateGlobalMutation = useUpdateGlobalConfig()
   const updateGroupMutation = useUpdateGroupConfig()
   const deleteGroupMutation = useDeleteGroupConfig()
@@ -351,6 +353,7 @@ export default function EmailMarketingPage() {
                         <TableHead>Email 1</TableHead>
                         <TableHead>Email 2</TableHead>
                         <TableHead>Estado</TableHead>
+                        <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -402,6 +405,24 @@ export default function EmailMarketingPage() {
                               <Badge className="bg-green-100 text-green-700">Recuperado</Badge>
                             ) : (
                               <Badge className="bg-red-100 text-red-700">Perdido</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {!r.recovered && (!r.email_1_sent_at || !r.email_2_sent_at) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-7"
+                                disabled={forceSendMutation.isPending && forceSendMutation.variables?.cart_id === r.cart_id}
+                                onClick={() => forceSendMutation.mutate({ cart_id: r.cart_id, email_type: "next" })}
+                              >
+                                {forceSendMutation.isPending && forceSendMutation.variables?.cart_id === r.cart_id
+                                  ? "Enviando..."
+                                  : !r.email_1_sent_at
+                                    ? "📧 Enviar Email 1"
+                                    : "📧 Enviar Email 2"
+                                }
+                              </Button>
                             )}
                           </TableCell>
                         </TableRow>

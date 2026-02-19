@@ -7,6 +7,7 @@ import type {
   AbandonedCartListFilters,
   EmailConfigAll,
   ProcessResult,
+  ForceSendResult,
 } from "@/types/email-marketing"
 
 // --- Queries ---
@@ -119,6 +120,33 @@ export function useUpdateGroupConfig() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["email", "config"] })
+    },
+  })
+}
+
+export function useForceSendEmail() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      cart_id,
+      email_type = "next",
+    }: {
+      cart_id: string
+      email_type?: "next" | "email_1" | "email_2"
+    }) => {
+      const res = await fetch("/api/email-proxy/abandoned-carts/force-send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cart_id, email_type }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al enviar email")
+      }
+      return res.json() as Promise<ForceSendResult>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email", "abandoned-carts"] })
     },
   })
 }

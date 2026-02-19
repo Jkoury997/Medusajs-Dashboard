@@ -120,3 +120,10 @@ export interface ProcessResult {
   email1_sent: number
   email2_sent: number
 }
+
+export interface ForceSendResult {
+  success: boolean
+  resend_id: string
+  email_type: string
+  cart_id: string
+}
