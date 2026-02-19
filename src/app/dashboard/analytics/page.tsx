@@ -38,9 +38,6 @@ import {
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from "recharts"
-import { EventsByDay } from "@/components/charts/events-by-day"
-import { EventsByType } from "@/components/charts/events-by-type"
-import { EventsBySource } from "@/components/charts/events-by-source"
 import { ConversionFunnel } from "@/components/charts/conversion-funnel"
 import {
   useEventStats,
@@ -243,15 +240,43 @@ export default function AnalyticsPage() {
           <TabsContent value="resumen" className="space-y-6 mt-4">
             {statsLoading ? (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-[100px]" />)}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-[100px]" />)}
                 </div>
-                <Skeleton className="h-[300px]" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-[100px]" />)}
+                </div>
+                <Skeleton className="h-[400px]" />
               </div>
             ) : stats ? (
               <>
-                {/* Fila 1: KPIs principales */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Fila 1: KPIs de negocio */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard
+                    title="Ordenes Realizadas"
+                    value={formatNumber(stats.by_type?.["order.placed"] || 0)}
+                    icon="📦"
+                  />
+                  <MetricCard
+                    title="Ingresos Totales"
+                    value={formatCurrency(products?.products?.reduce((s, p) => s + p.revenue, 0) || 0)}
+                    icon="💰"
+                  />
+                  <MetricCard
+                    title="Tasa de Conversión"
+                    value={funnel?.conversion_rates?.total_view_to_purchase || "0%"}
+                    subtitle="Vista → Compra"
+                    icon="📈"
+                  />
+                  <MetricCard
+                    title="Páginas Vistas"
+                    value={formatNumber(stats.by_type?.["page.viewed"] || 0)}
+                    icon="🌐"
+                  />
+                </div>
+
+                {/* Fila 2: KPIs de actividad */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <MetricCard
                     title="Total Eventos"
                     value={formatNumber(stats.total_events)}
@@ -260,7 +285,7 @@ export default function AnalyticsPage() {
                   <MetricCard
                     title="Productos Únicos Vistos"
                     value={formatNumber(products?.products?.length || 0)}
-                    icon="📦"
+                    icon="🛍️"
                   />
                   <MetricCard
                     title="Tasa de Abandono"
@@ -268,9 +293,15 @@ export default function AnalyticsPage() {
                     changeType={parseFloat(abandonRate) > 30 ? "negative" : parseFloat(abandonRate) > 0 ? "positive" : "neutral"}
                     icon="🚪"
                   />
+                  <MetricCard
+                    title="Búsquedas sin Resultado"
+                    value={formatNumber(stats.by_type?.["search.no_results"] || 0)}
+                    changeType={(stats.by_type?.["search.no_results"] || 0) > 0 ? "negative" : "neutral"}
+                    icon="🔍"
+                  />
                 </div>
 
-                {/* Fila 2: KPIs de comportamiento */}
+                {/* Fila 3: KPIs del funnel */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <MetricCard
                     title="Vistas de Producto"
@@ -288,18 +319,19 @@ export default function AnalyticsPage() {
                     icon="💳"
                   />
                   <MetricCard
-                    title="Búsquedas sin Resultado"
-                    value={formatNumber(stats.by_type?.["search.no_results"] || 0)}
-                    changeType={(stats.by_type?.["search.no_results"] || 0) > 0 ? "negative" : "neutral"}
-                    icon="🔍"
+                    title="Checkouts Abandonados"
+                    value={formatNumber(stats.by_type?.["checkout.abandoned"] || 0)}
+                    changeType={(stats.by_type?.["checkout.abandoned"] || 0) > 0 ? "negative" : "neutral"}
+                    icon="❌"
                   />
                 </div>
 
-                <EventsByDay data={stats.by_day} />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <EventsByType data={stats.by_type} />
-                  <EventsBySource data={stats.by_source} />
-                </div>
+                {/* Funnel de conversión visual */}
+                {funnelLoading ? (
+                  <Skeleton className="h-[400px]" />
+                ) : funnel ? (
+                  <ConversionFunnel data={funnel} />
+                ) : null}
               </>
             ) : (
               <Card>
