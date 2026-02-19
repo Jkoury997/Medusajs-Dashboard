@@ -135,6 +135,12 @@ export default function AnalyticsPage() {
   const { data: scrollDepth, isLoading: scrollLoading } = useScrollDepth(selectedPageUrl, dateRange.from, dateRange.to)
   const { data: productVisibility, isLoading: visibilityLoading } = useProductVisibility(selectedPageUrl, dateRange.from, dateRange.to)
 
+  // Stats filtrados por página (para tab Comportamiento) — solo se ejecutan si hay página seleccionada
+  const { data: pageStats, isLoading: pageStatsLoading } = useEventStats(dateRange.from, dateRange.to, selectedPageUrl)
+  const { data: pageFunnel, isLoading: pageFunnelLoading } = useEventFunnel(dateRange.from, dateRange.to, selectedPageUrl)
+  const { data: pageProducts, isLoading: pageProductsLoading } = useEventProducts(dateRange.from, dateRange.to, 20, selectedPageUrl)
+  const { data: pageSearch, isLoading: pageSearchLoading } = useEventSearch(dateRange.from, dateRange.to, 20, selectedPageUrl)
+
   // Raw events filters
   const [eventType, setEventType] = useState<string>("all")
   const [eventSource, setEventSource] = useState<string>("all")
@@ -765,6 +771,162 @@ export default function AnalyticsPage() {
                       subtitle={productVisibility ? `${Math.round(productVisibility.avg_products_seen)} de ${Math.round(productVisibility.avg_products_total)} productos` : undefined}
                       icon="👁️"
                     />
+                  </div>
+                )}
+
+                {/* Métricas de la página (stats filtrados) */}
+                {(pageStatsLoading || pageStats) && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Métricas de esta Página</h3>
+                    {pageStatsLoading ? (
+                      <Skeleton className="h-[100px]" />
+                    ) : pageStats ? (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <MetricCard
+                          title="Eventos en Página"
+                          value={formatNumber(pageStats.total_events)}
+                          icon="📡"
+                        />
+                        <MetricCard
+                          title="Vistas de Producto"
+                          value={formatNumber(pageStats.by_type?.["product.viewed"] || 0)}
+                          icon="👀"
+                        />
+                        <MetricCard
+                          title="Agregados al Carrito"
+                          value={formatNumber(pageStats.by_type?.["product.added_to_cart"] || 0)}
+                          icon="🛒"
+                        />
+                        <MetricCard
+                          title="Checkouts Iniciados"
+                          value={formatNumber(pageStats.by_type?.["checkout.started"] || 0)}
+                          icon="💳"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
+                {/* Funnel de la página */}
+                {(pageFunnelLoading || pageFunnel) && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Funnel de esta Página</h3>
+                    {pageFunnelLoading ? (
+                      <Skeleton className="h-[300px]" />
+                    ) : pageFunnel ? (
+                      <ConversionFunnel data={pageFunnel} />
+                    ) : null}
+                  </div>
+                )}
+
+                {/* Productos de la página */}
+                {(pageProductsLoading || (pageProducts?.products?.length ?? 0) > 0) && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Productos en esta Página</h3>
+                    {pageProductsLoading ? (
+                      <Skeleton className="h-[300px]" />
+                    ) : pageProducts?.products?.length ? (
+                      <Card>
+                        <CardContent className="pt-4">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Producto</TableHead>
+                                <TableHead className="text-right">Vistas</TableHead>
+                                <TableHead className="text-right">Al Carrito</TableHead>
+                                <TableHead className="text-right">Comprados</TableHead>
+                                <TableHead className="text-right">Conversión</TableHead>
+                                <TableHead className="text-right">Ingresos</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {pageProducts.products.map((p) => (
+                                <TableRow key={p.product_id}>
+                                  <TableCell className="font-medium max-w-[250px] truncate">
+                                    {p.title || p.product_id}
+                                  </TableCell>
+                                  <TableCell className="text-right">{formatNumber(p.views)}</TableCell>
+                                  <TableCell className="text-right">{formatNumber(p.added_to_cart)}</TableCell>
+                                  <TableCell className="text-right">{formatNumber(p.purchased)}</TableCell>
+                                  <TableCell className="text-right">
+                                    <Badge variant="outline">{p.conversion_rate}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-right">{formatCurrency(p.revenue)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </CardContent>
+                      </Card>
+                    ) : null}
+                  </div>
+                )}
+
+                {/* Búsquedas en la página */}
+                {(pageSearchLoading || pageSearch?.top_searches?.length || pageSearch?.no_results?.length) && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Búsquedas en esta Página</h3>
+                    {pageSearchLoading ? (
+                      <Skeleton className="h-[200px]" />
+                    ) : (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {pageSearch?.top_searches?.length ? (
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base">Top Búsquedas</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Término</TableHead>
+                                    <TableHead className="text-right">Búsquedas</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {pageSearch.top_searches.map((s) => (
+                                    <TableRow key={s.term}>
+                                      <TableCell className="font-medium">{s.term}</TableCell>
+                                      <TableCell className="text-right">{formatNumber(s.count)}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </CardContent>
+                          </Card>
+                        ) : null}
+                        {pageSearch?.no_results?.length ? (
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base">Búsquedas sin Resultados</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Término</TableHead>
+                                    <TableHead className="text-right">Veces</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {pageSearch.no_results.map((s) => (
+                                    <TableRow key={s.term}>
+                                      <TableCell className="font-medium">
+                                        {s.term}
+                                        <Badge variant="destructive" className="ml-2 text-xs">
+                                          Sin resultados
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell className="text-right">{formatNumber(s.count)}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </CardContent>
+                          </Card>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
                 )}
 

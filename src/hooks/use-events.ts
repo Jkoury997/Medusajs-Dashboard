@@ -24,55 +24,73 @@ function formatToParam(date: Date): string {
   return next.toISOString().split("T")[0]
 }
 
-export function useEventStats(from: Date, to: Date) {
+export function useEventStats(from: Date, to: Date, pageUrl?: string) {
   return useQuery({
-    queryKey: ["events", "stats", from.toISOString(), to.toISOString()],
+    queryKey: ["events", "stats", from.toISOString(), to.toISOString(), pageUrl || ""],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/events-proxy/stats?from=${formatDateParam(from)}&to=${formatToParam(to)}`
-      )
+      const params = new URLSearchParams({
+        from: formatDateParam(from),
+        to: formatToParam(to),
+      })
+      if (pageUrl) params.set("page_url", pageUrl)
+      const res = await fetch(`/api/events-proxy/stats?${params.toString()}`)
       if (!res.ok) throw new Error("Error al obtener estadísticas de eventos")
       return res.json() as Promise<EventStats>
     },
+    enabled: pageUrl !== undefined ? !!pageUrl : true,
   })
 }
 
-export function useEventFunnel(from: Date, to: Date) {
+export function useEventFunnel(from: Date, to: Date, pageUrl?: string) {
   return useQuery({
-    queryKey: ["events", "funnel", from.toISOString(), to.toISOString()],
+    queryKey: ["events", "funnel", from.toISOString(), to.toISOString(), pageUrl || ""],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/events-proxy/stats/funnel?from=${formatDateParam(from)}&to=${formatToParam(to)}`
-      )
+      const params = new URLSearchParams({
+        from: formatDateParam(from),
+        to: formatToParam(to),
+      })
+      if (pageUrl) params.set("page_url", pageUrl)
+      const res = await fetch(`/api/events-proxy/stats/funnel?${params.toString()}`)
       if (!res.ok) throw new Error("Error al obtener funnel de conversión")
       return res.json() as Promise<FunnelStats>
     },
+    enabled: pageUrl !== undefined ? !!pageUrl : true,
   })
 }
 
-export function useEventProducts(from: Date, to: Date, limit: number = 20) {
+export function useEventProducts(from: Date, to: Date, limit: number = 20, pageUrl?: string) {
   return useQuery({
-    queryKey: ["events", "products", from.toISOString(), to.toISOString(), limit],
+    queryKey: ["events", "products", from.toISOString(), to.toISOString(), limit, pageUrl || ""],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/events-proxy/stats/products?from=${formatDateParam(from)}&to=${formatToParam(to)}&limit=${limit}`
-      )
+      const params = new URLSearchParams({
+        from: formatDateParam(from),
+        to: formatToParam(to),
+        limit: String(limit),
+      })
+      if (pageUrl) params.set("page_url", pageUrl)
+      const res = await fetch(`/api/events-proxy/stats/products?${params.toString()}`)
       if (!res.ok) throw new Error("Error al obtener estadísticas de productos")
       return res.json() as Promise<ProductStats>
     },
+    enabled: pageUrl !== undefined ? !!pageUrl : true,
   })
 }
 
-export function useEventSearch(from: Date, to: Date, limit: number = 20) {
+export function useEventSearch(from: Date, to: Date, limit: number = 20, pageUrl?: string) {
   return useQuery({
-    queryKey: ["events", "search", from.toISOString(), to.toISOString(), limit],
+    queryKey: ["events", "search", from.toISOString(), to.toISOString(), limit, pageUrl || ""],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/events-proxy/stats/search?from=${formatDateParam(from)}&to=${formatToParam(to)}&limit=${limit}`
-      )
+      const params = new URLSearchParams({
+        from: formatDateParam(from),
+        to: formatToParam(to),
+        limit: String(limit),
+      })
+      if (pageUrl) params.set("page_url", pageUrl)
+      const res = await fetch(`/api/events-proxy/stats/search?${params.toString()}`)
       if (!res.ok) throw new Error("Error al obtener estadísticas de búsquedas")
       return res.json() as Promise<SearchStats>
     },
+    enabled: pageUrl !== undefined ? !!pageUrl : true,
   })
 }
 
