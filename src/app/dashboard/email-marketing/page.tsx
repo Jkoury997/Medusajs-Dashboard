@@ -369,7 +369,7 @@ export default function EmailMarketingPage() {
                           </TableCell>
                           <TableCell className="text-right">{r.items_count}</TableCell>
                           <TableCell className="text-right font-medium">
-                            {formatCurrency(r.cart_total / 100)}
+                            {formatCurrency(r.cart_total)}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-xs">{r.checkout_step || "-"}</Badge>
@@ -491,11 +491,11 @@ export default function EmailMarketingPage() {
                     </div>
                     <Button
                       onClick={() => {
-                        const data: Record<string, unknown> = {}
-                        if (globalEnabled !== null) data.enabled = globalEnabled
-                        if (globalDiscountEnabled !== null) data.discount_enabled = globalDiscountEnabled
-                        if (globalDiscountPct) data.discount_percentage = Number(globalDiscountPct)
-                        updateGlobalMutation.mutate(data as any)
+                        updateGlobalMutation.mutate({
+                          enabled: effectiveGlobalEnabled,
+                          discount_enabled: effectiveGlobalDiscountEnabled,
+                          discount_percentage: Number(effectiveGlobalDiscountPct),
+                        })
                       }}
                       disabled={updateGlobalMutation.isPending}
                     >
@@ -635,11 +635,11 @@ function GroupConfigCard({
           <Button
             size="sm"
             onClick={() => {
-              const data: Record<string, unknown> = {}
-              if (enabled !== null) data.enabled = enabled
-              if (discountEnabled !== null) data.discount_enabled = discountEnabled
-              if (discountPct) data.discount_percentage = Number(discountPct)
-              onSave(data as any)
+              onSave({
+                enabled: effectiveEnabled,
+                discount_enabled: effectiveDiscountEnabled,
+                discount_percentage: Number(effectiveDiscountPct),
+              })
             }}
             disabled={isSaving}
           >

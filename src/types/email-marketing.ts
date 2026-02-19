@@ -54,7 +54,7 @@ export interface AbandonedCartRecord {
   promotion_id: string | null
   abandoned_at: string
   checkout_step: string
-  cart_total: number // en centavos
+  cart_total: number // en pesos (ARS)
   items_count: number
   recovered: boolean
   recovered_at: string | null
