@@ -30,7 +30,7 @@ import {
 import type { EmailTemplateType, EmailTemplateFields } from "@/types/email-marketing"
 
 const GROUP_OPTIONS = [
-  { value: "", label: "Global (por defecto)" },
+  { value: "global", label: "Global (por defecto)" },
   { value: "minorista", label: "Minorista" },
   { value: "mayorista", label: "Mayorista" },
   { value: "revendedora", label: "Revendedora" },
@@ -67,7 +67,10 @@ const EMPTY_FORM: EmailTemplateFields = {
 export function TemplateEditor() {
   // Selection
   const [selectedType, setSelectedType] = useState<EmailTemplateType>("reminder")
-  const [selectedGroup, setSelectedGroup] = useState("")
+  const [selectedGroup, setSelectedGroup] = useState("global")
+
+  // "global" → undefined para los hooks (sin filtro de grupo)
+  const groupForApi = selectedGroup === "global" ? undefined : selectedGroup
 
   // Form
   const [formData, setFormData] = useState<EmailTemplateFields>({ ...EMPTY_FORM })
@@ -80,7 +83,7 @@ export function TemplateEditor() {
   // Hooks
   const { data: resolved, isLoading } = useTemplateResolved(
     selectedType,
-    selectedGroup || undefined,
+    groupForApi,
   )
   const upsertMutation = useUpsertTemplate()
   const deleteMutation = useDeleteTemplate()
@@ -110,14 +113,14 @@ export function TemplateEditor() {
   const handleSave = () => {
     upsertMutation.mutate({
       type: selectedType,
-      groupName: selectedGroup || undefined,
+      groupName: groupForApi,
       data: formData,
     })
   }
 
   const handleDelete = () => {
     deleteMutation.mutate(
-      { type: selectedType, groupName: selectedGroup || undefined },
+      { type: selectedType, groupName: groupForApi },
       {
         onSuccess: () => {
           setIsDirty(false)
@@ -128,7 +131,7 @@ export function TemplateEditor() {
 
   const handlePreview = () => {
     previewMutation.mutate(
-      { type: selectedType, groupName: selectedGroup || undefined },
+      { type: selectedType, groupName: groupForApi },
       {
         onSuccess: (result) => {
           setPreviewHtml(result.html)
