@@ -9,6 +9,7 @@ import type {
   EmailConfigUpdateData,
   ProcessResult,
   ForceSendResult,
+  DeleteCartResult,
 } from "@/types/email-marketing"
 
 // --- Queries ---
@@ -137,6 +138,25 @@ export function useForceSendEmail() {
         throw new Error(err.error || "Error al enviar email")
       }
       return res.json() as Promise<ForceSendResult>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email", "abandoned-carts"] })
+    },
+  })
+}
+
+export function useDeleteAbandonedCart() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (cartId: string) => {
+      const res = await fetch(`/api/email-proxy/abandoned-carts/${cartId}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al eliminar carrito")
+      }
+      return res.json() as Promise<DeleteCartResult>
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["email", "abandoned-carts"] })

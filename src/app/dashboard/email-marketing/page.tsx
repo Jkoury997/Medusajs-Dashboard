@@ -37,13 +37,15 @@ import {
   useEmailConfig,
   useProcessAbandonedCarts,
   useForceSendEmail,
+  useDeleteAbandonedCart,
   useUpdateGlobalConfig,
   useUpdateGroupConfig,
   useDeleteGroupConfig,
 } from "@/hooks/use-email-marketing"
+import { useCampaignStats, useCampaignRecent } from "@/hooks/use-campaigns"
 import { TemplateEditor } from "@/components/email-marketing/template-editor"
 import { formatNumber, formatCurrency } from "@/lib/format"
-import type { AbandonedCartListFilters, DiscountType } from "@/types/email-marketing"
+import type { AbandonedCartListFilters, DiscountType, CampaignType } from "@/types/email-marketing"
 
 const GROUP_LABELS: Record<string, string> = {
   minorista: "Minorista",
@@ -55,6 +57,22 @@ const GROUP_COLORS: Record<string, string> = {
   minorista: "bg-blue-100 text-blue-700",
   mayorista: "bg-purple-100 text-purple-700",
   revendedora: "bg-amber-100 text-amber-700",
+}
+
+const CAMPAIGN_LABELS: Record<string, string> = {
+  post_purchase: "Post-Compra",
+  welcome_1: "Bienvenida 1",
+  welcome_2: "Bienvenida 2 (Descuento)",
+  welcome_3: "Bienvenida 3 (IA)",
+  browse_abandonment: "Browse Abandonment",
+}
+
+const CAMPAIGN_COLORS: Record<string, string> = {
+  post_purchase: "bg-green-100 text-green-700",
+  welcome_1: "bg-blue-100 text-blue-700",
+  welcome_2: "bg-pink-100 text-pink-700",
+  welcome_3: "bg-purple-100 text-purple-700",
+  browse_abandonment: "bg-orange-100 text-orange-700",
 }
 
 export default function EmailMarketingPage() {
@@ -91,9 +109,15 @@ export default function EmailMarketingPage() {
   // Config
   const { data: config, isLoading: configLoading } = useEmailConfig()
 
+  // Campaigns
+  const { data: campaignStats, isLoading: campaignStatsLoading } = useCampaignStats()
+  const [selectedCampaignType, setSelectedCampaignType] = useState<CampaignType | null>(null)
+  const { data: campaignRecent, isLoading: recentLoading } = useCampaignRecent(selectedCampaignType)
+
   // Mutations
   const processMutation = useProcessAbandonedCarts()
   const forceSendMutation = useForceSendEmail()
+  const deleteCartMutation = useDeleteAbandonedCart()
   const updateGlobalMutation = useUpdateGlobalConfig()
   const updateGroupMutation = useUpdateGroupConfig()
   const deleteGroupMutation = useDeleteGroupConfig()
@@ -121,6 +145,7 @@ export default function EmailMarketingPage() {
           <TabsList>
             <TabsTrigger value="resumen">Resumen</TabsTrigger>
             <TabsTrigger value="carritos">Carritos Abandonados</TabsTrigger>
+            <TabsTrigger value="campanas">Campañas AI</TabsTrigger>
             <TabsTrigger value="config">Configuración</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
           </TabsList>
@@ -257,7 +282,7 @@ export default function EmailMarketingPage() {
                     </div>
                     {processMutation.isSuccess && processMutation.data && (
                       <div className="mt-3 p-3 bg-green-50 rounded-md text-sm text-green-700">
-                        Detectados: {processMutation.data.detected} · Email 1 enviados: {processMutation.data.email1_sent} · Email 2 enviados: {processMutation.data.email2_sent}
+                        Detectados: {processMutation.data.new_carts_detected} · Recordatorios: {processMutation.data.reminders_sent} · Cupones: {processMutation.data.coupons_sent} · Recuperados: {processMutation.data.recovered}
                       </div>
                     )}
                     {processMutation.isError && (
@@ -412,22 +437,37 @@ export default function EmailMarketingPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {!r.recovered && (!r.email_1_sent_at || !r.email_2_sent_at) && (
+                            <div className="flex gap-1">
+                              {!r.recovered && (!r.email_1_sent_at || !r.email_2_sent_at) && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs h-7"
+                                  disabled={forceSendMutation.isPending && forceSendMutation.variables?.cart_id === r.cart_id}
+                                  onClick={() => forceSendMutation.mutate({ cart_id: r.cart_id, email_type: "next" })}
+                                >
+                                  {forceSendMutation.isPending && forceSendMutation.variables?.cart_id === r.cart_id
+                                    ? "..."
+                                    : !r.email_1_sent_at
+                                      ? "📧 Email 1"
+                                      : "📧 Email 2"
+                                  }
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-xs h-7"
-                                disabled={forceSendMutation.isPending && forceSendMutation.variables?.cart_id === r.cart_id}
-                                onClick={() => forceSendMutation.mutate({ cart_id: r.cart_id, email_type: "next" })}
+                                className="text-xs h-7 text-red-500 hover:text-red-700"
+                                disabled={deleteCartMutation.isPending && deleteCartMutation.variables === r.cart_id}
+                                onClick={() => {
+                                  if (window.confirm(`Eliminar registro de ${r.customer_name || r.email}?`)) {
+                                    deleteCartMutation.mutate(r.cart_id)
+                                  }
+                                }}
                               >
-                                {forceSendMutation.isPending && forceSendMutation.variables?.cart_id === r.cart_id
-                                  ? "Enviando..."
-                                  : !r.email_1_sent_at
-                                    ? "📧 Enviar Email 1"
-                                    : "📧 Enviar Email 2"
-                                }
+                                {deleteCartMutation.isPending && deleteCartMutation.variables === r.cart_id ? "..." : "🗑️"}
                               </Button>
-                            )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -458,6 +498,201 @@ export default function EmailMarketingPage() {
               <Card>
                 <CardContent className="py-8 text-center text-gray-500">
                   No se encontraron carritos abandonados con los filtros seleccionados
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* TAB: Campañas AI */}
+          <TabsContent value="campanas" className="space-y-6 mt-4">
+            {campaignStatsLoading ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-[100px]" />)}
+                </div>
+                <Skeleton className="h-[300px]" />
+              </div>
+            ) : campaignStats ? (
+              <>
+                {/* KPIs globales */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard
+                    title="Total Emails Enviados"
+                    value={formatNumber(campaignStats.totals.sent)}
+                    subtitle={`${formatNumber(campaignStats.totals.total)} programados`}
+                    icon="📧"
+                  />
+                  <MetricCard
+                    title="Open Rate"
+                    value={campaignStats.totals.open_rate}
+                    subtitle={`${formatNumber(campaignStats.totals.opened)} abiertos`}
+                    changeType={parseFloat(campaignStats.totals.open_rate) >= 40 ? "positive" : "neutral"}
+                    icon="👀"
+                  />
+                  <MetricCard
+                    title="Click Rate"
+                    value={campaignStats.totals.click_rate}
+                    subtitle={`${formatNumber(campaignStats.totals.clicked)} clicks`}
+                    changeType={parseFloat(campaignStats.totals.click_rate) >= 20 ? "positive" : "neutral"}
+                    icon="🖱️"
+                  />
+                  <MetricCard
+                    title="Rebotados"
+                    value={formatNumber(campaignStats.totals.bounced)}
+                    subtitle={campaignStats.ai_enabled ? `IA: ${campaignStats.ai_model}` : "IA desactivada"}
+                    changeType={campaignStats.totals.bounced > 0 ? "negative" : "neutral"}
+                    icon="💥"
+                  />
+                </div>
+
+                {/* Tabla por tipo de campaña */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Rendimiento por Tipo de Campaña</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Campaña</TableHead>
+                          <TableHead className="text-right">Enviados</TableHead>
+                          <TableHead className="text-right">Entregados</TableHead>
+                          <TableHead className="text-right">Abiertos</TableHead>
+                          <TableHead className="text-right">Clicks</TableHead>
+                          <TableHead className="text-right">Open Rate</TableHead>
+                          <TableHead className="text-right">Click Rate</TableHead>
+                          <TableHead className="text-right">Con IA</TableHead>
+                          <TableHead>Detalle</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {campaignStats.campaigns.map((c) => (
+                          <TableRow key={c.campaign_type}>
+                            <TableCell>
+                              <Badge className={CAMPAIGN_COLORS[c.campaign_type] || "bg-gray-100 text-gray-700"}>
+                                {CAMPAIGN_LABELS[c.campaign_type] || c.campaign_type}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">{formatNumber(c.sent)}</TableCell>
+                            <TableCell className="text-right">{formatNumber(c.delivered)}</TableCell>
+                            <TableCell className="text-right">{formatNumber(c.opened)}</TableCell>
+                            <TableCell className="text-right">{formatNumber(c.clicked)}</TableCell>
+                            <TableCell className="text-right">
+                              <span className={parseFloat(c.open_rate) >= 40 ? "text-green-600 font-semibold" : ""}>
+                                {c.open_rate}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className={parseFloat(c.click_rate) >= 20 ? "text-green-600 font-semibold" : ""}>
+                                {c.click_rate}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {c.with_ai > 0 ? (
+                                <span className="text-purple-600">{formatNumber(c.with_ai)}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-7"
+                                onClick={() => setSelectedCampaignType(
+                                  selectedCampaignType === c.campaign_type ? null : c.campaign_type as CampaignType
+                                )}
+                              >
+                                {selectedCampaignType === c.campaign_type ? "Cerrar" : "Ver emails"}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* Detalle: emails recientes de la campaña seleccionada */}
+                {selectedCampaignType && (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">
+                          Emails recientes: {CAMPAIGN_LABELS[selectedCampaignType] || selectedCampaignType}
+                        </CardTitle>
+                        <Badge className={CAMPAIGN_COLORS[selectedCampaignType] || ""}>
+                          {campaignRecent?.count ?? 0} registros
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {recentLoading ? (
+                        <Skeleton className="h-[200px]" />
+                      ) : campaignRecent?.records?.length ? (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Fecha</TableHead>
+                              <TableHead>Cliente</TableHead>
+                              <TableHead>Grupo</TableHead>
+                              <TableHead>Estado</TableHead>
+                              <TableHead>AI Subject</TableHead>
+                              <TableHead>Cupón</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {campaignRecent.records.map((r, idx) => (
+                              <TableRow key={idx}>
+                                <TableCell className="text-xs whitespace-nowrap">
+                                  {r.sent_at ? new Date(r.sent_at).toLocaleString("es-AR") : "Pendiente"}
+                                </TableCell>
+                                <TableCell className="text-xs max-w-[180px] truncate">
+                                  {r.customer_name || r.email}
+                                </TableCell>
+                                <TableCell>
+                                  {r.customer_group && (
+                                    <Badge className={`text-xs ${GROUP_COLORS[r.customer_group] || "bg-gray-100 text-gray-700"}`}>
+                                      {GROUP_LABELS[r.customer_group] || r.customer_group}
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <EmailStatusBadge
+                                    sent={!!r.sent_at}
+                                    delivered={!!r.delivered_at}
+                                    opened={!!r.opened_at}
+                                    clicked={!!r.clicked_at}
+                                    bounced={r.bounced}
+                                  />
+                                </TableCell>
+                                <TableCell className="text-xs max-w-[250px] truncate text-purple-600">
+                                  {r.ai_subject || <span className="text-gray-400">Template</span>}
+                                </TableCell>
+                                <TableCell className="text-xs">
+                                  {r.coupon_code ? (
+                                    <Badge className="bg-pink-100 text-pink-700 text-[10px]">🎟️ {r.coupon_code}</Badge>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          No hay emails recientes para esta campaña
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            ) : (
+              <Card>
+                <CardContent className="py-8 text-center text-gray-500">
+                  No se pudieron cargar las estadísticas de campañas.
                 </CardContent>
               </Card>
             )}

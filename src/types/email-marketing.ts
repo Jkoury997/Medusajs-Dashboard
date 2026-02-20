@@ -1,10 +1,10 @@
-// Tipos para la API de Email Marketing — Carritos Abandonados
+// Tipos para la API de Email Marketing — Marcela Koury
 
 // --- Discount Type ---
 
 export type DiscountType = "percentage" | "fixed"
 
-// --- Stats ---
+// --- Abandoned Cart Stats ---
 
 export interface AbandonedCartEngagement {
   email_1_delivered: number
@@ -68,7 +68,7 @@ export interface AbandonedCartRecord {
   recovered_at: string | null
   customer_group: string
   customer_group_id: string
-  discount_percentage: number
+  discount_percentage: number | null
   discount_type: DiscountType | null
   resend_email_1_id: string | null
   resend_email_2_id: string | null
@@ -105,14 +105,18 @@ export interface AbandonedCartListFilters {
 // --- Config ---
 
 export interface EmailGlobalConfig {
+  _id?: string
+  config_type?: string
   enabled: boolean
   discount_enabled: boolean
   discount_percentage: number
   discount_type: DiscountType
-  source: string
+  source?: string
+  updated_at?: string
 }
 
 export interface EmailGroupConfig {
+  _id?: string
   config_type: string
   group_name: string
   enabled: boolean
@@ -138,21 +142,35 @@ export interface EmailConfigUpdateData {
 
 export interface ProcessResult {
   success: boolean
-  detected: number
-  email1_sent: number
-  email2_sent: number
+  new_carts_detected: number
+  reminders_sent: number
+  coupons_sent: number
+  recovered: number
+  errors: number
 }
 
 export interface ForceSendResult {
   success: boolean
-  resend_id: string
   email_type: string
-  cart_id: string
+  email: string
+  resend_id: string
+}
+
+export interface DeleteCartResult {
+  success: boolean
+  deleted: string
 }
 
 // --- Email Templates ---
 
-export type EmailTemplateType = "reminder" | "coupon"
+export type EmailTemplateType =
+  | "reminder"
+  | "coupon"
+  | "post_purchase"
+  | "welcome_1"
+  | "welcome_2"
+  | "welcome_3"
+  | "browse_abandonment"
 
 export interface EmailTemplateFields {
   subject: string
@@ -172,10 +190,74 @@ export interface EmailTemplateListResponse {
   templates: Array<
     EmailTemplateFields & {
       template_type: EmailTemplateType
-      group_name?: string
-      created_at: string
-      updated_at: string
+      group_name?: string | null
+      source: string
+      created_at?: string
+      updated_at?: string
     }
   >
-  defaults: Record<EmailTemplateType, EmailTemplateFields>
+  defaults?: Record<EmailTemplateType, EmailTemplateFields>
+}
+
+// --- Campaigns (AI) ---
+
+export type CampaignType =
+  | "post_purchase"
+  | "welcome_1"
+  | "welcome_2"
+  | "welcome_3"
+  | "browse_abandonment"
+
+export interface CampaignTypeStats {
+  campaign_type: CampaignType
+  total: number
+  sent: number
+  delivered: number
+  opened: number
+  clicked: number
+  bounced: number
+  open_rate: string
+  click_rate: string
+  with_ai: number
+  avg_ai_tokens: number | null
+}
+
+export interface CampaignStats {
+  totals: {
+    total: number
+    sent: number
+    delivered: number
+    opened: number
+    clicked: number
+    bounced: number
+    open_rate: string
+    click_rate: string
+  }
+  campaigns: CampaignTypeStats[]
+  ai_enabled: boolean
+  ai_model: string
+}
+
+export interface CampaignEmailRecord {
+  customer_id: string
+  email: string
+  customer_name: string | null
+  customer_group: string | null
+  sent_at: string | null
+  delivered_at: string | null
+  opened_at: string | null
+  clicked_at: string | null
+  bounced: boolean
+  ai_subject: string | null
+  ai_recommendations: string[]
+  ai_tokens_used: number | null
+  coupon_code: string | null
+  trigger_data: Record<string, unknown>
+  created_at: string
+}
+
+export interface CampaignRecentResponse {
+  campaign_type: CampaignType
+  count: number
+  records: CampaignEmailRecord[]
 }

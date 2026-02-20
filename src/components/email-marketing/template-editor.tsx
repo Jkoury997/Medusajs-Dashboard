@@ -39,6 +39,11 @@ const GROUP_OPTIONS = [
 const TYPE_OPTIONS: { value: EmailTemplateType; label: string }[] = [
   { value: "reminder", label: "Recordatorio (Email 1)" },
   { value: "coupon", label: "Cupon con descuento (Email 2)" },
+  { value: "post_purchase", label: "Post-compra (Cross-sell)" },
+  { value: "welcome_1", label: "Bienvenida 1 (Inmediata)" },
+  { value: "welcome_2", label: "Bienvenida 2 (Descuento)" },
+  { value: "welcome_3", label: "Bienvenida 3 (IA)" },
+  { value: "browse_abandonment", label: "Browse Abandonment" },
 ]
 
 const TEMPLATE_VARIABLES = [
@@ -46,6 +51,9 @@ const TEMPLATE_VARIABLES = [
   { key: "discount_value", desc: "Valor del descuento (ej: 15% OFF)" },
   { key: "coupon_code", desc: "Codigo del cupon" },
   { key: "cart_total", desc: "Total del carrito" },
+  { key: "product_name", desc: "Nombre del producto (browse_abandonment)" },
+  { key: "order_number", desc: "Numero de orden (post_purchase)" },
+  { key: "category_name", desc: "Categoria del producto" },
 ]
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -279,7 +287,7 @@ export function TemplateEditor() {
                     className="mt-1"
                   />
                 </div>
-                {selectedType === "coupon" && (
+                {["coupon", "welcome_2"].includes(selectedType) && (
                   <div className="md:col-span-2">
                     <Label>Texto de validez</Label>
                     <Input
