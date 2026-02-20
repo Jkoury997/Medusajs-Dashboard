@@ -41,8 +41,9 @@ import {
   useUpdateGroupConfig,
   useDeleteGroupConfig,
 } from "@/hooks/use-email-marketing"
+import { TemplateEditor } from "@/components/email-marketing/template-editor"
 import { formatNumber, formatCurrency } from "@/lib/format"
-import type { AbandonedCartListFilters } from "@/types/email-marketing"
+import type { AbandonedCartListFilters, DiscountType } from "@/types/email-marketing"
 
 const GROUP_LABELS: Record<string, string> = {
   minorista: "Minorista",
@@ -101,11 +102,13 @@ export default function EmailMarketingPage() {
   const [globalEnabled, setGlobalEnabled] = useState<boolean | null>(null)
   const [globalDiscountEnabled, setGlobalDiscountEnabled] = useState<boolean | null>(null)
   const [globalDiscountPct, setGlobalDiscountPct] = useState<string>("")
+  const [globalDiscountType, setGlobalDiscountType] = useState<DiscountType | null>(null)
 
   // Sync config state when data loads
   const effectiveGlobalEnabled = globalEnabled ?? config?.global?.enabled ?? true
   const effectiveGlobalDiscountEnabled = globalDiscountEnabled ?? config?.global?.discount_enabled ?? true
   const effectiveGlobalDiscountPct = globalDiscountPct || String(config?.global?.discount_percentage ?? 10)
+  const effectiveGlobalDiscountType = globalDiscountType ?? config?.global?.discount_type ?? "percentage"
 
   return (
     <div>
@@ -119,6 +122,7 @@ export default function EmailMarketingPage() {
             <TabsTrigger value="resumen">Resumen</TabsTrigger>
             <TabsTrigger value="carritos">Carritos Abandonados</TabsTrigger>
             <TabsTrigger value="config">Configuración</TabsTrigger>
+            <TabsTrigger value="templates">Templates</TabsTrigger>
           </TabsList>
 
           {/* TAB: Resumen */}
@@ -495,12 +499,33 @@ export default function EmailMarketingPage() {
                       />
                     </div>
                     <div className="flex items-center gap-4">
+                      <div>
+                        <Label>Tipo de descuento</Label>
+                        <Select
+                          value={effectiveGlobalDiscountType}
+                          onValueChange={(v) => setGlobalDiscountType(v as DiscountType)}
+                        >
+                          <SelectTrigger className="mt-1 w-48">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentage">Porcentaje (%)</SelectItem>
+                            <SelectItem value="fixed">Monto Fijo ($)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
                       <div className="flex-1">
-                        <Label>Porcentaje de descuento</Label>
+                        <Label>
+                          {effectiveGlobalDiscountType === "percentage"
+                            ? "Porcentaje de descuento (%)"
+                            : "Monto de descuento ($)"}
+                        </Label>
                         <Input
                           type="number"
                           min={0}
-                          max={100}
+                          max={effectiveGlobalDiscountType === "percentage" ? 100 : undefined}
                           value={effectiveGlobalDiscountPct}
                           onChange={(e) => setGlobalDiscountPct(e.target.value)}
                           className="mt-1 w-32"
@@ -516,6 +541,7 @@ export default function EmailMarketingPage() {
                           enabled: effectiveGlobalEnabled,
                           discount_enabled: effectiveGlobalDiscountEnabled,
                           discount_percentage: Number(effectiveGlobalDiscountPct),
+                          discount_type: effectiveGlobalDiscountType,
                         })
                       }}
                       disabled={updateGlobalMutation.isPending}
@@ -554,6 +580,11 @@ export default function EmailMarketingPage() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* TAB: Templates */}
+          <TabsContent value="templates" className="space-y-6 mt-4">
+            <TemplateEditor />
           </TabsContent>
         </Tabs>
       </div>
@@ -594,9 +625,9 @@ function GroupConfigCard({
   isDeleting,
 }: {
   groupName: string
-  groupConfig: { enabled: boolean; discount_enabled: boolean; discount_percentage: number } | null
-  globalConfig: { enabled: boolean; discount_enabled: boolean; discount_percentage: number }
-  onSave: (data: { enabled?: boolean; discount_enabled?: boolean; discount_percentage?: number }) => void
+  groupConfig: { enabled: boolean; discount_enabled: boolean; discount_percentage: number; discount_type: DiscountType } | null
+  globalConfig: { enabled: boolean; discount_enabled: boolean; discount_percentage: number; discount_type: DiscountType }
+  onSave: (data: { enabled?: boolean; discount_enabled?: boolean; discount_percentage?: number; discount_type?: DiscountType }) => void
   onDelete: () => void
   isSaving: boolean
   isDeleting: boolean
@@ -607,10 +638,12 @@ function GroupConfigCard({
   const [enabled, setEnabled] = useState<boolean | null>(null)
   const [discountEnabled, setDiscountEnabled] = useState<boolean | null>(null)
   const [discountPct, setDiscountPct] = useState("")
+  const [discountType, setDiscountType] = useState<DiscountType | null>(null)
 
   const effectiveEnabled = enabled ?? effective.enabled
   const effectiveDiscountEnabled = discountEnabled ?? effective.discount_enabled
   const effectiveDiscountPct = discountPct || String(effective.discount_percentage)
+  const effectiveDiscountType = discountType ?? effective.discount_type ?? "percentage"
 
   return (
     <Card>
@@ -642,11 +675,28 @@ function GroupConfigCard({
           />
         </div>
         <div>
-          <Label className="text-xs">% Descuento</Label>
+          <Label className="text-xs">Tipo</Label>
+          <Select
+            value={effectiveDiscountType}
+            onValueChange={(v) => setDiscountType(v as DiscountType)}
+          >
+            <SelectTrigger className="mt-1 w-full h-8 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="percentage">% Porcentaje</SelectItem>
+              <SelectItem value="fixed">$ Monto Fijo</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">
+            {effectiveDiscountType === "percentage" ? "% Descuento" : "$ Descuento"}
+          </Label>
           <Input
             type="number"
             min={0}
-            max={100}
+            max={effectiveDiscountType === "percentage" ? 100 : undefined}
             value={effectiveDiscountPct}
             onChange={(e) => setDiscountPct(e.target.value)}
             className="mt-1 w-24 h-8 text-sm"
@@ -660,6 +710,7 @@ function GroupConfigCard({
                 enabled: effectiveEnabled,
                 discount_enabled: effectiveDiscountEnabled,
                 discount_percentage: Number(effectiveDiscountPct),
+                discount_type: effectiveDiscountType,
               })
             }}
             disabled={isSaving}

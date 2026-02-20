@@ -6,6 +6,7 @@ import type {
   AbandonedCartList,
   AbandonedCartListFilters,
   EmailConfigAll,
+  EmailConfigUpdateData,
   ProcessResult,
   ForceSendResult,
 } from "@/types/email-marketing"
@@ -77,11 +78,7 @@ export function useProcessAbandonedCarts() {
 export function useUpdateGlobalConfig() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (data: {
-      enabled?: boolean
-      discount_enabled?: boolean
-      discount_percentage?: number
-    }) => {
+    mutationFn: async (data: EmailConfigUpdateData) => {
       const res = await fetch("/api/email-proxy/config/global", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -104,11 +101,7 @@ export function useUpdateGroupConfig() {
       data,
     }: {
       group: string
-      data: {
-        enabled?: boolean
-        discount_enabled?: boolean
-        discount_percentage?: number
-      }
+      data: EmailConfigUpdateData
     }) => {
       const res = await fetch(`/api/email-proxy/config/group/${group}`, {
         method: "PUT",

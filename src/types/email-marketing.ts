@@ -1,5 +1,11 @@
 // Tipos para la API de Email Marketing — Carritos Abandonados
 
+// --- Discount Type ---
+
+export type DiscountType = "percentage" | "fixed"
+
+// --- Stats ---
+
 export interface AbandonedCartEngagement {
   email_1_delivered: number
   email_1_opened: number
@@ -42,6 +48,8 @@ export interface AbandonedCartStats {
   by_group: AbandonedCartGroupStats[]
 }
 
+// --- Abandoned Cart Records ---
+
 export interface AbandonedCartRecord {
   _id: string
   cart_id: string
@@ -61,6 +69,7 @@ export interface AbandonedCartRecord {
   customer_group: string
   customer_group_id: string
   discount_percentage: number
+  discount_type: DiscountType | null
   resend_email_1_id: string | null
   resend_email_2_id: string | null
   email_1_delivered_at: string | null
@@ -93,10 +102,13 @@ export interface AbandonedCartListFilters {
   offset?: number
 }
 
+// --- Config ---
+
 export interface EmailGlobalConfig {
   enabled: boolean
   discount_enabled: boolean
   discount_percentage: number
+  discount_type: DiscountType
   source: string
 }
 
@@ -106,6 +118,7 @@ export interface EmailGroupConfig {
   enabled: boolean
   discount_enabled: boolean
   discount_percentage: number
+  discount_type: DiscountType
   updated_at: string
 }
 
@@ -113,6 +126,15 @@ export interface EmailConfigAll {
   global: EmailGlobalConfig
   groups: EmailGroupConfig[]
 }
+
+export interface EmailConfigUpdateData {
+  enabled?: boolean
+  discount_enabled?: boolean
+  discount_percentage?: number
+  discount_type?: DiscountType
+}
+
+// --- Process & Force Send ---
 
 export interface ProcessResult {
   success: boolean
@@ -126,4 +148,34 @@ export interface ForceSendResult {
   resend_id: string
   email_type: string
   cart_id: string
+}
+
+// --- Email Templates ---
+
+export type EmailTemplateType = "reminder" | "coupon"
+
+export interface EmailTemplateFields {
+  subject: string
+  heading: string
+  body_text: string
+  button_text: string
+  banner_gradient: string
+  footer_text: string
+  validity_text: string
+}
+
+export interface EmailTemplateResolved extends EmailTemplateFields {
+  source: "group_db" | "default_db" | "hardcoded"
+}
+
+export interface EmailTemplateListResponse {
+  templates: Array<
+    EmailTemplateFields & {
+      template_type: EmailTemplateType
+      group_name?: string
+      created_at: string
+      updated_at: string
+    }
+  >
+  defaults: Record<EmailTemplateType, EmailTemplateFields>
 }
