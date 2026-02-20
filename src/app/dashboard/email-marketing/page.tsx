@@ -42,10 +42,24 @@ import {
   useUpdateGroupConfig,
   useDeleteGroupConfig,
 } from "@/hooks/use-email-marketing"
-import { useCampaignStats, useCampaignRecent } from "@/hooks/use-campaigns"
+import {
+  useCampaignStats,
+  useCampaignRecent,
+  useCampaignConfig,
+  useProcessCampaigns,
+  useCampaignForceSend,
+} from "@/hooks/use-campaigns"
+import { useHealthCheck } from "@/hooks/use-health-check"
 import { TemplateEditor } from "@/components/email-marketing/template-editor"
 import { formatNumber, formatCurrency } from "@/lib/format"
-import type { AbandonedCartListFilters, DiscountType, CampaignType } from "@/types/email-marketing"
+import type {
+  AbandonedCartListFilters,
+  DiscountType,
+  CampaignType,
+  CampaignEmailRecord,
+  CampaignsEnabledMap,
+  CampaignTimings,
+} from "@/types/email-marketing"
 
 const GROUP_LABELS: Record<string, string> = {
   minorista: "Minorista",
@@ -73,6 +87,44 @@ const CAMPAIGN_COLORS: Record<string, string> = {
   welcome_2: "bg-pink-100 text-pink-700",
   welcome_3: "bg-purple-100 text-purple-700",
   browse_abandonment: "bg-orange-100 text-orange-700",
+}
+
+const TIMING_FIELDS: { key: keyof CampaignTimings; label: string; unit: string }[] = [
+  { key: "post_purchase_min_hours", label: "Post-compra mín", unit: "horas" },
+  { key: "post_purchase_max_hours", label: "Post-compra máx", unit: "horas" },
+  { key: "welcome_1_min_minutes", label: "Bienvenida 1 mín", unit: "minutos" },
+  { key: "welcome_2_min_hours", label: "Bienvenida 2 mín", unit: "horas" },
+  { key: "welcome_3_min_days", label: "Bienvenida 3 mín", unit: "días" },
+  { key: "browse_min_views", label: "Browse mín vistas", unit: "vistas" },
+  { key: "browse_wait_hours", label: "Browse espera", unit: "horas" },
+  { key: "browse_lookback_hours", label: "Browse lookback", unit: "horas" },
+  { key: "abandoned_cart_email1_min_hours", label: "Carrito Email 1 mín", unit: "horas" },
+  { key: "abandoned_cart_email1_max_hours", label: "Carrito Email 1 máx", unit: "horas" },
+  { key: "abandoned_cart_email2_min_hours", label: "Carrito Email 2 mín", unit: "horas" },
+]
+
+function buildForceSendData(
+  type: CampaignType,
+  record: CampaignEmailRecord
+): Record<string, unknown> | null {
+  switch (type) {
+    case "post_purchase":
+      return {
+        customer_id: record.customer_id,
+        ...(record.trigger_data?.order_id ? { order_id: record.trigger_data.order_id } : {}),
+      }
+    case "welcome_1":
+    case "welcome_2":
+    case "welcome_3":
+      return { customer_id: record.customer_id }
+    case "browse_abandonment":
+      return {
+        customer_id: record.customer_id,
+        product_id: (record.trigger_data?.product_id as string) || "",
+      }
+    default:
+      return null
+  }
 }
 
 export default function EmailMarketingPage() {
@@ -113,6 +165,10 @@ export default function EmailMarketingPage() {
   const { data: campaignStats, isLoading: campaignStatsLoading } = useCampaignStats()
   const [selectedCampaignType, setSelectedCampaignType] = useState<CampaignType | null>(null)
   const { data: campaignRecent, isLoading: recentLoading } = useCampaignRecent(selectedCampaignType)
+  const { data: campaignConfig, isLoading: campaignConfigLoading } = useCampaignConfig()
+
+  // Health check
+  const { data: health, isLoading: healthLoading } = useHealthCheck()
 
   // Mutations
   const processMutation = useProcessAbandonedCarts()
@@ -121,6 +177,8 @@ export default function EmailMarketingPage() {
   const updateGlobalMutation = useUpdateGlobalConfig()
   const updateGroupMutation = useUpdateGroupConfig()
   const deleteGroupMutation = useDeleteGroupConfig()
+  const processCampaignsMutation = useProcessCampaigns()
+  const campaignForceSendMutation = useCampaignForceSend()
 
   // Config local state for editing
   const [globalEnabled, setGlobalEnabled] = useState<boolean | null>(null)
@@ -128,11 +186,37 @@ export default function EmailMarketingPage() {
   const [globalDiscountPct, setGlobalDiscountPct] = useState<string>("")
   const [globalDiscountType, setGlobalDiscountType] = useState<DiscountType | null>(null)
 
+  // Campaign config local state
+  const [campaignsEnabled, setCampaignsEnabled] = useState<Partial<CampaignsEnabledMap> | null>(null)
+  const [timings, setTimings] = useState<Partial<CampaignTimings> | null>(null)
+  const [frequencyCapPerWeek, setFrequencyCapPerWeek] = useState<string>("")
+  const [aiEnabled, setAiEnabled] = useState<boolean | null>(null)
+  const [aiModel, setAiModel] = useState<string>("")
+  const [aiModelRecommendations, setAiModelRecommendations] = useState<string>("")
+
   // Sync config state when data loads
   const effectiveGlobalEnabled = globalEnabled ?? config?.global?.enabled ?? true
   const effectiveGlobalDiscountEnabled = globalDiscountEnabled ?? config?.global?.discount_enabled ?? true
   const effectiveGlobalDiscountPct = globalDiscountPct || String(config?.global?.discount_percentage ?? 10)
   const effectiveGlobalDiscountType = globalDiscountType ?? config?.global?.discount_type ?? "percentage"
+
+  // Campaign config effective values
+  const defaultCampaignsEnabled: CampaignsEnabledMap = {
+    post_purchase: true, welcome_1: true, welcome_2: true, welcome_3: true, browse_abandonment: true,
+  }
+  const effectiveCampaignsEnabled = {
+    ...defaultCampaignsEnabled,
+    ...(campaignConfig?.effective_global?.campaigns_enabled ?? {}),
+    ...(campaignsEnabled ?? {}),
+  }
+  const effectiveTimings = {
+    ...(campaignConfig?.effective_global?.timings ?? {}),
+    ...(timings ?? {}),
+  }
+  const effectiveFrequencyCapPerWeek = frequencyCapPerWeek || String(campaignConfig?.effective_global?.frequency_cap_per_week ?? 3)
+  const effectiveAiEnabled = aiEnabled ?? campaignConfig?.effective_global?.ai_enabled ?? true
+  const effectiveAiModel = aiModel || campaignConfig?.effective_global?.ai_model || "gpt-4o-mini"
+  const effectiveAiModelRecommendations = aiModelRecommendations || campaignConfig?.effective_global?.ai_model_recommendations || "gpt-4o-mini"
 
   return (
     <div>
@@ -161,6 +245,46 @@ export default function EmailMarketingPage() {
               </div>
             ) : stats ? (
               <>
+                {/* Health Check Status */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-sm">Estado del Sistema</p>
+                        <p className="text-xs text-gray-400 mt-1">Email Marketing Backend</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {healthLoading ? (
+                          <Skeleton className="h-6 w-20" />
+                        ) : health ? (
+                          <>
+                            <Badge className={health.status === "ok" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
+                              {health.status === "ok" ? "Activo" : "Error"}
+                            </Badge>
+                            <Badge className={health.mongo === "connected" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
+                              Mongo: {health.mongo === "connected" ? "OK" : "Error"}
+                            </Badge>
+                            <Badge className={health.abandoned_cart_enabled ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}>
+                              Carritos: {health.abandoned_cart_enabled ? "ON" : "OFF"}
+                            </Badge>
+                            <Badge className={health.campaigns_enabled ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}>
+                              Campañas: {health.campaigns_enabled ? "ON" : "OFF"}
+                            </Badge>
+                            <Badge className={health.ai_enabled ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-500"}>
+                              IA: {health.ai_enabled ? "ON" : "OFF"}
+                            </Badge>
+                            <Badge className={health.discount_enabled ? "bg-pink-100 text-pink-700" : "bg-gray-100 text-gray-500"}>
+                              Descuentos: {health.discount_enabled ? "ON" : "OFF"}
+                            </Badge>
+                          </>
+                        ) : (
+                          <Badge className="bg-red-100 text-red-700">Sin conexión</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Fila 1: KPIs principales */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <MetricCard
@@ -288,6 +412,37 @@ export default function EmailMarketingPage() {
                     {processMutation.isError && (
                       <div className="mt-3 p-3 bg-red-50 rounded-md text-sm text-red-700">
                         Error al procesar: {processMutation.error?.message}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Botón procesar campañas AI */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">Procesar Campañas AI</p>
+                        <p className="text-sm text-gray-500">
+                          Ejecutar manualmente el envío de campañas (post-compra, bienvenida, browse abandonment)
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => processCampaignsMutation.mutate()}
+                        disabled={processCampaignsMutation.isPending}
+                        variant="outline"
+                      >
+                        {processCampaignsMutation.isPending ? "Procesando..." : "Ejecutar Campañas"}
+                      </Button>
+                    </div>
+                    {processCampaignsMutation.isSuccess && processCampaignsMutation.data && (
+                      <div className="mt-3 p-3 bg-green-50 rounded-md text-sm text-green-700">
+                        Post-compra: {processCampaignsMutation.data.post_purchase} · Bienvenida: W1={processCampaignsMutation.data.welcome.w1} W2={processCampaignsMutation.data.welcome.w2} W3={processCampaignsMutation.data.welcome.w3} · Browse: {processCampaignsMutation.data.browse_abandonment} · Tiempo: {processCampaignsMutation.data.elapsed_seconds.toFixed(1)}s
+                      </div>
+                    )}
+                    {processCampaignsMutation.isError && (
+                      <div className="mt-3 p-3 bg-red-50 rounded-md text-sm text-red-700">
+                        {processCampaignsMutation.error?.message}
                       </div>
                     )}
                   </CardContent>
@@ -545,6 +700,37 @@ export default function EmailMarketingPage() {
                   />
                 </div>
 
+                {/* Botón procesar campañas */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">Procesar Campañas</p>
+                        <p className="text-sm text-gray-500">
+                          Ejecutar manualmente el procesamiento de todas las campañas
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => processCampaignsMutation.mutate()}
+                        disabled={processCampaignsMutation.isPending}
+                        variant="outline"
+                      >
+                        {processCampaignsMutation.isPending ? "Procesando..." : "Ejecutar"}
+                      </Button>
+                    </div>
+                    {processCampaignsMutation.isSuccess && processCampaignsMutation.data && (
+                      <div className="mt-3 p-3 bg-green-50 rounded-md text-sm text-green-700">
+                        Post-compra: {processCampaignsMutation.data.post_purchase} · Bienvenida: W1={processCampaignsMutation.data.welcome.w1} W2={processCampaignsMutation.data.welcome.w2} W3={processCampaignsMutation.data.welcome.w3} · Browse: {processCampaignsMutation.data.browse_abandonment} · Tiempo: {processCampaignsMutation.data.elapsed_seconds.toFixed(1)}s
+                      </div>
+                    )}
+                    {processCampaignsMutation.isError && (
+                      <div className="mt-3 p-3 bg-red-50 rounded-md text-sm text-red-700">
+                        {processCampaignsMutation.error?.message}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 {/* Tabla por tipo de campaña */}
                 <Card>
                   <CardHeader>
@@ -639,6 +825,7 @@ export default function EmailMarketingPage() {
                               <TableHead>Estado</TableHead>
                               <TableHead>AI Subject</TableHead>
                               <TableHead>Cupón</TableHead>
+                              <TableHead>Acciones</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -676,6 +863,25 @@ export default function EmailMarketingPage() {
                                     <span className="text-gray-400">-</span>
                                   )}
                                 </TableCell>
+                                <TableCell>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs h-7"
+                                    disabled={campaignForceSendMutation.isPending}
+                                    onClick={() => {
+                                      const data = buildForceSendData(selectedCampaignType!, r)
+                                      if (data) {
+                                        campaignForceSendMutation.mutate({
+                                          type: selectedCampaignType!,
+                                          data,
+                                        })
+                                      }
+                                    }}
+                                  >
+                                    {campaignForceSendMutation.isPending ? "..." : "Reenviar"}
+                                  </Button>
+                                </TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -683,6 +889,16 @@ export default function EmailMarketingPage() {
                       ) : (
                         <p className="text-sm text-gray-500 text-center py-4">
                           No hay emails recientes para esta campaña
+                        </p>
+                      )}
+                      {campaignForceSendMutation.isSuccess && (
+                        <p className="text-sm text-green-600 mt-2">
+                          Email reenviado a {campaignForceSendMutation.data?.email}
+                        </p>
+                      )}
+                      {campaignForceSendMutation.isError && (
+                        <p className="text-sm text-red-600 mt-2">
+                          Error: {campaignForceSendMutation.error?.message}
                         </p>
                       )}
                     </CardContent>
@@ -770,24 +986,180 @@ export default function EmailMarketingPage() {
                         Fuente: {config.global.source}
                       </Badge>
                     </div>
-                    <Button
-                      onClick={() => {
-                        updateGlobalMutation.mutate({
-                          enabled: effectiveGlobalEnabled,
-                          discount_enabled: effectiveGlobalDiscountEnabled,
-                          discount_percentage: Number(effectiveGlobalDiscountPct),
-                          discount_type: effectiveGlobalDiscountType,
-                        })
-                      }}
-                      disabled={updateGlobalMutation.isPending}
-                    >
-                      {updateGlobalMutation.isPending ? "Guardando..." : "Guardar Global"}
-                    </Button>
-                    {updateGlobalMutation.isSuccess && (
-                      <p className="text-sm text-green-600">Configuración global actualizada</p>
+                  </CardContent>
+                </Card>
+
+                {/* Campañas habilitadas */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Campañas Habilitadas</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {campaignConfigLoading ? (
+                      <Skeleton className="h-[120px]" />
+                    ) : (
+                      (["post_purchase", "welcome_1", "welcome_2", "welcome_3", "browse_abandonment"] as const).map((key) => (
+                        <div key={key} className="flex items-center justify-between">
+                          <Label className="text-sm">{CAMPAIGN_LABELS[key] || key}</Label>
+                          <Switch
+                            checked={effectiveCampaignsEnabled[key] ?? true}
+                            onCheckedChange={(v) =>
+                              setCampaignsEnabled((prev) => ({
+                                ...effectiveCampaignsEnabled,
+                                ...prev,
+                                [key]: v,
+                              }))
+                            }
+                          />
+                        </div>
+                      ))
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Tiempos de envío */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Tiempos de Envío</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {campaignConfigLoading ? (
+                      <Skeleton className="h-[200px]" />
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {TIMING_FIELDS.map(({ key, label, unit }) => (
+                          <div key={key}>
+                            <Label className="text-xs">{label}</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Input
+                                type="number"
+                                min={0}
+                                value={effectiveTimings[key] ?? ""}
+                                onChange={(e) =>
+                                  setTimings((prev) => ({
+                                    ...(campaignConfig?.effective_global?.timings ?? {}),
+                                    ...prev,
+                                    [key]: Number(e.target.value),
+                                  }))
+                                }
+                                className="w-24 h-8 text-sm"
+                              />
+                              <span className="text-xs text-gray-400">{unit}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Inteligencia Artificial */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Inteligencia Artificial</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {campaignConfigLoading ? (
+                      <Skeleton className="h-[120px]" />
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>IA habilitada</Label>
+                            <p className="text-xs text-gray-400">Personalizar emails con IA</p>
+                          </div>
+                          <Switch
+                            checked={effectiveAiEnabled}
+                            onCheckedChange={(v) => setAiEnabled(v)}
+                          />
+                        </div>
+                        <div>
+                          <Label>Modelo AI (personalización)</Label>
+                          <Select
+                            value={effectiveAiModel}
+                            onValueChange={(v) => setAiModel(v)}
+                          >
+                            <SelectTrigger className="mt-1 w-64">
+                              <SelectValue placeholder="Seleccionar modelo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="gpt-4o-mini">gpt-4o-mini</SelectItem>
+                              <SelectItem value="gpt-4o">gpt-4o</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Modelo AI (recomendaciones)</Label>
+                          <Select
+                            value={effectiveAiModelRecommendations}
+                            onValueChange={(v) => setAiModelRecommendations(v)}
+                          >
+                            <SelectTrigger className="mt-1 w-64">
+                              <SelectValue placeholder="Seleccionar modelo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="gpt-4o-mini">gpt-4o-mini</SelectItem>
+                              <SelectItem value="gpt-4o">gpt-4o</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Frecuencia */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Frecuencia</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {campaignConfigLoading ? (
+                      <Skeleton className="h-[60px]" />
+                    ) : (
+                      <div>
+                        <Label>Emails máximos por semana</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={effectiveFrequencyCapPerWeek}
+                          onChange={(e) => setFrequencyCapPerWeek(e.target.value)}
+                          className="mt-1 w-32"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Límite de emails por cliente por semana (todas las campañas)</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Botón guardar global (incluye todos los campos) */}
+                <div className="flex items-center gap-4">
+                  <Button
+                    onClick={() => {
+                      updateGlobalMutation.mutate({
+                        enabled: effectiveGlobalEnabled,
+                        discount_enabled: effectiveGlobalDiscountEnabled,
+                        discount_percentage: Number(effectiveGlobalDiscountPct),
+                        discount_type: effectiveGlobalDiscountType,
+                        campaigns_enabled: effectiveCampaignsEnabled,
+                        timings: effectiveTimings as CampaignTimings,
+                        frequency_cap_per_week: Number(effectiveFrequencyCapPerWeek),
+                        ai_enabled: effectiveAiEnabled,
+                        ai_model: effectiveAiModel,
+                        ai_model_recommendations: effectiveAiModelRecommendations,
+                      })
+                    }}
+                    disabled={updateGlobalMutation.isPending}
+                  >
+                    {updateGlobalMutation.isPending ? "Guardando..." : "Guardar Configuración Global"}
+                  </Button>
+                  {updateGlobalMutation.isSuccess && (
+                    <p className="text-sm text-green-600">Configuración global actualizada</p>
+                  )}
+                  {updateGlobalMutation.isError && (
+                    <p className="text-sm text-red-600">Error: {updateGlobalMutation.error?.message}</p>
+                  )}
+                </div>
 
                 {/* Config por grupo */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

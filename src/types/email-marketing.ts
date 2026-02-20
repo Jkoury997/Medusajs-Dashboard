@@ -136,6 +136,12 @@ export interface EmailConfigUpdateData {
   discount_enabled?: boolean
   discount_percentage?: number
   discount_type?: DiscountType
+  campaigns_enabled?: Partial<CampaignsEnabledMap>
+  timings?: Partial<CampaignTimings>
+  frequency_cap_per_week?: number
+  ai_enabled?: boolean
+  ai_model?: string
+  ai_model_recommendations?: string
 }
 
 // --- Process & Force Send ---
@@ -260,4 +266,86 @@ export interface CampaignRecentResponse {
   campaign_type: CampaignType
   count: number
   records: CampaignEmailRecord[]
+}
+
+// --- Health Check ---
+
+export interface HealthCheckResponse {
+  status: string
+  mongo: string
+  service: string
+  abandoned_cart_enabled: boolean
+  discount_enabled: boolean
+  ai_enabled: boolean
+  campaigns_enabled: boolean
+  timestamp: string
+}
+
+// --- Campaign Config ---
+
+export interface CampaignTimings {
+  post_purchase_min_hours: number
+  post_purchase_max_hours: number
+  welcome_1_min_minutes: number
+  welcome_2_min_hours: number
+  welcome_3_min_days: number
+  browse_min_views: number
+  browse_wait_hours: number
+  browse_lookback_hours: number
+  abandoned_cart_email1_min_hours: number
+  abandoned_cart_email1_max_hours: number
+  abandoned_cart_email2_min_hours: number
+}
+
+export interface CampaignsEnabledMap {
+  post_purchase: boolean
+  welcome_1: boolean
+  welcome_2: boolean
+  welcome_3: boolean
+  browse_abandonment: boolean
+}
+
+export interface CampaignEffectiveGlobal {
+  campaigns_enabled: CampaignsEnabledMap
+  timings: CampaignTimings
+  frequency_cap_per_week: number
+  ai_enabled: boolean
+  ai_model: string
+  ai_model_recommendations: string
+  discount_enabled: boolean
+  discount_percentage: number
+  discount_type: DiscountType
+}
+
+export interface CampaignConfigResponse {
+  effective_global: CampaignEffectiveGlobal
+  raw: {
+    global: Record<string, unknown>
+    groups: Record<string, unknown>[]
+  }
+}
+
+// --- Campaign Process ---
+
+export interface CampaignProcessResponse {
+  success: boolean
+  post_purchase: number
+  welcome: {
+    w1: number
+    w2: number
+    w3: number
+  }
+  browse_abandonment: number
+  elapsed_seconds: number
+}
+
+// --- Campaign Force Send ---
+
+export interface CampaignForceSendResponse {
+  success: boolean
+  campaign_type: CampaignType
+  customer_id: string
+  email: string | null
+  resend_id: string | null
+  error?: string
 }

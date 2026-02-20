@@ -90,6 +90,7 @@ export function useUpdateGlobalConfig() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["email", "config"] })
+      queryClient.invalidateQueries({ queryKey: ["email", "campaigns", "config"] })
     },
   })
 }
