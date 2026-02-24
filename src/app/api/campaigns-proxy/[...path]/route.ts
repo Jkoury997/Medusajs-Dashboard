@@ -30,17 +30,14 @@ async function proxyRequest(
       }
     }
 
-    console.log(`[campaigns-proxy PATH] ${method} -> ${url}`)
     const response = await fetch(url, fetchOptions)
-    const text = await response.text()
-    console.log(`[campaigns-proxy PATH] Response ${response.status}: ${text.substring(0, 500)}`)
 
     if (!response.ok) {
-      const error = (() => { try { return JSON.parse(text) } catch { return { error: text || "Unknown error" } } })()
+      const error = await response.json().catch(() => ({ error: "Unknown error" }))
       return NextResponse.json(error, { status: response.status })
     }
 
-    const data = (() => { try { return JSON.parse(text) } catch { return { error: "Invalid JSON response" } } })()
+    const data = await response.json()
     return NextResponse.json(data)
   } catch (error: unknown) {
     console.error("Campaigns proxy error:", error)

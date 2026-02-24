@@ -30,30 +30,38 @@ export interface SegmentRule {
   engagement_type?: "opened" | "clicked"
 }
 
-export interface AudienceConfig {
+export interface SegmentConfig {
   rules: SegmentRule[]
   match: SegmentMatchType
 }
 
-// --- Campaign ---
+// --- Campaign (matches backend response) ---
 
 export interface ManualCampaign {
-  id: string
+  _id: string
   name: string
-  subject: string
   status: ManualCampaignStatus
-  audience: AudienceConfig
-  template_type: string
+  segment: SegmentConfig
+  estimated_recipients: number
   content?: {
+    subject?: string
     heading?: string
     body_text?: string
     button_text?: string
     banner_gradient?: string
     footer_text?: string
   }
+  discount?: unknown
   scheduled_at?: string | null
-  sent_at?: string | null
-  audience_count?: number
+  sending_started_at?: string | null
+  sending_completed_at?: string | null
+  total_recipients: number
+  total_sent: number
+  total_failed: number
+  total_skipped: number
+  ai_generated: boolean
+  ai_tokens_used: number
+  ai_model?: string
   created_at: string
   updated_at: string
 }
@@ -69,9 +77,8 @@ export interface ManualCampaignListResponse {
 
 export interface CreateCampaignData {
   name: string
-  subject: string
-  audience: AudienceConfig
-  template_type: string
+  subject?: string
+  segment: SegmentConfig
   content?: ManualCampaign["content"]
 }
 

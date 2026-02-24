@@ -34,16 +34,6 @@ import {
 } from "@/hooks/use-manual-campaigns"
 import type { SegmentRule, SegmentMatchType } from "@/types/campaigns"
 
-const TEMPLATE_TYPES = [
-  { value: "reminder", label: "Recordatorio" },
-  { value: "coupon", label: "Cupón" },
-  { value: "post_purchase", label: "Post-Compra" },
-  { value: "welcome_1", label: "Bienvenida 1" },
-  { value: "welcome_2", label: "Bienvenida 2" },
-  { value: "welcome_3", label: "Bienvenida 3" },
-  { value: "browse_abandonment", label: "Browse Abandonment" },
-]
-
 const TONE_OPTIONS = [
   { value: "formal", label: "Formal" },
   { value: "casual", label: "Casual" },
@@ -62,7 +52,6 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   // Form state
   const [name, setName] = useState("")
   const [subject, setSubject] = useState("")
-  const [templateType, setTemplateType] = useState("reminder")
   const [rules, setRules] = useState<SegmentRule[]>([{ type: "all_customers" }])
   const [match, setMatch] = useState<SegmentMatchType>("all")
   const [heading, setHeading] = useState("")
@@ -91,14 +80,13 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   const generateMutation = useGenerateContent()
   const estimateMutation = useEstimateSegment()
 
-  // Populate form when editing
+  // Populate form when editing — uses backend field names
   useEffect(() => {
     if (detail && campaignId) {
       setName(detail.name || "")
-      setSubject(detail.subject || "")
-      setTemplateType(detail.template_type || "reminder")
-      setRules(detail.audience?.rules || [{ type: "all_customers" }])
-      setMatch(detail.audience?.match || "all")
+      setSubject(detail.content?.subject || "")
+      setRules(detail.segment?.rules || [{ type: "all_customers" }])
+      setMatch(detail.segment?.match || "all")
       setHeading(detail.content?.heading || "")
       setBodyText(detail.content?.body_text || "")
       setButtonText(detail.content?.button_text || "")
@@ -113,7 +101,6 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
     if (open && !campaignId) {
       setName("")
       setSubject("")
-      setTemplateType("reminder")
       setRules([{ type: "all_customers" }])
       setMatch("all")
       setHeading("")
@@ -128,6 +115,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
       setAiTheme("")
       setPreviewHtml(null)
       setSavedId(null)
+      setDraftMsg(null)
       createMutation.reset()
       updateMutation.reset()
       sendMutation.reset()
@@ -139,9 +127,9 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   const buildPayload = () => ({
     name,
     subject,
-    template_type: templateType,
-    audience: { rules, match },
+    segment: { rules, match },
     content: {
+      subject: subject || undefined,
       heading: heading || undefined,
       body_text: bodyText || undefined,
       button_text: buttonText || undefined,
@@ -158,39 +146,38 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
         await updateMutation.mutateAsync({ id: savedId, data: payload })
         setDraftMsg("Borrador actualizado correctamente")
       } else {
-        const raw: Record<string, unknown> = await createMutation.mutateAsync(payload) as unknown as Record<string, unknown>
-        console.log("Campaign created response:", JSON.stringify(raw))
-        const nested = typeof raw.campaign === "object" && raw.campaign ? raw.campaign as Record<string, unknown> : null
-        const newId = String(raw.id ?? raw._id ?? raw.campaign_id ?? nested?.id ?? nested?._id ?? "")
-        setSavedId(newId || null)
-        setDraftMsg(`Borrador guardado (ID: ${newId || "??"}) — keys: ${Object.keys(raw).join(", ")}`)
+        const created = await createMutation.mutateAsync(payload)
+        setSavedId(created._id)
+        setDraftMsg("Borrador guardado correctamente")
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error desconocido al guardar"
       setDraftMsg(`Error: ${msg}`)
-      console.error("Save draft error:", err)
     }
   }
 
   const handleSend = async () => {
-    // Save first
-    const payload = buildPayload()
-    let id = savedId
-    if (id) {
-      await updateMutation.mutateAsync({ id, data: payload })
-    } else {
-      const created = await createMutation.mutateAsync(payload)
-      id = created.id
-      setSavedId(id)
+    try {
+      const payload = buildPayload()
+      let id = savedId
+      if (id) {
+        await updateMutation.mutateAsync({ id, data: payload })
+      } else {
+        const created = await createMutation.mutateAsync(payload)
+        id = created._id
+        setSavedId(id)
+      }
+      const sendData: { send_at?: string } = {}
+      if (scheduleMode === "later" && scheduledDate) {
+        sendData.send_at = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
+      }
+      await sendMutation.mutateAsync({ id, data: sendData })
+      onSaved?.()
+      onOpenChange(false)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error desconocido al enviar"
+      setDraftMsg(`Error: ${msg}`)
     }
-    // Then send
-    const sendData: { send_at?: string } = {}
-    if (scheduleMode === "later" && scheduledDate) {
-      sendData.send_at = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
-    }
-    await sendMutation.mutateAsync({ id, data: sendData })
-    onSaved?.()
-    onOpenChange(false)
   }
 
   const handleTestSend = () => {
@@ -249,21 +236,6 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
                   className="mt-1"
                 />
               </div>
-            </div>
-
-            {/* Template Type */}
-            <div>
-              <Label>Tipo de template</Label>
-              <Select value={templateType} onValueChange={setTemplateType}>
-                <SelectTrigger className="mt-1 w-64">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TEMPLATE_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <Separator />
@@ -493,11 +465,6 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
                 {draftMsg}
               </div>
             )}
-            {(createMutation.isError || updateMutation.isError) && !draftMsg && (
-              <div className="p-3 bg-red-50 rounded-md text-sm text-red-700">
-                {createMutation.error?.message || updateMutation.error?.message}
-              </div>
-            )}
             {sendMutation.isError && (
               <div className="p-3 bg-red-50 rounded-md text-sm text-red-700">
                 {sendMutation.error?.message}
@@ -514,13 +481,13 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
             <Button
               variant="outline"
               onClick={handleSaveDraft}
-              disabled={isSaving || !name || !subject}
+              disabled={isSaving || !name}
             >
               {isSaving ? "Guardando..." : "Guardar borrador"}
             </Button>
             <Button
               onClick={handleSend}
-              disabled={isSending || isSaving || !name || !subject || rules.length === 0}
+              disabled={isSending || isSaving || !name || rules.length === 0}
             >
               {isSending ? "Enviando..." : scheduleMode === "later" ? "Programar envío" : "Enviar ahora"}
             </Button>

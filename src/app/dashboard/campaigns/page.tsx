@@ -142,14 +142,14 @@ export default function CampaignsPage() {
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Audiencia</TableHead>
                     <TableHead>Fecha envío</TableHead>
-                    <TableHead className="text-right">Open Rate</TableHead>
-                    <TableHead className="text-right">Click Rate</TableHead>
+                    <TableHead className="text-right">Enviados</TableHead>
+                    <TableHead className="text-right">Fallidos</TableHead>
                     <TableHead>Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {campaignList.campaigns.map((c) => (
-                    <TableRow key={c.id}>
+                    <TableRow key={c._id}>
                       <TableCell className="font-medium max-w-[250px] truncate">
                         {c.name}
                       </TableCell>
@@ -157,17 +157,23 @@ export default function CampaignsPage() {
                         <CampaignStatusBadge status={c.status} />
                       </TableCell>
                       <TableCell className="text-right">
-                        {c.audience_count != null ? formatNumber(c.audience_count) : "-"}
+                        {c.estimated_recipients != null ? formatNumber(c.estimated_recipients) : "-"}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {c.sent_at
-                          ? new Date(c.sent_at).toLocaleString("es-AR")
-                          : c.scheduled_at
-                            ? new Date(c.scheduled_at).toLocaleString("es-AR")
-                            : "-"}
+                        {c.sending_completed_at
+                          ? new Date(c.sending_completed_at).toLocaleString("es-AR")
+                          : c.sending_started_at
+                            ? new Date(c.sending_started_at).toLocaleString("es-AR")
+                            : c.scheduled_at
+                              ? new Date(c.scheduled_at).toLocaleString("es-AR")
+                              : "-"}
                       </TableCell>
-                      <TableCell className="text-right text-sm">-</TableCell>
-                      <TableCell className="text-right text-sm">-</TableCell>
+                      <TableCell className="text-right text-sm">
+                        {c.total_sent > 0 ? formatNumber(c.total_sent) : "-"}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {c.total_failed > 0 ? formatNumber(c.total_failed) : "-"}
+                      </TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -177,37 +183,37 @@ export default function CampaignsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {c.status === "draft" && (
-                              <DropdownMenuItem onClick={() => openEditor(c.id)}>
+                              <DropdownMenuItem onClick={() => openEditor(c._id)}>
                                 Editar
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => duplicateMutation.mutate(c.id)}>
+                            <DropdownMenuItem onClick={() => duplicateMutation.mutate(c._id)}>
                               Duplicar
                             </DropdownMenuItem>
                             {(c.status === "sent" || c.status === "sending") && (
-                              <DropdownMenuItem onClick={() => openStats(c.id, c.name)}>
+                              <DropdownMenuItem onClick={() => openStats(c._id, c.name)}>
                                 Ver estadísticas
                               </DropdownMenuItem>
                             )}
                             {c.status === "sending" && (
-                              <DropdownMenuItem onClick={() => pauseMutation.mutate(c.id)}>
+                              <DropdownMenuItem onClick={() => pauseMutation.mutate(c._id)}>
                                 Pausar
                               </DropdownMenuItem>
                             )}
                             {c.status === "paused" && (
-                              <DropdownMenuItem onClick={() => resumeMutation.mutate(c.id)}>
+                              <DropdownMenuItem onClick={() => resumeMutation.mutate(c._id)}>
                                 Reanudar
                               </DropdownMenuItem>
                             )}
                             {(c.status === "scheduled" || c.status === "sending") && (
-                              <DropdownMenuItem onClick={() => cancelMutation.mutate(c.id)}>
+                              <DropdownMenuItem onClick={() => cancelMutation.mutate(c._id)}>
                                 Cancelar
                               </DropdownMenuItem>
                             )}
                             {c.status === "draft" && (
                               <DropdownMenuItem
                                 className="text-red-600"
-                                onClick={() => handleDelete(c.id)}
+                                onClick={() => handleDelete(c._id)}
                               >
                                 Eliminar
                               </DropdownMenuItem>

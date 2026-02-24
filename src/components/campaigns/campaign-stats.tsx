@@ -57,9 +57,9 @@ export function CampaignStatsDialog({ open, onOpenChange, campaignId, campaignNa
             <DialogTitle>{campaignName}</DialogTitle>
             {detail && <CampaignStatusBadge status={detail.status} />}
           </div>
-          {detail?.sent_at && (
+          {(detail?.sending_completed_at || detail?.sending_started_at) && (
             <p className="text-xs text-gray-500">
-              Enviada: {new Date(detail.sent_at).toLocaleString("es-AR")}
+              Enviada: {new Date((detail.sending_completed_at || detail.sending_started_at)!).toLocaleString("es-AR")}
             </p>
           )}
         </DialogHeader>
