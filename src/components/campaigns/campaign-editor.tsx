@@ -189,17 +189,30 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
 
   const handlePreviewEmail = async () => {
     if (!savedId) return
-    const result = await previewMutation.mutateAsync(savedId)
-    setPreviewHtml(result.html)
+    try {
+      const result = await previewMutation.mutateAsync(savedId)
+      setPreviewHtml(result.html)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error desconocido"
+      setDraftMsg(`Error preview: ${msg}`)
+    }
   }
 
   const handleGenerateContent = async () => {
     if (!savedId || !aiTheme) return
-    const result = await generateMutation.mutateAsync({ id: savedId, data: { theme: aiTheme, tone: aiTone } })
-    setSubject(result.subject || subject)
-    setHeading(result.heading || heading)
-    setBodyText(result.body_text || bodyText)
-    setButtonText(result.button_text || buttonText)
+    try {
+      const result = await generateMutation.mutateAsync({ id: savedId, data: { theme: aiTheme, tone: aiTone } })
+      console.log("AI generate response:", JSON.stringify(result))
+      const raw = result as unknown as Record<string, unknown>
+      setSubject(String(raw.subject || result.subject || subject))
+      setHeading(String(raw.heading || result.heading || heading))
+      setBodyText(String(raw.body_text || result.body_text || bodyText))
+      setButtonText(String(raw.button_text || result.button_text || buttonText))
+      setDraftMsg("Contenido AI generado correctamente")
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error desconocido"
+      setDraftMsg(`Error AI: ${msg}`)
+    }
   }
 
   const handleEstimate = () => {
