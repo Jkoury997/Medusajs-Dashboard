@@ -31,7 +31,7 @@ export function useManualCampaignList(filters: CampaignListFilters = {}) {
       if (filters.status) params.set("status", filters.status)
       if (filters.limit) params.set("limit", String(filters.limit))
       if (filters.offset != null) params.set("offset", String(filters.offset))
-      const res = await fetch(`${BASE}/list?${params.toString()}`)
+      const res = await fetch(`${BASE}?${params.toString()}`)
       if (!res.ok) throw new Error("Error al obtener lista de campañas")
       return res.json() as Promise<ManualCampaignListResponse>
     },
@@ -93,7 +93,7 @@ export function useCreateCampaign() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (data: CreateCampaignData) => {
-      const res = await fetch(`${BASE}/create`, {
+      const res = await fetch(BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
