@@ -12,6 +12,7 @@ const navItems = [
   { href: "/dashboard/customers", label: "Clientes", icon: "👥" },
   { href: "/dashboard/marketing", label: "Marketing", icon: "📈" },
   { href: "/dashboard/email-marketing", label: "Email Marketing", icon: "✉️" },
+  { href: "/dashboard/campaigns", label: "Campañas", icon: "📣" },
   { href: "/dashboard/analytics", label: "Analítica", icon: "📡" },
   { href: "/dashboard/ai", label: "IA Insights", icon: "🤖" },
 ]
