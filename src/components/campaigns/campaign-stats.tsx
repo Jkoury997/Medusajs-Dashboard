@@ -127,6 +127,7 @@ export function CampaignStatsDialog({ open, onOpenChange, campaignId, campaignNa
                         <TableHead>Entregado</TableHead>
                         <TableHead>Abierto</TableHead>
                         <TableHead>Click</TableHead>
+                        <TableHead>Cupón</TableHead>
                         <TableHead>Rebotó</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -160,6 +161,13 @@ export function CampaignStatsDialog({ open, onOpenChange, campaignId, campaignNa
                           <TableCell className="text-xs">
                             {r.clicked_at ? (
                               <Badge className="bg-purple-100 text-purple-700 text-[10px]">Si</Badge>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {r.coupon_code ? (
+                              <span className="font-mono text-[10px] bg-yellow-50 text-yellow-700 px-1 py-0.5 rounded">{r.coupon_code}</span>
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}

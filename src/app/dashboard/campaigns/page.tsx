@@ -143,6 +143,8 @@ export default function CampaignsPage() {
                     <TableHead className="text-right">Audiencia</TableHead>
                     <TableHead>Fecha envío</TableHead>
                     <TableHead className="text-right">Enviados</TableHead>
+                    <TableHead className="text-right">Aperturas</TableHead>
+                    <TableHead className="text-right">Clicks</TableHead>
                     <TableHead className="text-right">Fallidos</TableHead>
                     <TableHead>Acciones</TableHead>
                   </TableRow>
@@ -170,6 +172,16 @@ export default function CampaignsPage() {
                       </TableCell>
                       <TableCell className="text-right text-sm">
                         {c.total_sent > 0 ? formatNumber(c.total_sent) : "-"}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {c.quick_stats?.open_rate
+                          ? <span className="text-blue-600 font-medium">{c.quick_stats.open_rate}</span>
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {c.quick_stats?.click_rate
+                          ? <span className="text-purple-600 font-medium">{c.quick_stats.click_rate}</span>
+                          : "-"}
                       </TableCell>
                       <TableCell className="text-right text-sm">
                         {c.total_failed > 0 ? formatNumber(c.total_failed) : "-"}

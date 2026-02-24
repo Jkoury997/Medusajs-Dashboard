@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -21,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { AudienceBuilder } from "./audience-builder"
+import { ProductPicker } from "./product-picker"
 import {
   useManualCampaignDetail,
   useCreateCampaign,
@@ -31,6 +33,8 @@ import {
   useGenerateContent,
   useEstimateSegment,
   useSegmentGroups,
+  useContentPresets,
+  useSaveAsPreset,
 } from "@/hooks/use-manual-campaigns"
 import type { SegmentRule, SegmentMatchType } from "@/types/campaigns"
 
@@ -49,16 +53,33 @@ interface CampaignEditorProps {
 }
 
 export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: CampaignEditorProps) {
-  // Form state
+  // Form state — basic
   const [name, setName] = useState("")
   const [subject, setSubject] = useState("")
+  const [previewText, setPreviewText] = useState("")
   const [rules, setRules] = useState<SegmentRule[]>([{ type: "all_customers" }])
   const [match, setMatch] = useState<SegmentMatchType>("all")
+
+  // Form state — content
   const [heading, setHeading] = useState("")
   const [bodyText, setBodyText] = useState("")
   const [buttonText, setButtonText] = useState("")
+  const [buttonUrl, setButtonUrl] = useState("")
   const [bannerGradient, setBannerGradient] = useState("")
   const [footerText, setFooterText] = useState("")
+
+  // Form state — products
+  const [featuredProductIds, setFeaturedProductIds] = useState<string[]>([])
+  const [includePersonalized, setIncludePersonalized] = useState(false)
+
+  // Form state — discount
+  const [discountEnabled, setDiscountEnabled] = useState(false)
+  const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage")
+  const [discountValue, setDiscountValue] = useState<number>(10)
+  const [discountExpiresHours, setDiscountExpiresHours] = useState<number>(48)
+  const [discountSingleCode, setDiscountSingleCode] = useState(true)
+
+  // Form state — scheduling & misc
   const [scheduleMode, setScheduleMode] = useState<"now" | "later">("now")
   const [scheduledDate, setScheduledDate] = useState("")
   const [scheduledTime, setScheduledTime] = useState("09:00")
@@ -72,6 +93,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   // Hooks
   const { data: detail } = useManualCampaignDetail(campaignId ?? null)
   const { data: groups } = useSegmentGroups()
+  const { data: presets } = useContentPresets()
   const createMutation = useCreateCampaign()
   const updateMutation = useUpdateCampaign()
   const sendMutation = useSendCampaign()
@@ -79,65 +101,82 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   const previewMutation = usePreviewEmail()
   const generateMutation = useGenerateContent()
   const estimateMutation = useEstimateSegment()
+  const savePresetMutation = useSaveAsPreset()
 
-  // Populate form when editing — uses backend field names
+  // Populate form when editing
   useEffect(() => {
     if (detail && campaignId) {
-      console.log("Campaign detail raw:", JSON.stringify(detail))
       setName(detail.name || "")
       setSubject(detail.content?.subject || "")
+      setPreviewText(detail.content?.preview_text || "")
       setRules(detail.segment?.rules || [{ type: "all_customers" }])
       setMatch(detail.segment?.match || "all")
       setHeading(detail.content?.heading || "")
       setBodyText(detail.content?.body_text || "")
       setButtonText(detail.content?.button_text || "")
+      setButtonUrl(detail.content?.button_url || "")
       setBannerGradient(detail.content?.banner_gradient || "")
       setFooterText(detail.content?.footer_text || "")
+      setFeaturedProductIds(detail.content?.featured_product_ids || [])
+      setIncludePersonalized(detail.content?.include_personalized_products || false)
       setSavedId(campaignId)
-      setDraftMsg(`DEBUG detail keys: ${Object.keys(detail).join(", ")} | segment: ${JSON.stringify(detail.segment)} | content: ${JSON.stringify(detail.content)}`)
+
+      if (detail.discount) {
+        setDiscountEnabled(detail.discount.enabled)
+        setDiscountType(detail.discount.type)
+        setDiscountValue(detail.discount.value)
+        setDiscountExpiresHours(detail.discount.expires_hours)
+        setDiscountSingleCode(detail.discount.single_code)
+      } else {
+        setDiscountEnabled(false)
+      }
     }
   }, [detail, campaignId])
 
   // Reset form when dialog opens for creation
   useEffect(() => {
     if (open && !campaignId) {
-      setName("")
-      setSubject("")
-      setRules([{ type: "all_customers" }])
-      setMatch("all")
-      setHeading("")
-      setBodyText("")
-      setButtonText("")
-      setBannerGradient("")
-      setFooterText("")
-      setScheduleMode("now")
-      setScheduledDate("")
-      setScheduledTime("09:00")
-      setTestEmail("")
-      setAiTheme("")
-      setPreviewHtml(null)
-      setSavedId(null)
-      setDraftMsg(null)
-      createMutation.reset()
-      updateMutation.reset()
-      sendMutation.reset()
-      testSendMutation.reset()
-      generateMutation.reset()
+      setName(""); setSubject(""); setPreviewText("")
+      setRules([{ type: "all_customers" }]); setMatch("all")
+      setHeading(""); setBodyText(""); setButtonText(""); setButtonUrl("")
+      setBannerGradient(""); setFooterText("")
+      setFeaturedProductIds([]); setIncludePersonalized(false)
+      setDiscountEnabled(false); setDiscountType("percentage"); setDiscountValue(10)
+      setDiscountExpiresHours(48); setDiscountSingleCode(true)
+      setScheduleMode("now"); setScheduledDate(""); setScheduledTime("09:00")
+      setTestEmail(""); setAiTheme(""); setPreviewHtml(null)
+      setSavedId(null); setDraftMsg(null)
+      createMutation.reset(); updateMutation.reset()
+      sendMutation.reset(); testSendMutation.reset(); generateMutation.reset()
     }
   }, [open, campaignId])
 
   const buildPayload = () => ({
     name,
-    subject,
     segment: { rules, match },
     content: {
       subject: subject || undefined,
+      preview_text: previewText || undefined,
       heading: heading || undefined,
       body_text: bodyText || undefined,
       button_text: buttonText || undefined,
+      button_url: buttonUrl || undefined,
       banner_gradient: bannerGradient || undefined,
       footer_text: footerText || undefined,
+      featured_product_ids: featuredProductIds.length > 0 ? featuredProductIds : undefined,
+      include_personalized_products: includePersonalized,
     },
+    discount: discountEnabled
+      ? {
+          enabled: true,
+          type: discountType,
+          value: discountValue,
+          expires_hours: discountExpiresHours,
+          single_code: discountSingleCode,
+          shared_code: null,
+          shared_promotion_id: null,
+        }
+      : null,
   })
 
   const handleSaveDraft = async () => {
@@ -190,6 +229,8 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   const handlePreviewEmail = async () => {
     if (!savedId) return
     try {
+      // Save first so preview uses latest content
+      await updateMutation.mutateAsync({ id: savedId, data: buildPayload() })
       const result = await previewMutation.mutateAsync(savedId)
       setPreviewHtml(result.html)
     } catch (err: unknown) {
@@ -202,12 +243,14 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
     if (!savedId || !aiTheme) return
     try {
       const result = await generateMutation.mutateAsync({ id: savedId, data: { theme: aiTheme, tone: aiTone } })
-      console.log("AI generate response:", JSON.stringify(result))
-      const raw = result as unknown as Record<string, unknown>
-      setSubject(String(raw.subject || result.subject || subject))
-      setHeading(String(raw.heading || result.heading || heading))
-      setBodyText(String(raw.body_text || result.body_text || bodyText))
-      setButtonText(String(raw.button_text || result.button_text || buttonText))
+      setSubject(result.subject || subject)
+      setPreviewText(result.preview_text || previewText)
+      setHeading(result.heading || heading)
+      setBodyText(result.body_text || bodyText)
+      setButtonText(result.button_text || buttonText)
+      if (result.featured_product_ids?.length > 0) {
+        setFeaturedProductIds(result.featured_product_ids)
+      }
       setDraftMsg("Contenido AI generado correctamente")
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error desconocido"
@@ -219,6 +262,39 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
     estimateMutation.mutate({ rules, match })
   }
 
+  const handleSaveAsPreset = () => {
+    if (!savedId) return
+    const presetName = window.prompt("Nombre del preset:")
+    if (presetName) {
+      savePresetMutation.mutate(
+        { campaignId: savedId, name: presetName },
+        { onSuccess: () => setDraftMsg(`Preset "${presetName}" guardado`) }
+      )
+    }
+  }
+
+  const loadPreset = (preset: typeof presets extends (infer T)[] | undefined ? T : never) => {
+    if (!preset) return
+    setSubject(preset.content.subject || "")
+    setPreviewText(preset.content.preview_text || "")
+    setHeading(preset.content.heading || "")
+    setBodyText(preset.content.body_text || "")
+    setButtonText(preset.content.button_text || "")
+    setButtonUrl(preset.content.button_url || "")
+    setBannerGradient(preset.content.banner_gradient || "")
+    setFooterText(preset.content.footer_text || "")
+    setFeaturedProductIds(preset.content.featured_product_ids || [])
+    setIncludePersonalized(preset.content.include_personalized_products || false)
+    if (preset.discount) {
+      setDiscountEnabled(preset.discount.enabled)
+      setDiscountType(preset.discount.type)
+      setDiscountValue(preset.discount.value)
+      setDiscountExpiresHours(preset.discount.expires_hours)
+      setDiscountSingleCode(preset.discount.single_code)
+    }
+    setDraftMsg(`Preset "${preset.name}" cargado`)
+  }
+
   const isSaving = createMutation.isPending || updateMutation.isPending
   const isSending = sendMutation.isPending
 
@@ -227,14 +303,35 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
       <Dialog open={open && !previewHtml} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[800px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{campaignId ? "Editar Campaña" : "Nueva Campaña"}</DialogTitle>
+            <DialogTitle>{campaignId ? "Editar Campana" : "Nueva Campana"}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-5 py-2">
+            {/* Presets — solo al crear nueva */}
+            {!campaignId && presets && presets.length > 0 && (
+              <div className="p-3 bg-blue-50 rounded-md space-y-2">
+                <Label className="text-xs font-medium text-blue-700">Comenzar desde un preset</Label>
+                <div className="flex flex-wrap gap-2">
+                  {presets.map((preset) => (
+                    <Button
+                      key={preset._id}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => loadPreset(preset)}
+                    >
+                      {preset.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Nombre y Asunto */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label>Nombre de la campaña</Label>
+                <Label>Nombre de la campana</Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -247,10 +344,21 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
                 <Input
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  placeholder="Ej: Aprovechá 20% OFF solo hoy"
+                  placeholder="Ej: Aprovecha 20% OFF solo hoy"
                   className="mt-1"
                 />
               </div>
+            </div>
+
+            {/* Preview text */}
+            <div>
+              <Label className="text-xs">Texto de preview (bandeja de entrada)</Label>
+              <Input
+                value={previewText}
+                onChange={(e) => setPreviewText(e.target.value)}
+                className="mt-1"
+                placeholder="Texto que aparece debajo del asunto en la bandeja..."
+              />
             </div>
 
             <Separator />
@@ -283,11 +391,11 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
                     value={heading}
                     onChange={(e) => setHeading(e.target.value)}
                     className="mt-1"
-                    placeholder="Título del email"
+                    placeholder="Titulo del email"
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Texto del botón</Label>
+                  <Label className="text-xs">Texto del boton</Label>
                   <Input
                     value={buttonText}
                     onChange={(e) => setButtonText(e.target.value)}
@@ -308,6 +416,15 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
+                  <Label className="text-xs">URL del boton (CTA)</Label>
+                  <Input
+                    value={buttonUrl}
+                    onChange={(e) => setButtonUrl(e.target.value)}
+                    className="mt-1"
+                    placeholder="https://www.marcelakoury.com/..."
+                  />
+                </div>
+                <div>
                   <Label className="text-xs">Gradiente del banner</Label>
                   <Input
                     value={bannerGradient}
@@ -316,16 +433,41 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
                     placeholder="Ej: linear-gradient(135deg, #ff75a8, #ff4081)"
                   />
                 </div>
-                <div>
-                  <Label className="text-xs">Texto del footer</Label>
-                  <Input
-                    value={footerText}
-                    onChange={(e) => setFooterText(e.target.value)}
-                    className="mt-1"
-                    placeholder="Texto al pie del email"
+              </div>
+              <div>
+                <Label className="text-xs">Texto del footer</Label>
+                <Input
+                  value={footerText}
+                  onChange={(e) => setFooterText(e.target.value)}
+                  className="mt-1"
+                  placeholder="Texto al pie del email"
+                />
+              </div>
+
+              <Separator className="my-2" />
+
+              {/* Productos */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Productos destacados</Label>
+                <ProductPicker
+                  selectedIds={featuredProductIds}
+                  onChange={setFeaturedProductIds}
+                />
+                <p className="text-xs text-gray-500">
+                  {featuredProductIds.length > 0
+                    ? `${featuredProductIds.length} productos seleccionados`
+                    : "Si generas con IA, los productos se seleccionan automaticamente"}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={includePersonalized}
+                    onCheckedChange={setIncludePersonalized}
                   />
+                  <Label className="text-xs">Incluir productos personalizados por cliente (IA)</Label>
                 </div>
               </div>
+
+              <Separator className="my-2" />
 
               {/* AI Content Generation */}
               <div className="p-3 bg-purple-50 rounded-md space-y-2">
@@ -365,7 +507,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
                   </Button>
                 </div>
                 {!savedId && (
-                  <p className="text-xs text-gray-500">Guardá como borrador primero para generar con IA</p>
+                  <p className="text-xs text-gray-500">Guarda como borrador primero para generar con IA</p>
                 )}
                 {generateMutation.isError && (
                   <p className="text-xs text-red-600">{generateMutation.error?.message}</p>
@@ -385,16 +527,77 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
                   {previewMutation.isPending ? "Cargando..." : "Vista previa del email"}
                 </Button>
                 {!savedId && (
-                  <p className="text-xs text-gray-500 self-center">Guardá como borrador primero</p>
+                  <p className="text-xs text-gray-500 self-center">Guarda como borrador primero</p>
                 )}
               </div>
             </div>
 
             <Separator />
 
-            {/* Programación */}
+            {/* Descuento */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={discountEnabled}
+                  onCheckedChange={setDiscountEnabled}
+                />
+                <Label className="text-sm font-medium">Incluir descuento</Label>
+              </div>
+              {discountEnabled && (
+                <div className="p-3 bg-green-50 rounded-md space-y-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <Label className="text-xs">Tipo</Label>
+                      <Select
+                        value={discountType}
+                        onValueChange={(v) => setDiscountType(v as "percentage" | "fixed")}
+                      >
+                        <SelectTrigger className="mt-1 h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentage">Porcentaje (%)</SelectItem>
+                          <SelectItem value="fixed">Monto fijo ($)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Valor</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={discountValue}
+                        onChange={(e) => setDiscountValue(Number(e.target.value))}
+                        className="mt-1 h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Expira en (horas)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={discountExpiresHours}
+                        onChange={(e) => setDiscountExpiresHours(Number(e.target.value))}
+                        className="mt-1 h-8 text-sm"
+                      />
+                    </div>
+                    <div className="flex items-end gap-2 pb-1">
+                      <Switch
+                        checked={discountSingleCode}
+                        onCheckedChange={setDiscountSingleCode}
+                      />
+                      <Label className="text-xs">Codigo unico para todos</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Programacion */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Envío</Label>
+              <Label className="text-sm font-medium">Envio</Label>
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -464,7 +667,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
                 </Button>
               </div>
               {!savedId && (
-                <p className="text-xs text-gray-500">Guardá como borrador primero para enviar test</p>
+                <p className="text-xs text-gray-500">Guarda como borrador primero para enviar test</p>
               )}
               {testSendMutation.isSuccess && (
                 <p className="text-xs text-green-600">Test enviado correctamente</p>
@@ -487,12 +690,23 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
             )}
             {sendMutation.isSuccess && (
               <div className="p-3 bg-green-50 rounded-md text-sm text-green-700">
-                {scheduleMode === "later" ? "Campaña programada correctamente" : "Campaña enviada correctamente"}
+                {scheduleMode === "later" ? "Campana programada correctamente" : "Campana enviada correctamente"}
               </div>
             )}
           </div>
 
           <DialogFooter className="gap-2">
+            {savedId && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={handleSaveAsPreset}
+                disabled={savePresetMutation.isPending}
+              >
+                {savePresetMutation.isPending ? "Guardando..." : "Guardar como preset"}
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={handleSaveDraft}
@@ -504,7 +718,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
               onClick={handleSend}
               disabled={isSending || isSaving || !name || rules.length === 0}
             >
-              {isSending ? "Enviando..." : scheduleMode === "later" ? "Programar envío" : "Enviar ahora"}
+              {isSending ? "Enviando..." : scheduleMode === "later" ? "Programar envio" : "Enviar ahora"}
             </Button>
           </DialogFooter>
         </DialogContent>

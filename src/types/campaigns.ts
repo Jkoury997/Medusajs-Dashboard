@@ -35,6 +35,33 @@ export interface SegmentConfig {
   match: SegmentMatchType
 }
 
+// --- Content ---
+
+export interface ManualCampaignContent {
+  subject?: string
+  preview_text?: string
+  heading?: string
+  body_text?: string
+  button_text?: string
+  button_url?: string
+  banner_gradient?: string
+  footer_text?: string
+  featured_product_ids?: string[]
+  include_personalized_products?: boolean
+}
+
+// --- Discount ---
+
+export interface ManualCampaignDiscount {
+  enabled: boolean
+  type: "percentage" | "fixed"
+  value: number
+  expires_hours: number
+  single_code: boolean
+  shared_code?: string | null
+  shared_promotion_id?: string | null
+}
+
 // --- Campaign (matches backend response) ---
 
 export interface ManualCampaign {
@@ -43,15 +70,8 @@ export interface ManualCampaign {
   status: ManualCampaignStatus
   segment: SegmentConfig
   estimated_recipients: number
-  content?: {
-    subject?: string
-    heading?: string
-    body_text?: string
-    button_text?: string
-    banner_gradient?: string
-    footer_text?: string
-  }
-  discount?: unknown
+  content: ManualCampaignContent
+  discount: ManualCampaignDiscount | null
   scheduled_at?: string | null
   sending_started_at?: string | null
   sending_completed_at?: string | null
@@ -64,6 +84,10 @@ export interface ManualCampaign {
   ai_model?: string
   created_at: string
   updated_at: string
+  quick_stats?: {
+    open_rate: string
+    click_rate: string
+  }
 }
 
 export interface ManualCampaignListResponse {
@@ -77,9 +101,9 @@ export interface ManualCampaignListResponse {
 
 export interface CreateCampaignData {
   name: string
-  subject?: string
   segment: SegmentConfig
-  content?: ManualCampaign["content"]
+  content?: ManualCampaignContent
+  discount?: ManualCampaignDiscount | null
 }
 
 export type UpdateCampaignData = Partial<CreateCampaignData>
@@ -121,9 +145,11 @@ export interface GenerateContentData {
 
 export interface GenerateContentResponse {
   subject: string
+  preview_text: string
   heading: string
   body_text: string
   button_text: string
+  featured_product_ids: string[]
 }
 
 // --- Segment Estimation ---
@@ -167,6 +193,7 @@ export interface CampaignRecipient {
   opened_at?: string | null
   clicked_at?: string | null
   bounced: boolean
+  coupon_code?: string
 }
 
 export interface CampaignRecipientsResponse {
@@ -182,4 +209,28 @@ export interface CampaignListFilters {
   status?: ManualCampaignStatus
   limit?: number
   offset?: number
+}
+
+// --- Content Presets ---
+
+export interface ContentPreset {
+  _id: string
+  name: string
+  description: string
+  content: ManualCampaignContent
+  discount: ManualCampaignDiscount | null
+  created_at: string
+  updated_at: string
+}
+
+// --- Product (for product picker) ---
+
+export interface ProductSearchResult {
+  id: string
+  title: string
+  handle: string
+  thumbnail: string | null
+  category: string
+  collection: string
+  price: number
 }

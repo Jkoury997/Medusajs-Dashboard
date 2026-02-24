@@ -17,6 +17,8 @@ import type {
   SegmentEstimateData,
   SegmentEstimateResponse,
   SegmentGroup,
+  ContentPreset,
+  ProductSearchResult,
 } from "@/types/campaigns"
 
 const BASE = "/api/campaigns-proxy"
@@ -311,6 +313,77 @@ export function useEstimateSegment() {
         throw new Error(err.error || "Error al estimar audiencia")
       }
       return res.json() as Promise<SegmentEstimateResponse>
+    },
+  })
+}
+
+// --- Product Search ---
+
+export function useProductSearch(query: string) {
+  return useQuery({
+    queryKey: ["products", "search", query],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (query) params.set("q", query)
+      params.set("limit", "20")
+      const res = await fetch(`${BASE}/products?${params.toString()}`)
+      if (!res.ok) throw new Error("Error al buscar productos")
+      return res.json() as Promise<{ products: ProductSearchResult[]; total: number }>
+    },
+    staleTime: 30_000,
+  })
+}
+
+// --- Content Presets ---
+
+export function useContentPresets() {
+  return useQuery({
+    queryKey: ["content-presets"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/presets`)
+      if (!res.ok) throw new Error("Error al obtener presets")
+      const data = await res.json()
+      return (data.presets ?? []) as ContentPreset[]
+    },
+  })
+}
+
+export function useSaveAsPreset() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      campaignId,
+      name,
+      description,
+    }: {
+      campaignId: string
+      name: string
+      description?: string
+    }) => {
+      const res = await fetch(`${BASE}/${campaignId}/save-as-preset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description }),
+      })
+      if (!res.ok) throw new Error("Error al guardar preset")
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["content-presets"] })
+    },
+  })
+}
+
+export function useDeletePreset() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${BASE}/presets/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Error al eliminar preset")
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["content-presets"] })
     },
   })
 }
