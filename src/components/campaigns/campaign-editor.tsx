@@ -78,6 +78,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   const [aiTone, setAiTone] = useState("formal")
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   const [savedId, setSavedId] = useState<string | null>(campaignId ?? null)
+  const [draftMsg, setDraftMsg] = useState<string | null>(null)
 
   // Hooks
   const { data: detail } = useManualCampaignDetail(campaignId ?? null)
@@ -150,14 +151,23 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   })
 
   const handleSaveDraft = async () => {
-    const payload = buildPayload()
-    if (savedId) {
-      await updateMutation.mutateAsync({ id: savedId, data: payload })
-    } else {
-      const created = await createMutation.mutateAsync(payload)
-      setSavedId(created.id)
+    setDraftMsg(null)
+    try {
+      const payload = buildPayload()
+      if (savedId) {
+        await updateMutation.mutateAsync({ id: savedId, data: payload })
+        setDraftMsg("Borrador actualizado correctamente")
+      } else {
+        const created = await createMutation.mutateAsync(payload)
+        console.log("Campaign created response:", JSON.stringify(created))
+        setSavedId(created.id)
+        setDraftMsg(`Borrador guardado (ID: ${created.id})`)
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error desconocido al guardar"
+      setDraftMsg(`Error: ${msg}`)
+      console.error("Save draft error:", err)
     }
-    onSaved?.()
   }
 
   const handleSend = async () => {
@@ -476,7 +486,12 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
             </div>
 
             {/* Feedback */}
-            {(createMutation.isError || updateMutation.isError) && (
+            {draftMsg && (
+              <div className={`p-3 rounded-md text-sm ${draftMsg.startsWith("Error") ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>
+                {draftMsg}
+              </div>
+            )}
+            {(createMutation.isError || updateMutation.isError) && !draftMsg && (
               <div className="p-3 bg-red-50 rounded-md text-sm text-red-700">
                 {createMutation.error?.message || updateMutation.error?.message}
               </div>
