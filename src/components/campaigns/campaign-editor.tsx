@@ -158,10 +158,12 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
         await updateMutation.mutateAsync({ id: savedId, data: payload })
         setDraftMsg("Borrador actualizado correctamente")
       } else {
-        const created = await createMutation.mutateAsync(payload)
-        console.log("Campaign created response:", JSON.stringify(created))
-        setSavedId(created.id)
-        setDraftMsg(`Borrador guardado (ID: ${created.id})`)
+        const raw: Record<string, unknown> = await createMutation.mutateAsync(payload) as unknown as Record<string, unknown>
+        console.log("Campaign created response:", JSON.stringify(raw))
+        const nested = typeof raw.campaign === "object" && raw.campaign ? raw.campaign as Record<string, unknown> : null
+        const newId = String(raw.id ?? raw._id ?? raw.campaign_id ?? nested?.id ?? nested?._id ?? "")
+        setSavedId(newId || null)
+        setDraftMsg(`Borrador guardado (ID: ${newId || "??"}) — keys: ${Object.keys(raw).join(", ")}`)
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error desconocido al guardar"
