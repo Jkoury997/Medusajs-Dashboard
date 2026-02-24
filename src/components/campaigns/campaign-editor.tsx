@@ -83,6 +83,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   // Populate form when editing — uses backend field names
   useEffect(() => {
     if (detail && campaignId) {
+      console.log("Campaign detail raw:", JSON.stringify(detail))
       setName(detail.name || "")
       setSubject(detail.content?.subject || "")
       setRules(detail.segment?.rules || [{ type: "all_customers" }])
@@ -93,6 +94,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
       setBannerGradient(detail.content?.banner_gradient || "")
       setFooterText(detail.content?.footer_text || "")
       setSavedId(campaignId)
+      setDraftMsg(`DEBUG detail keys: ${Object.keys(detail).join(", ")} | segment: ${JSON.stringify(detail.segment)} | content: ${JSON.stringify(detail.content)}`)
     }
   }, [detail, campaignId])
 
