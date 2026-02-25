@@ -255,6 +255,7 @@ export default function TemplatesPage() {
 
       {/* Template Editor Dialog */}
       <TemplateEditor
+        key={editingPreset?._id ?? "new"}
         open={editorOpen}
         onOpenChange={setEditorOpen}
         preset={editingPreset}
