@@ -21,6 +21,8 @@ import type {
   ProductSearchResult,
   ManualCampaignContent,
   ManualCampaignDiscount,
+  GenerateTemplateContentData,
+  GenerateTemplateContentResponse,
 } from "@/types/campaigns"
 
 const BASE = "/api/campaigns-proxy"
@@ -428,6 +430,25 @@ export function useDeletePreset() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["content-presets"] })
+    },
+  })
+}
+
+// --- AI Template Content (sin campaign ID) ---
+
+export function useGenerateTemplateContent() {
+  return useMutation({
+    mutationFn: async (data: GenerateTemplateContentData) => {
+      const res = await fetch(`${BASE}/generate-template-content`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al generar contenido AI")
+      }
+      return res.json() as Promise<GenerateTemplateContentResponse>
     },
   })
 }

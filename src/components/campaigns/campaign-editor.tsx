@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select"
 import { AudienceBuilder } from "./audience-builder"
 import { ProductPicker } from "./product-picker"
+import { TemplatePicker } from "./template-picker"
 import {
   useManualCampaignDetail,
   useCreateCampaign,
@@ -90,6 +91,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   const [savedId, setSavedId] = useState<string | null>(campaignId ?? null)
   const [draftMsg, setDraftMsg] = useState<string | null>(null)
+  const [showTemplatePicker, setShowTemplatePicker] = useState(!campaignId)
 
   // Hooks
   const { data: detail } = useManualCampaignDetail(campaignId ?? null)
@@ -147,7 +149,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
       setDiscountExpiresHours(48); setDiscountSingleCode(true)
       setScheduleMode("now"); setScheduledDate(""); setScheduledTime("09:00")
       setTestEmail(""); setAiTheme(""); setPreviewHtml(null)
-      setSavedId(null); setDraftMsg(null)
+      setSavedId(null); setDraftMsg(null); setShowTemplatePicker(true)
       createMutation.reset(); updateMutation.reset()
       sendMutation.reset(); testSendMutation.reset(); generateMutation.reset()
     }
@@ -313,31 +315,27 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
       <Dialog open={open && !previewHtml} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[800px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{campaignId ? "Editar Campana" : "Nueva Campana"}</DialogTitle>
+            <DialogTitle>
+              {campaignId
+                ? "Editar Campana"
+                : !campaignId && showTemplatePicker && presets && presets.length > 0
+                  ? "Elegir Plantilla"
+                  : "Nueva Campana"}
+            </DialogTitle>
           </DialogHeader>
 
+          {/* Template Picker — solo al crear nueva y si hay presets */}
+          {!campaignId && showTemplatePicker && presets && presets.length > 0 ? (
+            <TemplatePicker
+              presets={presets}
+              onSelect={(preset) => {
+                loadPreset(preset)
+                setShowTemplatePicker(false)
+              }}
+              onSkip={() => setShowTemplatePicker(false)}
+            />
+          ) : (
           <div className="space-y-5 py-2">
-            {/* Presets — solo al crear nueva */}
-            {!campaignId && presets && presets.length > 0 && (
-              <div className="p-3 bg-blue-50 rounded-md space-y-2">
-                <Label className="text-xs font-medium text-blue-700">Comenzar desde un preset</Label>
-                <div className="flex flex-wrap gap-2">
-                  {presets.map((preset) => (
-                    <Button
-                      key={preset._id}
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      onClick={() => loadPreset(preset)}
-                    >
-                      {preset.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Nombre y Asunto */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -725,6 +723,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
               </div>
             )}
           </div>
+          )}
 
           <DialogFooter className="gap-2">
             {savedId && (

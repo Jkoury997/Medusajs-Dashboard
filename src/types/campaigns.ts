@@ -173,6 +173,23 @@ export interface GenerateContentResponse {
   featured_product_ids: string[]
 }
 
+// --- AI Template Content ---
+
+export interface GenerateTemplateContentData {
+  theme: string
+  tone?: string
+}
+
+export interface GenerateTemplateContentResponse {
+  subject: string
+  heading: string
+  button_text: string
+  footer_text: string
+  body_sections: ContentSection[]
+  tokens_used: number
+  model: string
+}
+
 // --- Segment Estimation ---
 
 export interface SegmentEstimateData {

@@ -29,9 +29,17 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { SortableSection } from "./sortable-section"
 import { SectionToolbar } from "./section-toolbar"
 import { EmailPreview } from "./email-preview"
+import { useGenerateTemplateContent } from "@/hooks/use-manual-campaigns"
 import type { ContentSection, ContentPreset, ManualCampaignContent, ManualCampaignDiscount } from "@/types/campaigns"
 
 interface SectionWithId {
@@ -65,6 +73,11 @@ export function TemplateEditor({ open, onOpenChange, preset, onSave, isSaving }:
   const [buttonUrl, setButtonUrl] = useState(preset?.content?.button_url || "https://www.marcelakoury.com")
   const [footerText, setFooterText] = useState(preset?.content?.footer_text || "")
   const [bannerGradient, setBannerGradient] = useState(preset?.content?.banner_gradient || "")
+
+  // AI state
+  const [aiTheme, setAiTheme] = useState("")
+  const [aiTone, setAiTone] = useState("formal")
+  const generateMutation = useGenerateTemplateContent()
 
   // Sections state
   const [sections, setSections] = useState<SectionWithId[]>(() => {
@@ -116,6 +129,27 @@ export function TemplateEditor({ open, onOpenChange, preset, onSave, isSaving }:
   const removeSection = useCallback((id: string) => {
     setSections((prev) => prev.filter((s) => s.id !== id))
   }, [])
+
+  const handleGenerateAI = async () => {
+    if (!aiTheme) return
+    try {
+      const result = await generateMutation.mutateAsync({ theme: aiTheme, tone: aiTone })
+      if (result.subject) setSubject(result.subject)
+      if (result.heading) setHeading(result.heading)
+      if (result.button_text) setButtonText(result.button_text)
+      if (result.footer_text) setFooterText(result.footer_text)
+      if (result.body_sections && result.body_sections.length > 0) {
+        setSections(
+          result.body_sections.map((section, i) => ({
+            id: `${idPrefix}-ai-${Date.now()}-${i}`,
+            section,
+          }))
+        )
+      }
+    } catch {
+      // Error handled by mutation state
+    }
+  }
 
   const handleSave = () => {
     const content: ManualCampaignContent = {
@@ -255,6 +289,58 @@ export function TemplateEditor({ open, onOpenChange, preset, onSave, isSaving }:
                   placeholder="linear-gradient(135deg, #ff75a8, #ff4081)"
                 />
               </div>
+            </div>
+
+            {/* AI Content Generation */}
+            <Separator />
+            <div className="p-3 bg-purple-50 rounded-md space-y-2">
+              <Label className="text-xs font-medium text-purple-700">
+                Generar contenido con IA
+              </Label>
+              <p className="text-xs text-gray-500">
+                La IA genera asunto, titulo, secciones del email y mas.
+              </p>
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <Label className="text-xs">Tema</Label>
+                  <Input
+                    value={aiTheme}
+                    onChange={(e) => setAiTheme(e.target.value)}
+                    className="mt-1 h-8 text-sm"
+                    placeholder="Ej: Nuevos arrivals de primavera"
+                  />
+                </div>
+                <div className="w-36">
+                  <Label className="text-xs">Tono</Label>
+                  <Select value={aiTone} onValueChange={setAiTone}>
+                    <SelectTrigger className="mt-1 h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="formal">Formal</SelectItem>
+                      <SelectItem value="casual">Casual</SelectItem>
+                      <SelectItem value="urgente">Urgente</SelectItem>
+                      <SelectItem value="amigable">Amigable</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                  onClick={handleGenerateAI}
+                  disabled={generateMutation.isPending || !aiTheme}
+                >
+                  {generateMutation.isPending ? "Generando..." : "Generar con IA"}
+                </Button>
+              </div>
+              {generateMutation.isError && (
+                <p className="text-xs text-red-600">{generateMutation.error?.message}</p>
+              )}
+              {generateMutation.isSuccess && (
+                <p className="text-xs text-green-600">Contenido generado correctamente</p>
+              )}
             </div>
 
             {/* Sections */}
