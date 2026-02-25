@@ -35,6 +35,15 @@ export interface SegmentConfig {
   match: SegmentMatchType
 }
 
+// --- Content Sections ---
+
+export type ContentSection =
+  | { type: "text"; html: string }
+  | { type: "image"; src: string; alt?: string; href?: string; width?: "full" | "medium" | "small" }
+  | { type: "button"; text: string; url: string; backgroundColor?: string }
+  | { type: "divider" }
+  | { type: "spacer"; height?: number }
+
 // --- Content ---
 
 export interface ManualCampaignContent {
@@ -42,12 +51,24 @@ export interface ManualCampaignContent {
   preview_text?: string
   heading?: string
   body_text?: string
+  body_sections?: ContentSection[]
   button_text?: string
   button_url?: string
   banner_gradient?: string
   footer_text?: string
   featured_product_ids?: string[]
   include_personalized_products?: boolean
+}
+
+// --- Media ---
+
+export interface MediaItem {
+  id: string
+  filename: string
+  content_type: string
+  size: number
+  url: string
+  created_at: string
 }
 
 // --- Discount ---

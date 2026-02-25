@@ -13,6 +13,7 @@ const navItems = [
   { href: "/dashboard/marketing", label: "Marketing", icon: "📈" },
   { href: "/dashboard/email-marketing", label: "Email Marketing", icon: "✉️" },
   { href: "/dashboard/campaigns", label: "Campañas", icon: "📣" },
+  { href: "/dashboard/templates", label: "Plantillas", icon: "🎨" },
   { href: "/dashboard/analytics", label: "Analítica", icon: "📡" },
   { href: "/dashboard/ai", label: "IA Insights", icon: "🤖" },
 ]

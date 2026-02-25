@@ -19,6 +19,8 @@ import type {
   SegmentGroup,
   ContentPreset,
   ProductSearchResult,
+  ManualCampaignContent,
+  ManualCampaignDiscount,
 } from "@/types/campaigns"
 
 const BASE = "/api/campaigns-proxy"
@@ -368,6 +370,47 @@ export function useSaveAsPreset() {
       })
       if (!res.ok) throw new Error("Error al guardar preset")
       return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["content-presets"] })
+    },
+  })
+}
+
+export function useCreatePreset() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: {
+      name: string
+      description?: string
+      content: ManualCampaignContent
+      discount?: ManualCampaignDiscount | null
+    }) => {
+      const res = await fetch(`${BASE}/presets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) throw new Error("Error al crear preset")
+      return res.json() as Promise<ContentPreset>
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["content-presets"] })
+    },
+  })
+}
+
+export function useUpdatePreset() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
+      const res = await fetch(`${BASE}/presets/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) throw new Error("Error al actualizar preset")
+      return res.json() as Promise<ContentPreset>
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["content-presets"] })

@@ -36,7 +36,7 @@ import {
   useContentPresets,
   useSaveAsPreset,
 } from "@/hooks/use-manual-campaigns"
-import type { SegmentRule, SegmentMatchType } from "@/types/campaigns"
+import type { SegmentRule, SegmentMatchType, ContentSection } from "@/types/campaigns"
 
 const TONE_OPTIONS = [
   { value: "formal", label: "Formal" },
@@ -67,6 +67,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   const [buttonUrl, setButtonUrl] = useState("")
   const [bannerGradient, setBannerGradient] = useState("")
   const [footerText, setFooterText] = useState("")
+  const [bodySections, setBodySections] = useState<ContentSection[] | undefined>(undefined)
 
   // Form state — products
   const [featuredProductIds, setFeaturedProductIds] = useState<string[]>([])
@@ -119,6 +120,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
       setFooterText(detail.content?.footer_text || "")
       setFeaturedProductIds(detail.content?.featured_product_ids || [])
       setIncludePersonalized(detail.content?.include_personalized_products || false)
+      setBodySections(detail.content?.body_sections || undefined)
       setSavedId(campaignId)
 
       if (detail.discount) {
@@ -139,7 +141,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
       setName(""); setSubject(""); setPreviewText("")
       setRules([{ type: "all_customers" }]); setMatch("all")
       setHeading(""); setBodyText(""); setButtonText(""); setButtonUrl("")
-      setBannerGradient(""); setFooterText("")
+      setBannerGradient(""); setFooterText(""); setBodySections(undefined)
       setFeaturedProductIds([]); setIncludePersonalized(false)
       setDiscountEnabled(false); setDiscountType("percentage"); setDiscountValue(10)
       setDiscountExpiresHours(48); setDiscountSingleCode(true)
@@ -159,6 +161,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
       preview_text: previewText || undefined,
       heading: heading || undefined,
       body_text: bodyText || undefined,
+      body_sections: bodySections,
       button_text: buttonText || undefined,
       button_url: buttonUrl || undefined,
       banner_gradient: bannerGradient || undefined,
@@ -285,6 +288,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
     setFooterText(preset.content.footer_text || "")
     setFeaturedProductIds(preset.content.featured_product_ids || [])
     setIncludePersonalized(preset.content.include_personalized_products || false)
+    setBodySections(preset.content.body_sections || undefined)
     if (preset.discount) {
       setDiscountEnabled(preset.discount.enabled)
       setDiscountType(preset.discount.type)
@@ -412,13 +416,33 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
               </div>
               <div>
                 <Label className="text-xs">Cuerpo del email</Label>
-                <Textarea
-                  value={bodyText}
-                  onChange={(e) => setBodyText(e.target.value)}
-                  className="mt-1"
-                  rows={4}
-                  placeholder="Texto principal del email..."
-                />
+                {bodySections && bodySections.length > 0 ? (
+                  <div className="mt-1 p-3 bg-purple-50 rounded-md border border-purple-200">
+                    <p className="text-xs text-purple-700 font-medium mb-1">
+                      Plantilla visual con {bodySections.length} secciones
+                    </p>
+                    <p className="text-xs text-purple-500">
+                      {bodySections.map((s) => s.type).join(", ")}
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="mt-1 h-6 text-[10px] text-purple-600"
+                      onClick={() => setBodySections(undefined)}
+                    >
+                      Quitar secciones y usar texto plano
+                    </Button>
+                  </div>
+                ) : (
+                  <Textarea
+                    value={bodyText}
+                    onChange={(e) => setBodyText(e.target.value)}
+                    className="mt-1"
+                    rows={4}
+                    placeholder="Texto principal del email..."
+                  />
+                )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
