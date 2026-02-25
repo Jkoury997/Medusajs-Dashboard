@@ -319,12 +319,13 @@ export function useEstimateSegment() {
 
 // --- Product Search ---
 
-export function useProductSearch(query: string) {
+export function useProductSearch(query: string, customerGroup?: string) {
   return useQuery({
-    queryKey: ["products", "search", query],
+    queryKey: ["products", "search", query, customerGroup],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (query) params.set("q", query)
+      if (customerGroup) params.set("group", customerGroup)
       params.set("limit", "20")
       const res = await fetch(`${BASE}/products?${params.toString()}`)
       if (!res.ok) throw new Error("Error al buscar productos")

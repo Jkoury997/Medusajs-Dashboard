@@ -9,9 +9,10 @@ import { useProductSearch } from "@/hooks/use-manual-campaigns"
 interface ProductPickerProps {
   selectedIds: string[]
   onChange: (ids: string[]) => void
+  customerGroup?: string
 }
 
-export function ProductPicker({ selectedIds, onChange }: ProductPickerProps) {
+export function ProductPicker({ selectedIds, onChange, customerGroup }: ProductPickerProps) {
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
 
@@ -20,7 +21,7 @@ export function ProductPicker({ selectedIds, onChange }: ProductPickerProps) {
     return () => clearTimeout(timer)
   }, [search])
 
-  const { data, isLoading } = useProductSearch(debouncedSearch)
+  const { data, isLoading } = useProductSearch(debouncedSearch, customerGroup)
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
 

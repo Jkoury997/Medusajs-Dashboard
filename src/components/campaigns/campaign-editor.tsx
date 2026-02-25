@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
@@ -295,6 +295,12 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
     setDraftMsg(`Preset "${preset.name}" cargado`)
   }
 
+  // Extraer grupo del segmento para precios en ProductPicker
+  const selectedCustomerGroup = useMemo(() => {
+    const groupRule = rules.find((r) => r.type === "customer_group")
+    return groupRule?.value || undefined
+  }, [rules])
+
   const isSaving = createMutation.isPending || updateMutation.isPending
   const isSending = sendMutation.isPending
 
@@ -452,6 +458,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
                 <ProductPicker
                   selectedIds={featuredProductIds}
                   onChange={setFeaturedProductIds}
+                  customerGroup={selectedCustomerGroup}
                 />
                 <p className="text-xs text-gray-500">
                   {featuredProductIds.length > 0
