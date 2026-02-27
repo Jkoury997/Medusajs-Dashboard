@@ -12,6 +12,8 @@ import type {
   FraudAlertFilters,
   VoucherListResponse,
   VoucherFilters,
+  InvitationCodeListResponse,
+  InvitationCodeFilters,
 } from "@/types/reseller"
 
 const BASE = "/api/reseller-proxy"
@@ -202,6 +204,101 @@ export function useVouchers(filters: VoucherFilters = {}) {
       const res = await fetch(`${BASE}/admin/vouchers?${params}`)
       if (!res.ok) throw new Error("Error al obtener vouchers")
       return res.json() as Promise<VoucherListResponse>
+    },
+  })
+}
+
+// ============================================================
+// INVITATION CODES
+// ============================================================
+
+export function useInvitationCodes(filters: InvitationCodeFilters = {}) {
+  return useQuery({
+    queryKey: ["resellers", "invitation-codes", filters],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (filters.reseller_type_id) params.set("reseller_type_id", filters.reseller_type_id)
+      if (filters.limit) params.set("limit", String(filters.limit))
+      if (filters.offset != null) params.set("offset", String(filters.offset))
+      const res = await fetch(`${BASE}/admin/invitation-codes?${params}`)
+      if (!res.ok) throw new Error("Error al obtener códigos de invitación")
+      return res.json() as Promise<InvitationCodeListResponse>
+    },
+  })
+}
+
+export interface CreateInvitationCodeData {
+  reseller_type_id: string
+  code?: string
+  max_uses?: number | null
+  expires_at?: string | null
+  is_active?: boolean
+  notes?: string
+}
+
+export interface UpdateInvitationCodeData {
+  is_active?: boolean
+  max_uses?: number | null
+  expires_at?: string | null
+}
+
+export function useCreateInvitationCode() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: CreateInvitationCodeData) => {
+      const res = await fetch(`${BASE}/admin/invitation-codes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al crear código")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers", "invitation-codes"] })
+    },
+  })
+}
+
+export function useUpdateInvitationCode() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateInvitationCodeData }) => {
+      const res = await fetch(`${BASE}/admin/invitation-codes/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al actualizar código")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers", "invitation-codes"] })
+    },
+  })
+}
+
+export function useDeleteInvitationCode() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${BASE}/admin/invitation-codes/${id}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al eliminar código")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers", "invitation-codes"] })
     },
   })
 }

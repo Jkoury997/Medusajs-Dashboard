@@ -211,3 +211,34 @@ export interface VoucherFilters {
   limit?: number
   offset?: number
 }
+
+// ============================================================
+// INVITATION CODES
+// ============================================================
+
+export interface InvitationCode {
+  id: string
+  code: string
+  reseller_type_id: string
+  reseller_type?: { display_name: string }
+  max_uses: number | null
+  current_uses: number
+  expires_at: string | null
+  is_active: boolean
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface InvitationCodeListResponse {
+  invitation_codes: InvitationCode[]
+  count: number
+  limit: number
+  offset: number
+}
+
+export interface InvitationCodeFilters {
+  reseller_type_id?: string
+  limit?: number
+  offset?: number
+}
