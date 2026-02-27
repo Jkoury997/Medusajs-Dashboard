@@ -26,13 +26,52 @@ export interface ProductWithStock {
 }
 
 /**
- * Trae todos los productos con sus variantes y niveles de stock.
- * Calcula totalStock y allOutOfStock por producto.
+ * Trae todos los inventory items con location_levels y construye
+ * un mapa SKU → stock total (stocked_quantity sumado en todas las locations).
+ */
+async function fetchInventoryMap(): Promise<Map<string, number>> {
+  const stockBySku = new Map<string, number>()
+  let offset = 0
+  const limit = 100
+  let total = Infinity
+
+  while (offset < total) {
+    const response = (await sdk.client.fetch("/admin/inventory-items", {
+      query: {
+        limit,
+        offset,
+        fields: "id,sku,*location_levels",
+      },
+    })) as { inventory_items: any[]; count: number }
+
+    for (const item of response.inventory_items || []) {
+      if (!item.sku) continue
+      const stock = (item.location_levels || []).reduce(
+        (sum: number, ll: any) => sum + (ll.stocked_quantity ?? 0),
+        0
+      )
+      stockBySku.set(item.sku, (stockBySku.get(item.sku) || 0) + stock)
+    }
+
+    total = response.count
+    offset += limit
+  }
+
+  return stockBySku
+}
+
+/**
+ * Trae todos los productos con sus variantes y niveles de stock reales
+ * cruzando con inventory_items por SKU.
  */
 export function useProductsWithStock() {
   return useQuery({
     queryKey: ["products", "with-stock"],
     queryFn: async () => {
+      // Paso 1: traer mapa SKU → stock desde inventory_items
+      const stockBySku = await fetchInventoryMap()
+
+      // Paso 2: traer productos con variantes
       const allProducts: ProductWithStock[] = []
       const allVariants: VariantWithStock[] = []
       let offset = 0
@@ -50,17 +89,24 @@ export function useProductsWithStock() {
 
         for (const product of response.products || []) {
           const variants: VariantWithStock[] = (product.variants || []).map(
-            (v: any) => ({
-              id: v.id,
-              title: v.title,
-              sku: v.sku || null,
-              barcode: v.barcode || null,
-              manage_inventory: v.manage_inventory ?? true,
-              inventory_quantity: v.inventory_quantity ?? 0,
-              product_id: product.id,
-              product_title: product.title,
-              product_thumbnail: product.thumbnail,
-            })
+            (v: any) => {
+              const managesInventory = v.manage_inventory ?? true
+              // Buscar stock real por SKU en el mapa de inventory
+              const stockFromInventory =
+                managesInventory && v.sku ? stockBySku.get(v.sku) ?? 0 : 0
+
+              return {
+                id: v.id,
+                title: v.title,
+                sku: v.sku || null,
+                barcode: v.barcode || null,
+                manage_inventory: managesInventory,
+                inventory_quantity: stockFromInventory,
+                product_id: product.id,
+                product_title: product.title,
+                product_thumbnail: product.thumbnail,
+              }
+            }
           )
 
           const managedVariants = variants.filter((v) => v.manage_inventory)
