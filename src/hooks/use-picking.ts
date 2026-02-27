@@ -102,7 +102,24 @@ export function useAuditLog(filters: AuditFilters = {}) {
       if (filters.to) params.set("to", filters.to)
       const res = await fetch(`${BASE}/picking/audit?${params}`)
       if (!res.ok) throw new Error("Error al obtener log de auditoría")
-      return res.json() as Promise<AuditListResponse>
+      const raw = await res.json()
+      // API returns { logs, total } with camelCase fields — transform to our types
+      return {
+        entries: (raw.logs ?? []).map((l: Record<string, unknown>) => ({
+          _id: l._id as string,
+          action: l.action as string,
+          user_id: (l.userId as string) ?? "",
+          user_name: (l.userName as string) ?? "",
+          order_id: (l.orderId as string) ?? "",
+          order_display_id: l.orderDisplayId != null ? String(l.orderDisplayId) : undefined,
+          details: l.details as string | undefined,
+          metadata: l.metadata as Record<string, unknown> | undefined,
+          timestamp: l.createdAt as string,
+        })),
+        total: (raw.total as number) ?? 0,
+        limit: filters.limit ?? 50,
+        offset: filters.offset ?? 0,
+      } as AuditListResponse
     },
   })
 }
@@ -119,7 +136,25 @@ export function usePickingHistory(filters: PickingHistoryFilters = {}) {
       if (filters.to) params.set("to", filters.to)
       const res = await fetch(`${BASE}/picking/history?${params}`)
       if (!res.ok) throw new Error("Error al obtener historial de picking")
-      return res.json() as Promise<PickingHistoryResponse>
+      const raw = await res.json()
+      // API returns { sessions, total } with camelCase — transform to our types
+      return {
+        entries: (raw.sessions ?? []).map((s: Record<string, unknown>) => ({
+          _id: s._id as string,
+          user_id: (s.userId as string) ?? "",
+          user_name: (s.userName as string) ?? (s.completedByName as string) ?? "",
+          order_id: (s.orderId as string) ?? "",
+          order_display_id: s.orderDisplayId != null ? String(s.orderDisplayId) : undefined,
+          items_picked: (s.totalPicked as number) ?? 0,
+          items_missing: ((s.totalRequired as number) ?? 0) - ((s.totalPicked as number) ?? 0),
+          pick_time_seconds: (s.durationSeconds as number) ?? 0,
+          completed_at: (s.completedAt as string) ?? "",
+          started_at: (s.startedAt as string) ?? "",
+        })),
+        total: (raw.total as number) ?? 0,
+        limit: filters.limit ?? 50,
+        offset: filters.offset ?? 0,
+      } as PickingHistoryResponse
     },
   })
 }

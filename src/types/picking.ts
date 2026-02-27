@@ -134,7 +134,8 @@ export interface AuditEntry {
   user_name: string
   order_id: string
   order_display_id?: string
-  details?: Record<string, unknown>
+  details?: string
+  metadata?: Record<string, unknown>
   timestamp: string
 }
 

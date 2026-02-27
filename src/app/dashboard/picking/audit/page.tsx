@@ -60,10 +60,13 @@ function getActionBadgeClass(action: string): string {
   }
 }
 
-function formatDetails(details?: Record<string, unknown>): string {
-  if (!details) return "—"
-  const str = JSON.stringify(details)
-  return str.length > 80 ? str.slice(0, 80) + "..." : str
+function formatDetails(details?: string, metadata?: Record<string, unknown>): string {
+  if (details) return details.length > 80 ? details.slice(0, 80) + "..." : details
+  if (metadata) {
+    const str = JSON.stringify(metadata)
+    return str.length > 80 ? str.slice(0, 80) + "..." : str
+  }
+  return "—"
 }
 
 export default function AuditPage() {
@@ -80,7 +83,7 @@ export default function AuditPage() {
   })
 
   // ── History filters (draft + applied) ──
-  const [historyPickerDraft, setHistoryPickerDraft] = useState("")
+  const [historyPickerDraft, setHistoryPickerDraft] = useState("all")
   const [historyFromDraft, setHistoryFromDraft] = useState("")
   const [historyToDraft, setHistoryToDraft] = useState("")
 
@@ -113,7 +116,7 @@ export default function AuditPage() {
     setHistoryFilters({
       limit: PAGE_SIZE,
       offset: 0,
-      userId: historyPickerDraft || undefined,
+      userId: historyPickerDraft && historyPickerDraft !== "all" ? historyPickerDraft : undefined,
       from: historyFromDraft || undefined,
       to: historyToDraft || undefined,
     })
@@ -302,7 +305,7 @@ export default function AuditPage() {
                             {entry.order_display_id || entry.order_id}
                           </TableCell>
                           <TableCell className="text-xs text-gray-500 max-w-xs truncate">
-                            {formatDetails(entry.details)}
+                            {formatDetails(entry.details, entry.metadata)}
                           </TableCell>
                         </TableRow>
                       ))
@@ -360,7 +363,7 @@ export default function AuditPage() {
                         <SelectValue placeholder="Todos" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Todos</SelectItem>
+                        <SelectItem value="all">Todos</SelectItem>
                         {pickingUsers?.map((user) => (
                           <SelectItem key={user._id} value={user._id}>
                             {user.name}
