@@ -3,9 +3,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import type {
   ResellerDashboardStats,
+  Reseller,
   ResellerListResponse,
   ResellerFilters,
   ResellerType,
+  ResellerCustomer,
+  ResellerCommission,
   WithdrawalListResponse,
   WithdrawalFilters,
   FraudAlertListResponse,
@@ -62,6 +65,136 @@ export function useResellerTypes() {
       if (!res.ok) throw new Error("Error al obtener tipos de revendedoras")
       const data = await res.json()
       return (data.reseller_types ?? []) as ResellerType[]
+    },
+  })
+}
+
+// ---- Reseller Detail ----
+
+export function useResellerDetail(id: string | undefined) {
+  return useQuery({
+    queryKey: ["resellers", "detail", id],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/admin/resellers/${id}`)
+      if (!res.ok) throw new Error("Error al obtener detalle de revendedora")
+      const data = await res.json()
+      return data.reseller as Reseller
+    },
+    enabled: !!id,
+  })
+}
+
+export function useResellerCustomers(id: string | undefined) {
+  return useQuery({
+    queryKey: ["resellers", "customers", id],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/admin/resellers/${id}/customers`)
+      if (!res.ok) throw new Error("Error al obtener clientes")
+      const data = await res.json()
+      return (data.customers ?? []) as ResellerCustomer[]
+    },
+    enabled: !!id,
+  })
+}
+
+export function useResellerCommissions(id: string | undefined) {
+  return useQuery({
+    queryKey: ["resellers", "commissions", id],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/admin/resellers/${id}/commissions`)
+      if (!res.ok) throw new Error("Error al obtener comisiones")
+      const data = await res.json()
+      return (data.commissions ?? []) as ResellerCommission[]
+    },
+    enabled: !!id,
+  })
+}
+
+// ---- Reseller Actions ----
+
+export function useApproveReseller() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${BASE}/admin/resellers/${id}/approve`, {
+        method: "POST",
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al aprobar revendedora")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers"] })
+    },
+  })
+}
+
+export function useSuspendReseller() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
+      const res = await fetch(`${BASE}/admin/resellers/${id}/suspend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason || "Suspendida por admin" }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al suspender revendedora")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers"] })
+    },
+  })
+}
+
+export function useReactivateReseller() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${BASE}/admin/resellers/${id}/reactivate`, {
+        method: "POST",
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al reactivar revendedora")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers"] })
+    },
+  })
+}
+
+export interface UpdateResellerData {
+  status?: string
+  custom_commission_percentage?: number | null
+  custom_customer_discount_percentage?: number | null
+  admin_notes?: string
+}
+
+export function useUpdateReseller() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateResellerData }) => {
+      const res = await fetch(`${BASE}/admin/resellers/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al actualizar revendedora")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers"] })
     },
   })
 }

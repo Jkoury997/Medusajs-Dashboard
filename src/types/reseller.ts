@@ -96,6 +96,32 @@ export interface ResellerFilters {
 }
 
 // ============================================================
+// RESELLER DETAIL (customers & commissions)
+// ============================================================
+
+export interface ResellerCustomer {
+  id: string
+  email: string
+  first_name: string
+  last_name: string
+  total_orders: number
+  total_spent: number
+  created_at: string
+}
+
+export interface ResellerCommission {
+  id: string
+  order_id: string
+  order_display_id?: string
+  sale_amount: number
+  commission_percentage: number
+  commission_amount: number
+  status: string
+  currency_code: string
+  created_at: string
+}
+
+// ============================================================
 // WITHDRAWALS
 // ============================================================
 
