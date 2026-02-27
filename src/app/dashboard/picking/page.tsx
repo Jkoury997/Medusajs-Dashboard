@@ -31,6 +31,8 @@ import {
   Activity,
   Users,
   Truck,
+  Target,
+  TrendingUp,
 } from "lucide-react"
 
 // ============================================================
@@ -71,8 +73,8 @@ export default function PickingStatsPage() {
 
   // Prepare fulfillment chart data
   const fulfillmentData = useMemo(() => {
-    if (!orderStats.data?.by_fulfillment) return []
-    return Object.entries(orderStats.data.by_fulfillment).map(([name, value]) => ({
+    if (!orderStats.data?.orders?.byFulfillmentStatus) return []
+    return Object.entries(orderStats.data.orders.byFulfillmentStatus).map(([name, value]) => ({
       name,
       value,
     }))
@@ -116,32 +118,37 @@ export default function PickingStatsPage() {
           </div>
         ) : pickingStats.data ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <MetricCard
-                title="Pedidos Pickeados"
-                value={String(pickingStats.data.global.total_orders_picked)}
+                title="Sesiones Completadas"
+                value={String(pickingStats.data.global.sessionsCompleted)}
                 icon={<PackageCheck className="w-5 h-5 text-pink-500" />}
               />
               <MetricCard
                 title="Tiempo Promedio"
-                value={fmtTime(pickingStats.data.global.avg_pick_time_seconds)}
+                value={fmtTime(pickingStats.data.global.avgDurationSeconds)}
                 icon={<Clock className="w-5 h-5 text-blue-500" />}
               />
               <MetricCard
                 title="Items Pickeados"
-                value={String(pickingStats.data.global.total_items_picked)}
+                value={String(pickingStats.data.global.totalItemsPicked)}
                 icon={<Package className="w-5 h-5 text-green-500" />}
               />
               <MetricCard
-                title="Pedidos Hoy"
-                value={String(pickingStats.data.today?.orders_picked ?? 0)}
-                icon={<CalendarDays className="w-5 h-5 text-purple-500" />}
-                subtitle={`${pickingStats.data.today?.items_picked ?? 0} items | ${fmtTime(pickingStats.data.today?.avg_pick_time_seconds ?? 0)}`}
+                title="Precisión"
+                value={`${pickingStats.data.global.pickAccuracy}%`}
+                icon={<Target className="w-5 h-5 text-purple-500" />}
+              />
+              <MetricCard
+                title="Hoy"
+                value={String(pickingStats.data.today?.completed ?? 0)}
+                icon={<CalendarDays className="w-5 h-5 text-amber-500" />}
+                subtitle={`${pickingStats.data.today?.itemsPicked ?? 0} items | ${pickingStats.data.today?.cancelled ?? 0} canceladas`}
               />
             </div>
 
             {/* By Picker Table */}
-            {(pickingStats.data.by_picker?.length ?? 0) > 0 && (
+            {(pickingStats.data.perPicker?.length ?? 0) > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm font-medium">Rendimiento por Picker</CardTitle>
@@ -152,18 +159,30 @@ export default function PickingStatsPage() {
                       <thead>
                         <tr className="border-b text-left text-gray-500">
                           <th className="pb-2 font-medium">Picker</th>
-                          <th className="pb-2 font-medium text-right">Pedidos</th>
+                          <th className="pb-2 font-medium text-right">Completadas</th>
+                          <th className="pb-2 font-medium text-right">Canceladas</th>
                           <th className="pb-2 font-medium text-right">Items</th>
+                          <th className="pb-2 font-medium text-right">Precisión</th>
                           <th className="pb-2 font-medium text-right">Tiempo Prom.</th>
+                          <th className="pb-2 font-medium text-right">Seg/Item</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {pickingStats.data.by_picker?.map((p) => (
-                          <tr key={p.user_id} className="border-b last:border-0">
-                            <td className="py-2 font-medium">{p.user_name}</td>
-                            <td className="py-2 text-right">{p.orders_picked}</td>
-                            <td className="py-2 text-right">{p.items_picked}</td>
-                            <td className="py-2 text-right">{fmtTime(p.avg_pick_time_seconds)}</td>
+                        {pickingStats.data.perPicker?.map((p) => (
+                          <tr key={p.userId} className="border-b last:border-0">
+                            <td className="py-2 font-medium">{p.userName}</td>
+                            <td className="py-2 text-right">{p.completedOrders}</td>
+                            <td className="py-2 text-right text-red-500">
+                              {p.cancelledOrders > 0 ? p.cancelledOrders : "—"}
+                            </td>
+                            <td className="py-2 text-right">{p.totalItemsPicked}</td>
+                            <td className="py-2 text-right">
+                              <span className={p.accuracy >= 95 ? "text-green-600" : "text-red-600"}>
+                                {p.accuracy}%
+                              </span>
+                            </td>
+                            <td className="py-2 text-right">{fmtTime(p.avgDurationSeconds)}</td>
+                            <td className="py-2 text-right">{p.avgSecondsPerItem}s</td>
                           </tr>
                         ))}
                       </tbody>
@@ -187,16 +206,31 @@ export default function PickingStatsPage() {
           </div>
         ) : orderStats.data ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <MetricCard
-                title="Pendientes"
-                value={String(orderStats.data.pending)}
+                title="Total Pagados"
+                value={String(orderStats.data.orders.totalPaid)}
+                icon={<Package className="w-5 h-5 text-blue-500" />}
+              />
+              <MetricCard
+                title="Pendientes Picking"
+                value={String(orderStats.data.orders.pendingPicking)}
                 icon={<Clock className="w-5 h-5 text-amber-500" />}
               />
               <MetricCard
-                title="Total Pedidos"
-                value={String(orderStats.data.total)}
-                icon={<Package className="w-5 h-5 text-blue-500" />}
+                title="Listos p/ Enviar"
+                value={String(orderStats.data.orders.readyToShip)}
+                icon={<PackageCheck className="w-5 h-5 text-green-500" />}
+              />
+              <MetricCard
+                title="Enviados"
+                value={String(orderStats.data.orders.shipped)}
+                icon={<Truck className="w-5 h-5 text-purple-500" />}
+              />
+              <MetricCard
+                title="Entregados"
+                value={String(orderStats.data.orders.delivered)}
+                icon={<TrendingUp className="w-5 h-5 text-pink-500" />}
               />
             </div>
 
@@ -239,17 +273,33 @@ export default function PickingStatsPage() {
           </div>
         ) : faltantesStats.data ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <MetricCard
                 title="Total Faltantes"
-                value={String(faltantesStats.data.total_faltantes)}
+                value={String(faltantesStats.data.global.totalMissing)}
                 icon={<AlertTriangle className="w-5 h-5 text-red-500" />}
+              />
+              <MetricCard
+                title="Tasa de Faltantes"
+                value={`${faltantesStats.data.global.missingRate}%`}
+                icon={<Target className="w-5 h-5 text-amber-500" />}
+              />
+              <MetricCard
+                title="Sesiones con Faltantes"
+                value={String(faltantesStats.data.global.sessionsWithMissing)}
+                icon={<Activity className="w-5 h-5 text-orange-500" />}
+                subtitle={`de ${faltantesStats.data.global.totalSessions} sesiones`}
+              />
+              <MetricCard
+                title="Faltantes Hoy"
+                value={String(faltantesStats.data.today?.totalMissing ?? 0)}
+                icon={<CalendarDays className="w-5 h-5 text-red-400" />}
               />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Ranking productos */}
-              {(faltantesStats.data.ranking_products?.length ?? 0) > 0 && (
+              {(faltantesStats.data.productRanking?.length ?? 0) > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-sm font-medium">Ranking de Productos Faltantes</CardTitle>
@@ -259,17 +309,19 @@ export default function PickingStatsPage() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b text-left text-gray-500">
-                            <th className="pb-2 font-medium">Producto</th>
                             <th className="pb-2 font-medium">SKU</th>
-                            <th className="pb-2 font-medium text-right">Veces</th>
+                            <th className="pb-2 font-medium">Código</th>
+                            <th className="pb-2 font-medium text-right">Faltantes</th>
+                            <th className="pb-2 font-medium text-right">Pedidos</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {faltantesStats.data.ranking_products?.slice(0, 10).map((p) => (
-                            <tr key={p.product_id} className="border-b last:border-0">
-                              <td className="py-2 font-medium truncate max-w-[200px]">{p.product_title}</td>
-                              <td className="py-2 text-gray-500">{p.sku}</td>
-                              <td className="py-2 text-right text-red-600 font-semibold">{p.times_missing}</td>
+                          {faltantesStats.data.productRanking?.slice(0, 10).map((p) => (
+                            <tr key={p.sku} className="border-b last:border-0">
+                              <td className="py-2 font-medium font-mono">{p.sku}</td>
+                              <td className="py-2 text-gray-500 font-mono text-xs">{p.barcode}</td>
+                              <td className="py-2 text-right text-red-600 font-semibold">{p.totalMissing}</td>
+                              <td className="py-2 text-right">{p.orderCount}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -280,7 +332,7 @@ export default function PickingStatsPage() {
               )}
 
               {/* By picker */}
-              {(faltantesStats.data.by_picker?.length ?? 0) > 0 && (
+              {(faltantesStats.data.perPicker?.length ?? 0) > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-sm font-medium">Faltantes por Picker</CardTitle>
@@ -292,13 +344,15 @@ export default function PickingStatsPage() {
                           <tr className="border-b text-left text-gray-500">
                             <th className="pb-2 font-medium">Picker</th>
                             <th className="pb-2 font-medium text-right">Faltantes</th>
+                            <th className="pb-2 font-medium text-right">Pedidos Afect.</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {faltantesStats.data.by_picker?.map((p) => (
-                            <tr key={p.user_id} className="border-b last:border-0">
-                              <td className="py-2 font-medium">{p.user_name}</td>
-                              <td className="py-2 text-right text-red-600 font-semibold">{p.total_faltantes}</td>
+                          {faltantesStats.data.perPicker?.map((p) => (
+                            <tr key={p.userId} className="border-b last:border-0">
+                              <td className="py-2 font-medium">{p.userName}</td>
+                              <td className="py-2 text-right text-red-600 font-semibold">{p.totalMissing}</td>
+                              <td className="py-2 text-right">{p.ordersWithMissing}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -310,7 +364,7 @@ export default function PickingStatsPage() {
             </div>
 
             {/* Daily trend */}
-            {(faltantesStats.data.daily_trend?.length ?? 0) > 0 && (
+            {(faltantesStats.data.dailyTrend?.length ?? 0) > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm font-medium">Tendencia Diaria de Faltantes</CardTitle>
@@ -318,17 +372,18 @@ export default function PickingStatsPage() {
                 <CardContent>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={faltantesStats.data.daily_trend}>
+                      <LineChart data={faltantesStats.data.dailyTrend}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" fontSize={12} />
                         <YAxis fontSize={12} />
                         <Tooltip />
                         <Line
                           type="monotone"
-                          dataKey="count"
+                          dataKey="totalMissing"
                           stroke="#ef4444"
                           strokeWidth={2}
                           dot={{ r: 3 }}
+                          name="Faltantes"
                         />
                       </LineChart>
                     </ResponsiveContainer>
@@ -352,26 +407,27 @@ export default function PickingStatsPage() {
           </div>
         ) : activityStats.data ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <MetricCard
-                title="Entradas de Auditoría"
-                value={String(activityStats.data.audit_entries)}
+                title="Acciones de Auditoría"
+                value={String(activityStats.data.audit?.totalActions ?? 0)}
                 icon={<Activity className="w-5 h-5 text-blue-500" />}
               />
               <MetricCard
                 title="Entregas"
-                value={String(activityStats.data.deliveries)}
+                value={String(activityStats.data.deliveries?.totalDeliveries ?? 0)}
                 icon={<Truck className="w-5 h-5 text-green-500" />}
               />
               <MetricCard
                 title="Usuarios Activos"
-                value={String(activityStats.data.active_users)}
+                value={String(activityStats.data.users?.totalActive ?? 0)}
                 icon={<Users className="w-5 h-5 text-purple-500" />}
+                subtitle={`${activityStats.data.users?.pickers ?? 0} pickers | ${activityStats.data.users?.storeUsers ?? 0} tiendas`}
               />
             </div>
 
             {/* Recent activity */}
-            {(activityStats.data.recent_activity?.length ?? 0) > 0 && (
+            {(activityStats.data.audit?.recentActions?.length ?? 0) > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm font-medium">Actividad Reciente</CardTitle>
@@ -385,13 +441,14 @@ export default function PickingStatsPage() {
                           <th className="pb-2 font-medium">Acción</th>
                           <th className="pb-2 font-medium">Usuario</th>
                           <th className="pb-2 font-medium">Pedido</th>
+                          <th className="pb-2 font-medium">Detalle</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {activityStats.data.recent_activity?.slice(0, 15).map((a, i) => (
-                          <tr key={i} className="border-b last:border-0">
-                            <td className="py-2 text-gray-500">
-                              {new Date(a.timestamp).toLocaleString("es-AR", {
+                        {activityStats.data.audit?.recentActions?.slice(0, 15).map((a) => (
+                          <tr key={a._id} className="border-b last:border-0">
+                            <td className="py-2 text-gray-500 whitespace-nowrap">
+                              {new Date(a.createdAt).toLocaleString("es-AR", {
                                 day: "2-digit",
                                 month: "2-digit",
                                 hour: "2-digit",
@@ -403,8 +460,13 @@ export default function PickingStatsPage() {
                                 {a.action}
                               </span>
                             </td>
-                            <td className="py-2">{a.user_name}</td>
-                            <td className="py-2 text-gray-500 font-mono text-xs">{a.order_id}</td>
+                            <td className="py-2">{a.userName}</td>
+                            <td className="py-2 text-gray-500 font-mono text-xs">
+                              {a.orderDisplayId ? `#${a.orderDisplayId}` : "—"}
+                            </td>
+                            <td className="py-2 text-xs text-gray-500 max-w-xs truncate">
+                              {a.details ?? "—"}
+                            </td>
                           </tr>
                         ))}
                       </tbody>

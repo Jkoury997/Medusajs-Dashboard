@@ -5,64 +5,122 @@
 // ============================================================
 
 export interface PickingPerformanceStats {
+  success: boolean
   global: {
-    total_orders_picked: number
-    avg_pick_time_seconds: number
-    avg_items_per_order: number
-    total_items_picked: number
+    sessionsCompleted: number
+    sessionsCancelled: number
+    sessionsInProgress: number
+    avgDurationSeconds: number
+    totalDurationSeconds: number
+    totalItemsPicked: number
+    totalItemsRequired: number
+    pickAccuracy: number
+    avgItemsPerOrder: number
+    avgSecondsPerItem: number
+    fastestPickSeconds: number
+    slowestPickSeconds: number
   }
-  by_picker: Array<{
-    user_id: string
-    user_name: string
-    orders_picked: number
-    avg_pick_time_seconds: number
-    items_picked: number
+  perPicker: Array<{
+    userId: string
+    userName: string
+    completedOrders: number
+    cancelledOrders: number
+    totalOrders: number
+    cancelRate: number
+    totalItemsPicked: number
+    accuracy: number
+    avgDurationSeconds: number
+    avgSecondsPerItem: number
+    firstPickAt: string | null
+    lastPickAt: string | null
   }>
   today: {
-    orders_picked: number
-    items_picked: number
-    avg_pick_time_seconds: number
+    completed: number
+    cancelled: number
+    inProgress: number
+    itemsPicked: number
   }
 }
 
 export interface OrderStats {
-  by_fulfillment: Record<string, number>
-  by_shipping_method: Record<string, number>
-  pending: number
-  total: number
+  success: boolean
+  orders: {
+    totalPaid: number
+    byFulfillmentStatus: Record<string, number>
+    byShippingMethod: Record<string, number>
+    pendingPicking: number
+    readyToShip: number
+    shipped: number
+    delivered: number
+  }
 }
 
 export interface FaltantesStats {
-  ranking_products: Array<{
-    product_id: string
-    product_title: string
+  success: boolean
+  global: {
+    totalMissing: number
+    totalSessions: number
+    sessionsWithMissing: number
+    missingRate: number
+  }
+  today: {
+    totalMissing: number
+    sessionsWithMissing: number
+  }
+  productRanking: Array<{
     sku: string
-    times_missing: number
+    barcode: string
+    variantId: string
+    totalMissing: number
+    occurrences: number
+    orderCount: number
   }>
-  by_picker: Array<{
-    user_id: string
-    user_name: string
-    total_faltantes: number
+  perPicker: Array<{
+    userId: string
+    userName: string
+    totalMissing: number
+    ordersWithMissing: number
   }>
-  daily_trend: Array<{
+  dailyTrend: Array<{
     date: string
-    count: number
+    totalMissing: number
+    sessions: number
+    sessionsWithMissing: number
   }>
-  total_faltantes: number
 }
 
 export interface ActivityStats {
-  audit_entries: number
-  deliveries: number
-  active_users: number
-  by_action: Record<string, number>
-  recent_activity: Array<{
-    action: string
-    user_name: string
-    order_id: string
-    timestamp: string
-    details?: string
-  }>
+  success: boolean
+  audit: {
+    totalActions: number
+    byActionType: Record<string, number>
+    recentActions: Array<{
+      _id: string
+      action: string
+      userName: string
+      orderId?: string
+      orderDisplayId?: number
+      details?: string
+      createdAt: string
+    }>
+  }
+  deliveries: {
+    totalDeliveries: number
+    byStore: Array<{ storeId: string; storeName: string; count: number }>
+    recentDeliveries: Array<{
+      _id: string
+      orderId: string
+      orderDisplayId: number
+      storeName: string
+      deliveredByName: string
+      deliveredAt: string
+    }>
+  }
+  users: {
+    totalActive: number
+    pickers: number
+    storeUsers: number
+  }
 }
 
 // ============================================================
