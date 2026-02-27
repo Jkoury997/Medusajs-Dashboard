@@ -23,6 +23,10 @@ import {
   Boxes,
   LogOut,
   ChevronDown,
+  PackageX,
+  Layers,
+  DollarSign,
+  ShoppingCart,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -51,7 +55,17 @@ function isNavGroup(entry: NavEntry): entry is NavGroup {
 const navEntries: NavEntry[] = [
   { href: "/dashboard", label: "Resumen", icon: LayoutDashboard },
   { href: "/dashboard/orders", label: "Órdenes", icon: Package },
-  { href: "/dashboard/products", label: "Productos", icon: Tag },
+  {
+    label: "Productos",
+    icon: Tag,
+    children: [
+      { href: "/dashboard/products/sin-stock", label: "Sin Stock", icon: PackageX },
+      { href: "/dashboard/products/variantes-sin-stock", label: "Variantes sin Stock", icon: Layers },
+      { href: "/dashboard/products/facturacion", label: "Facturación", icon: DollarSign },
+      { href: "/dashboard/products/unidades", label: "Unidades Compradas", icon: ShoppingCart },
+      { href: "/dashboard/products/promedio", label: "Promedio por Compra", icon: BarChart3 },
+    ],
+  },
   { href: "/dashboard/customers", label: "Clientes", icon: Users },
   { href: "/dashboard/marketing", label: "Marketing", icon: TrendingUp },
   {

@@ -334,3 +334,81 @@ export function aggregateChurnDistribution(
     { label: "Sin compras", count: never, color: "#9ca3af" },
   ].filter((d) => d.count > 0)
 }
+
+/**
+ * Unidades compradas por producto — solo órdenes pagadas.
+ * Retorna cantidad total y cantidad de órdenes distintas por producto.
+ */
+export function aggregateProductUnits(
+  orders: any[]
+): { product_id: string; name: string; quantity: number; orderCount: number }[] {
+  const paidOrders = filterPaidOrders(orders)
+  const byProduct = new Map<
+    string,
+    { product_id: string; name: string; quantity: number; orders: Set<string> }
+  >()
+
+  for (const order of paidOrders) {
+    if (!order.items) continue
+    for (const item of order.items) {
+      const id = item.product_id || item.variant_id || item.title
+      const existing = byProduct.get(id) || {
+        product_id: id,
+        name: item.product_title || item.title || "Sin nombre",
+        quantity: 0,
+        orders: new Set<string>(),
+      }
+      existing.quantity += item.quantity || 0
+      existing.orders.add(order.id)
+      byProduct.set(id, existing)
+    }
+  }
+
+  return Array.from(byProduct.values())
+    .map(({ orders, ...rest }) => ({ ...rest, orderCount: orders.size }))
+    .sort((a, b) => b.quantity - a.quantity)
+}
+
+/**
+ * Promedio de unidades por compra por producto — solo órdenes pagadas.
+ * avgPerPurchase = total unidades / órdenes distintas que contienen el producto.
+ */
+export function aggregateAvgUnitsPerPurchase(
+  orders: any[]
+): {
+  product_id: string
+  name: string
+  totalQuantity: number
+  orderCount: number
+  avgPerPurchase: number
+}[] {
+  const paidOrders = filterPaidOrders(orders)
+  const byProduct = new Map<
+    string,
+    { product_id: string; name: string; totalQuantity: number; orders: Set<string> }
+  >()
+
+  for (const order of paidOrders) {
+    if (!order.items) continue
+    for (const item of order.items) {
+      const id = item.product_id || item.variant_id || item.title
+      const existing = byProduct.get(id) || {
+        product_id: id,
+        name: item.product_title || item.title || "Sin nombre",
+        totalQuantity: 0,
+        orders: new Set<string>(),
+      }
+      existing.totalQuantity += item.quantity || 0
+      existing.orders.add(order.id)
+      byProduct.set(id, existing)
+    }
+  }
+
+  return Array.from(byProduct.values())
+    .map(({ orders, ...rest }) => ({
+      ...rest,
+      orderCount: orders.size,
+      avgPerPurchase: orders.size > 0 ? rest.totalQuantity / orders.size : 0,
+    }))
+    .sort((a, b) => b.avgPerPurchase - a.avgPerPurchase)
+}
