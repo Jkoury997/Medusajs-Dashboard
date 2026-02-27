@@ -18,6 +18,9 @@ import {
   Settings,
   Bot,
   Satellite,
+  PackageCheck,
+  ClipboardList,
+  Boxes,
   LogOut,
   ChevronDown,
 } from "lucide-react"
@@ -59,6 +62,16 @@ const navEntries: NavEntry[] = [
       { href: "/dashboard/templates", label: "Plantillas", icon: Palette },
       { href: "/dashboard/email-stats", label: "Estadísticas", icon: BarChart3 },
       { href: "/dashboard/email-marketing", label: "Configuración", icon: Settings },
+    ],
+  },
+  {
+    label: "Picking",
+    icon: PackageCheck,
+    children: [
+      { href: "/dashboard/picking", label: "Estadísticas", icon: BarChart3 },
+      { href: "/dashboard/picking/audit", label: "Auditoría", icon: ClipboardList },
+      { href: "/dashboard/picking/users", label: "Usuarios", icon: Users },
+      { href: "/dashboard/picking/gestion", label: "Gestión", icon: Boxes },
     ],
   },
   { href: "/dashboard/analytics", label: "Analítica", icon: Satellite },
