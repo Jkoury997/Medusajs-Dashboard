@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import type {
   ResellerDashboardStats,
   ResellerListResponse,
@@ -60,6 +60,89 @@ export function useResellerTypes() {
       if (!res.ok) throw new Error("Error al obtener tipos de revendedoras")
       const data = await res.json()
       return (data.reseller_types ?? []) as ResellerType[]
+    },
+  })
+}
+
+export interface CreateResellerTypeData {
+  name: string
+  display_name: string
+  description?: string
+  requires_invitation?: boolean
+  default_commission_percentage: number
+  default_customer_discount_percentage: number
+  has_wholesale_prices?: boolean
+  priority?: number
+}
+
+export interface UpdateResellerTypeData {
+  display_name?: string
+  description?: string
+  requires_invitation?: boolean
+  default_commission_percentage?: number
+  default_customer_discount_percentage?: number
+  has_wholesale_prices?: boolean
+  is_active?: boolean
+  priority?: number
+}
+
+export function useCreateResellerType() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: CreateResellerTypeData) => {
+      const res = await fetch(`${BASE}/admin/reseller-types`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al crear tipo")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers", "types"] })
+    },
+  })
+}
+
+export function useUpdateResellerType() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateResellerTypeData }) => {
+      const res = await fetch(`${BASE}/admin/reseller-types/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al actualizar tipo")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers", "types"] })
+    },
+  })
+}
+
+export function useDeleteResellerType() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${BASE}/admin/reseller-types/${id}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al eliminar tipo")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers", "types"] })
     },
   })
 }

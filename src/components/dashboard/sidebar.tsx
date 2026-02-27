@@ -101,6 +101,7 @@ const navEntries: NavEntry[] = [
       { href: "/dashboard/resellers/retiros", label: "Retiros", icon: Wallet },
       { href: "/dashboard/resellers/alertas", label: "Alertas de Fraude", icon: ShieldAlert },
       { href: "/dashboard/resellers/vouchers", label: "Vouchers", icon: Ticket },
+      { href: "/dashboard/resellers/config", label: "Configuración", icon: Settings },
     ],
   },
   { href: "/dashboard/analytics", label: "Analítica", icon: Satellite },
