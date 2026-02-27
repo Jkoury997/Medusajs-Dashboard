@@ -11,7 +11,7 @@ import {
   type DateRange,
 } from "@/components/dashboard/date-range-picker"
 import { useAllCustomers, useCustomerGroups, extractCustomerGroups, buildGroupNameMap, resolveCustomerGroups } from "@/hooks/use-customers"
-import { useAllOrders } from "@/hooks/use-orders"
+import { useAllOrders, useOrderPhoneMap } from "@/hooks/use-orders"
 import { getCustomerMetrics } from "@/lib/aggregations"
 import { formatCurrency, formatNumber, formatDate } from "@/lib/format"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -34,6 +34,7 @@ export default function CustomersPage() {
     to: dateRange.to,
   })
   const { data: customerGroupsData } = useCustomerGroups()
+  const { data: phoneMap } = useOrderPhoneMap()
 
   // Mapa ID → nombre de grupos nativos de Medusa
   const groupNameMap = useMemo(() => {
@@ -62,8 +63,8 @@ export default function CustomersPage() {
 
   const enrichedCustomers = useMemo(() => {
     if (!resolvedCustomers.length || !ordersData) return []
-    return getCustomerMetrics(resolvedCustomers, ordersData)
-  }, [resolvedCustomers, ordersData])
+    return getCustomerMetrics(resolvedCustomers, ordersData, phoneMap)
+  }, [resolvedCustomers, ordersData, phoneMap])
 
   const filteredCustomers = useMemo(() => {
     let result = enrichedCustomers

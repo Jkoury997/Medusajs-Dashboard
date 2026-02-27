@@ -183,8 +183,14 @@ export function calculateMetrics(orders: any[], previousOrders: any[]) {
 
 /**
  * Métricas de clientes — totalSpent y orderCount solo de órdenes pagadas (captured)
+ * phoneMap es opcional: si se provee, se usa para resolver teléfonos de todas las órdenes
+ * (no solo las filtradas por fecha).
  */
-export function getCustomerMetrics(customers: any[], orders: any[]) {
+export function getCustomerMetrics(
+  customers: any[],
+  orders: any[],
+  phoneMap?: { phoneByCustomerId: Map<string, string>; phoneByEmail: Map<string, string> }
+) {
   // Solo usar órdenes pagadas para calcular métricas de clientes
   const paidOrders = filterPaidOrders(orders)
 
@@ -234,11 +240,12 @@ export function getCustomerMetrics(customers: any[], orders: any[]) {
         )
       : null
 
-    // Si el cliente no tiene teléfono, buscar en shipping_address de sus órdenes
+    // Resolver teléfono: 1) customer.phone, 2) phoneMap (todas las órdenes), 3) shipping_address de órdenes filtradas
     const phone =
       customer.phone ||
-      customerOrders.find((o) => o.shipping_address?.phone)?.shipping_address
-        ?.phone ||
+      (phoneMap && customer.id ? phoneMap.phoneByCustomerId.get(customer.id) : undefined) ||
+      (phoneMap && customer.email ? phoneMap.phoneByEmail.get(customer.email.toLowerCase()) : undefined) ||
+      customerOrders.find((o) => o.shipping_address?.phone)?.shipping_address?.phone ||
       null
 
     return {

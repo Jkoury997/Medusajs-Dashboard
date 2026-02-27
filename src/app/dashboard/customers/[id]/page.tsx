@@ -40,9 +40,20 @@ export default function CustomerDetailPage({
 
   const { data: ordersData, isLoading: ordersLoading } = useCustomerOrders(id)
 
-  const customer = customerData?.customer
+  const rawCustomer = customerData?.customer
   const orders = ordersData?.orders || []
   const isLoading = customerLoading || ordersLoading
+
+  // Si el customer no tiene phone, buscar en shipping_address de sus órdenes
+  const customer = rawCustomer
+    ? {
+        ...rawCustomer,
+        phone:
+          rawCustomer.phone ||
+          orders.find((o: any) => o.shipping_address?.phone)?.shipping_address?.phone ||
+          null,
+      }
+    : rawCustomer
 
   const totalSpent = orders.reduce((sum: number, o: any) => sum + (o.total || 0), 0)
   const avgOrderValue = orders.length > 0 ? totalSpent / orders.length : 0

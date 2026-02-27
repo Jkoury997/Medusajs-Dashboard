@@ -88,3 +88,50 @@ export function useAllOrders(filters: OrderFilters = {}) {
     },
   })
 }
+
+// Campos livianos solo para extraer teléfonos de shipping_address
+const PHONE_FIELDS = "id,customer_id,email,*shipping_address"
+
+/**
+ * Obtiene un mapa customer_id/email → phone de TODAS las órdenes (sin filtro de fecha).
+ * Esto permite mostrar teléfono incluso si las órdenes están fuera del rango seleccionado.
+ */
+export function useOrderPhoneMap() {
+  return useQuery({
+    queryKey: ["orders", "phone-map"],
+    queryFn: async () => {
+      const phoneByCustomerId = new Map<string, string>()
+      const phoneByEmail = new Map<string, string>()
+      let offset = 0
+      const limit = 100
+      let total = Infinity
+
+      while (offset < total) {
+        const response = (await sdk.client.fetch("/admin/orders", {
+          query: { limit, offset, order: "-created_at", fields: PHONE_FIELDS },
+        })) as { orders: any[]; count: number }
+
+        for (const order of response.orders) {
+          const phone = order.shipping_address?.phone
+          if (!phone) continue
+
+          if (order.customer_id && !phoneByCustomerId.has(order.customer_id)) {
+            phoneByCustomerId.set(order.customer_id, phone)
+          }
+          if (order.email) {
+            const key = order.email.toLowerCase()
+            if (!phoneByEmail.has(key)) {
+              phoneByEmail.set(key, phone)
+            }
+          }
+        }
+
+        total = response.count
+        offset += limit
+      }
+
+      return { phoneByCustomerId, phoneByEmail }
+    },
+    staleTime: 5 * 60 * 1000, // 5 min cache
+  })
+}

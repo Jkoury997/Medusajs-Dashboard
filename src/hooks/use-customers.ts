@@ -161,6 +161,7 @@ export function useCustomerOrders(customerId: string) {
           customer_id: customerId,
           order: "-created_at",
           limit: 100,
+          fields: "+shipping_address",
         },
       })
 
