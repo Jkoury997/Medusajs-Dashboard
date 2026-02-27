@@ -234,8 +234,16 @@ export function getCustomerMetrics(customers: any[], orders: any[]) {
         )
       : null
 
+    // Si el cliente no tiene teléfono, buscar en shipping_address de sus órdenes
+    const phone =
+      customer.phone ||
+      customerOrders.find((o) => o.shipping_address?.phone)?.shipping_address
+        ?.phone ||
+      null
+
     return {
       ...customer,
+      phone,
       orderCount,
       totalSpent,
       avgOrderValue: orderCount > 0 ? totalSpent / orderCount : 0,

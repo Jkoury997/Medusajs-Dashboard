@@ -84,6 +84,7 @@ export function CustomerTable({
         <TableHeader>
           <TableRow>
             <TableHead>Cliente</TableHead>
+            <TableHead>Teléfono</TableHead>
             <TableHead>Grupo</TableHead>
             <SortHeader label="Órdenes" field="orderCount" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
             <SortHeader label="Total Gastado" field="totalSpent" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
@@ -96,7 +97,7 @@ export function CustomerTable({
         <TableBody>
           {customers.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+              <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                 No se encontraron clientes con los filtros seleccionados
               </TableCell>
             </TableRow>
@@ -115,6 +116,9 @@ export function CustomerTable({
                       <p className="text-sm text-gray-500">{customer.email}</p>
                     </div>
                   </Link>
+                </TableCell>
+                <TableCell className="text-sm text-gray-600">
+                  {customer.phone || "-"}
                 </TableCell>
                 <TableCell>
                   {customer.metadata?.customer_group_resolved ? (
