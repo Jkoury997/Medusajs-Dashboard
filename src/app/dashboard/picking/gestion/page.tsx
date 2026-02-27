@@ -172,8 +172,8 @@ export default function GestionPage() {
   return (
     <div className="flex flex-col h-full">
       <Header
-        title="Gesti\u00f3n de Pedidos"
-        description="Preparaci\u00f3n, env\u00edo y resoluci\u00f3n de faltantes"
+        title="Gestión de Pedidos"
+        description="Preparación, envío y resolución de faltantes"
       />
 
       <div className="flex-1 overflow-auto p-6 space-y-6">
@@ -221,7 +221,7 @@ export default function GestionPage() {
                       <TableHead>Pedido</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead className="text-center">Items</TableHead>
-                      <TableHead>M\u00e9todo Env\u00edo</TableHead>
+                      <TableHead>Método Envío</TableHead>
                       <TableHead>Fecha</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -355,7 +355,7 @@ export default function GestionPage() {
                       <TableHead>Pedido</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead className="text-center">Items</TableHead>
-                      <TableHead>Fecha Preparaci\u00f3n</TableHead>
+                      <TableHead>Fecha Preparación</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -417,7 +417,7 @@ export default function GestionPage() {
                       <TableHead>Pedido</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead className="text-center">Items</TableHead>
-                      <TableHead>Fecha Env\u00edo</TableHead>
+                      <TableHead>Fecha Envío</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -486,13 +486,13 @@ export default function GestionPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="resolution">Resoluci\u00f3n</Label>
+              <Label htmlFor="resolution">Resolución</Label>
               <Select
                 value={resolveResolution}
                 onValueChange={setResolveResolution}
               >
                 <SelectTrigger id="resolution">
-                  <SelectValue placeholder="Seleccionar resoluci\u00f3n" />
+                  <SelectValue placeholder="Seleccionar resolución" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="refund">Reembolso</SelectItem>
@@ -625,7 +625,7 @@ export default function GestionPage() {
                     <TableHead>SKU</TableHead>
                     <TableHead className="text-center">Faltante</TableHead>
                     <TableHead className="text-center">Recibido</TableHead>
-                    <TableHead className="text-right">Acci\u00f3n</TableHead>
+                    <TableHead className="text-right">Acción</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
