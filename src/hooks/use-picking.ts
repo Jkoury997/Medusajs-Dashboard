@@ -244,7 +244,32 @@ export function useGestionOrders(tab: GestionTab) {
     queryFn: async () => {
       const res = await fetch(`${BASE}/gestion?tab=${tab}`)
       if (!res.ok) throw new Error("Error al obtener pedidos de gestión")
-      return res.json() as Promise<GestionListResponse>
+      const raw = await res.json()
+      // API returns camelCase — transform to our snake_case types
+      const session = (o: Record<string, unknown>) =>
+        o.session as Record<string, unknown> | undefined
+      return {
+        orders: ((raw.orders ?? []) as Record<string, unknown>[]).map((o) => ({
+          order_id: (o.id as string) ?? "",
+          order_display_id: o.displayId != null ? String(o.displayId) : "",
+          customer_name: (o.customerName as string) ?? "",
+          customer_email: o.customerEmail as string | undefined,
+          items_count: (o.itemCount as number) ?? 0,
+          total: o.total as number | undefined,
+          shipping_method: o.shippingMethod as string | undefined,
+          status: (o.fulfillmentStatus as string) ?? "",
+          fulfillment_status: o.fulfillmentStatus as string | undefined,
+          picked_at: session(o)?.completedAt as string | undefined,
+          packed_at: session(o)?.packedAt as string | undefined,
+          shipped_at: o.shippedAt as string | undefined,
+          delivered_at: o.deliveredAt as string | undefined,
+          created_at: (o.createdAt as string) ?? "",
+          faltantes_count: (session(o)?.missingItems as unknown[])?.length ?? 0,
+          faltantes_resolved: o.faltantesResolved as boolean | undefined,
+        })),
+        counts: raw.counts ?? { "por-preparar": 0, faltantes: 0, "por-enviar": 0, enviados: 0 },
+        total: (raw.total as number) ?? 0,
+      } as GestionListResponse
     },
   })
 }
