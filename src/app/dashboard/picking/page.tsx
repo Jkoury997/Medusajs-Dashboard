@@ -141,7 +141,7 @@ export default function PickingStatsPage() {
             </div>
 
             {/* By Picker Table */}
-            {pickingStats.data.by_picker.length > 0 && (
+            {(pickingStats.data.by_picker?.length ?? 0) > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm font-medium">Rendimiento por Picker</CardTitle>
@@ -158,7 +158,7 @@ export default function PickingStatsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {pickingStats.data.by_picker.map((p) => (
+                        {pickingStats.data.by_picker?.map((p) => (
                           <tr key={p.user_id} className="border-b last:border-0">
                             <td className="py-2 font-medium">{p.user_name}</td>
                             <td className="py-2 text-right">{p.orders_picked}</td>
@@ -249,7 +249,7 @@ export default function PickingStatsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Ranking productos */}
-              {faltantesStats.data.ranking_products.length > 0 && (
+              {(faltantesStats.data.ranking_products?.length ?? 0) > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-sm font-medium">Ranking de Productos Faltantes</CardTitle>
@@ -265,7 +265,7 @@ export default function PickingStatsPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {faltantesStats.data.ranking_products.slice(0, 10).map((p) => (
+                          {faltantesStats.data.ranking_products?.slice(0, 10).map((p) => (
                             <tr key={p.product_id} className="border-b last:border-0">
                               <td className="py-2 font-medium truncate max-w-[200px]">{p.product_title}</td>
                               <td className="py-2 text-gray-500">{p.sku}</td>
@@ -280,7 +280,7 @@ export default function PickingStatsPage() {
               )}
 
               {/* By picker */}
-              {faltantesStats.data.by_picker.length > 0 && (
+              {(faltantesStats.data.by_picker?.length ?? 0) > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-sm font-medium">Faltantes por Picker</CardTitle>
@@ -295,7 +295,7 @@ export default function PickingStatsPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {faltantesStats.data.by_picker.map((p) => (
+                          {faltantesStats.data.by_picker?.map((p) => (
                             <tr key={p.user_id} className="border-b last:border-0">
                               <td className="py-2 font-medium">{p.user_name}</td>
                               <td className="py-2 text-right text-red-600 font-semibold">{p.total_faltantes}</td>
@@ -310,7 +310,7 @@ export default function PickingStatsPage() {
             </div>
 
             {/* Daily trend */}
-            {faltantesStats.data.daily_trend.length > 0 && (
+            {(faltantesStats.data.daily_trend?.length ?? 0) > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm font-medium">Tendencia Diaria de Faltantes</CardTitle>
@@ -371,7 +371,7 @@ export default function PickingStatsPage() {
             </div>
 
             {/* Recent activity */}
-            {activityStats.data.recent_activity.length > 0 && (
+            {(activityStats.data.recent_activity?.length ?? 0) > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm font-medium">Actividad Reciente</CardTitle>
@@ -388,7 +388,7 @@ export default function PickingStatsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {activityStats.data.recent_activity.slice(0, 15).map((a, i) => (
+                        {activityStats.data.recent_activity?.slice(0, 15).map((a, i) => (
                           <tr key={i} className="border-b last:border-0">
                             <td className="py-2 text-gray-500">
                               {new Date(a.timestamp).toLocaleString("es-AR", {

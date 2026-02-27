@@ -277,14 +277,14 @@ export default function AuditPage() {
                           <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                         </TableRow>
                       ))
-                    ) : auditData?.entries.length === 0 ? (
+                    ) : auditData?.entries?.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                           No se encontraron registros
                         </TableCell>
                       </TableRow>
                     ) : (
-                      auditData?.entries.map((entry) => (
+                      auditData?.entries?.map((entry) => (
                         <TableRow key={entry._id}>
                           <TableCell className="whitespace-nowrap">
                             {formatDate(entry.timestamp)}
@@ -420,14 +420,14 @@ export default function AuditPage() {
                           <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                         </TableRow>
                       ))
-                    ) : historyData?.entries.length === 0 ? (
+                    ) : historyData?.entries?.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                           No se encontraron registros
                         </TableCell>
                       </TableRow>
                     ) : (
-                      historyData?.entries.map((entry) => (
+                      historyData?.entries?.map((entry) => (
                         <TableRow key={entry._id}>
                           <TableCell className="whitespace-nowrap">
                             {formatDate(entry.completed_at)}

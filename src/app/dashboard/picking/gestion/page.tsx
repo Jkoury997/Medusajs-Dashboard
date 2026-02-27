@@ -613,7 +613,7 @@ export default function GestionPage() {
                   <Skeleton key={i} className="h-10 w-full" />
                 ))}
               </div>
-            ) : faltantesData.items.length === 0 ? (
+            ) : faltantesData?.items?.length === 0 ? (
               <p className="text-center text-gray-500 py-4">
                 No hay items faltantes para este pedido
               </p>
@@ -629,7 +629,7 @@ export default function GestionPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {faltantesData.items.map((item) => (
+                  {faltantesData?.items?.map((item) => (
                     <TableRow key={item.line_item_id}>
                       <TableCell className="font-medium">
                         {item.product_title}
