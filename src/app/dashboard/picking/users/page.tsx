@@ -143,7 +143,7 @@ export default function PickingUsersPage() {
   function openEditUser(user: PickingUser) {
     setEditingUser(user)
     setFormName(user.name)
-    setFormPin(user.pin)
+    setFormPin(user.pin ?? "")
     setFormRole(user.role)
     setFormStoreId(user.store_id ?? "")
     setFormActive(user.active)

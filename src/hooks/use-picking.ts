@@ -183,7 +183,19 @@ export function usePickingUsers(includeInactive = false) {
       const res = await fetch(`${BASE}/picking/users${params}`)
       if (!res.ok) throw new Error("Error al obtener usuarios")
       const data = await res.json()
-      return (data.users ?? data) as PickingUser[]
+      const raw = data.users ?? data
+      // API returns camelCase — transform to our snake_case types
+      return (raw as Record<string, unknown>[]).map((u) => ({
+        _id: (u._id as string) ?? "",
+        name: (u.name as string) ?? "",
+        pin: (u.pin as string) ?? "",
+        role: (u.role as string) ?? "picker",
+        active: (u.active as boolean) ?? true,
+        store_id: (u.storeId as string) ?? undefined,
+        store_name: (u.storeName as string) ?? undefined,
+        created_at: (u.createdAt as string) ?? "",
+        updated_at: (u.updatedAt as string) ?? "",
+      })) as PickingUser[]
     },
   })
 }
@@ -194,7 +206,29 @@ export function usePickingUserDetail(userId: string | null) {
     queryFn: async () => {
       const res = await fetch(`${BASE}/picking/users/${userId}`)
       if (!res.ok) throw new Error("Error al obtener detalle del usuario")
-      return res.json() as Promise<PickingUserWithStats>
+      const raw = await res.json()
+      // API returns { user, stats, recentSessions } — transform to our types
+      const u = raw.user ?? {}
+      const s = raw.stats
+      return {
+        _id: (u.id as string) ?? (u._id as string) ?? "",
+        name: (u.name as string) ?? "",
+        pin: "",
+        role: (u.role as string) ?? "picker",
+        active: (u.active as boolean) ?? true,
+        store_id: u.storeId as string | undefined,
+        store_name: u.storeName as string | undefined,
+        created_at: (u.createdAt as string) ?? "",
+        updated_at: (u.updatedAt as string) ?? "",
+        stats: s
+          ? {
+              orders_picked: (s.completedSessions as number) ?? 0,
+              avg_pick_time_seconds: (s.avgDurationSeconds as number) ?? 0,
+              items_picked: (s.totalItemsPicked as number) ?? 0,
+              faltantes: ((s.totalSessions as number) ?? 0) - ((s.completedSessions as number) ?? 0),
+            }
+          : undefined,
+      } as PickingUserWithStats
     },
     enabled: !!userId,
   })
@@ -238,7 +272,14 @@ export function usePickingStores() {
       const res = await fetch(`${BASE}/picking/stores`)
       if (!res.ok) throw new Error("Error al obtener tiendas")
       const data = await res.json()
-      return (data.stores ?? data) as PickingStore[]
+      const raw = data.stores ?? data
+      // API returns `id` (UUID) which users reference as storeId — use it as _id
+      return (raw as Record<string, unknown>[]).map((s) => ({
+        _id: (s.id as string) ?? (s._id as string) ?? "",
+        name: (s.name as string) ?? "",
+        address: s.address as string | undefined,
+        created_at: (s.createdAt as string) ?? "",
+      })) as PickingStore[]
     },
   })
 }
