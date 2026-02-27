@@ -27,6 +27,10 @@ import {
   Layers,
   DollarSign,
   ShoppingCart,
+  UserCheck,
+  Wallet,
+  ShieldAlert,
+  Ticket,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -86,6 +90,17 @@ const navEntries: NavEntry[] = [
       { href: "/dashboard/picking/audit", label: "Auditoría", icon: ClipboardList },
       { href: "/dashboard/picking/users", label: "Usuarios", icon: Users },
       { href: "/dashboard/picking/gestion", label: "Gestión", icon: Boxes },
+    ],
+  },
+  {
+    label: "Revendedoras",
+    icon: UserCheck,
+    children: [
+      { href: "/dashboard/resellers", label: "Resumen", icon: BarChart3 },
+      { href: "/dashboard/resellers/lista", label: "Lista", icon: Users },
+      { href: "/dashboard/resellers/retiros", label: "Retiros", icon: Wallet },
+      { href: "/dashboard/resellers/alertas", label: "Alertas de Fraude", icon: ShieldAlert },
+      { href: "/dashboard/resellers/vouchers", label: "Vouchers", icon: Ticket },
     ],
   },
   { href: "/dashboard/analytics", label: "Analítica", icon: Satellite },
