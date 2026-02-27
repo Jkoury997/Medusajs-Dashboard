@@ -32,7 +32,7 @@ export default function SinStockPage() {
       result = result.filter(
         (p) =>
           p.title.toLowerCase().includes(q) ||
-          p.handle?.toLowerCase().includes(q)
+          p.external_id?.toLowerCase().includes(q)
       )
     }
     return result
@@ -83,7 +83,7 @@ export default function SinStockPage() {
 
             <div className="flex items-center justify-between gap-4">
               <Input
-                placeholder="Buscar por nombre o handle..."
+                placeholder="Buscar por nombre o ID externo..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="max-w-sm"
@@ -97,7 +97,7 @@ export default function SinStockPage() {
                       outOfStockProducts,
                       [
                         { header: "Producto", accessor: (p) => p.title },
-                        { header: "Handle", accessor: (p) => p.handle || "" },
+                        { header: "ID Externo", accessor: (p) => p.external_id || "" },
                         {
                           header: "Variantes",
                           accessor: (p) => p.variants.length,
@@ -118,8 +118,9 @@ export default function SinStockPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[50px]">Imagen</TableHead>
                       <TableHead>Producto</TableHead>
-                      <TableHead>Handle</TableHead>
+                      <TableHead>ID Externo</TableHead>
                       <TableHead className="text-center">Variantes</TableHead>
                       <TableHead className="text-center">Stock</TableHead>
                     </TableRow>
@@ -128,7 +129,7 @@ export default function SinStockPage() {
                     {outOfStockProducts.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={4}
+                          colSpan={5}
                           className="text-center py-8 text-gray-500"
                         >
                           No hay productos completamente sin stock
@@ -137,11 +138,24 @@ export default function SinStockPage() {
                     ) : (
                       outOfStockProducts.map((product) => (
                         <TableRow key={product.id}>
+                          <TableCell>
+                            {product.thumbnail ? (
+                              <img
+                                src={product.thumbnail}
+                                alt={product.title}
+                                className="w-10 h-10 object-cover rounded"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">
+                                N/A
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="font-medium">
                             {product.title}
                           </TableCell>
-                          <TableCell className="text-gray-500 text-sm">
-                            {product.handle || "-"}
+                          <TableCell className="text-gray-500 text-sm font-mono">
+                            {product.external_id || "-"}
                           </TableCell>
                           <TableCell className="text-center">
                             {product.variants.length}

@@ -124,6 +124,7 @@ export default function VariantesSinStockPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[50px]">Imagen</TableHead>
                       <TableHead>Producto</TableHead>
                       <TableHead>Variante</TableHead>
                       <TableHead>SKU</TableHead>
@@ -134,7 +135,7 @@ export default function VariantesSinStockPage() {
                     {outOfStockVariants.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={4}
+                          colSpan={5}
                           className="text-center py-8 text-gray-500"
                         >
                           No hay variantes sin stock
@@ -143,6 +144,19 @@ export default function VariantesSinStockPage() {
                     ) : (
                       outOfStockVariants.map((variant) => (
                         <TableRow key={variant.id}>
+                          <TableCell>
+                            {variant.product_thumbnail ? (
+                              <img
+                                src={variant.product_thumbnail}
+                                alt={variant.product_title}
+                                className="w-10 h-10 object-cover rounded"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">
+                                N/A
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="font-medium">
                             {variant.product_title}
                           </TableCell>
