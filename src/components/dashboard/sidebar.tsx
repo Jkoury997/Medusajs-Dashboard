@@ -137,15 +137,15 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col">
+    <aside className="w-64 bg-white border-r border-gray-200 h-screen sticky top-0 flex flex-col">
       {/* Brand header */}
-      <div className="p-6 border-b border-mk-pink-border">
+      <div className="p-6 border-b border-mk-pink-border shrink-0">
         <h1 className="text-lg font-bold text-mk-pink">Marcela Koury</h1>
         <p className="text-sm text-gray-500">Dashboard de Ventas</p>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navEntries.map((entry) => {
           if (isNavGroup(entry)) {
             return (
