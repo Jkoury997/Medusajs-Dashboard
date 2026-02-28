@@ -6,6 +6,8 @@ import {
   useCreateResellerType,
   useUpdateResellerType,
   useDeleteResellerType,
+  useResellerSettings,
+  useUpdateResellerSetting,
 } from "@/hooks/use-resellers"
 import type { ResellerType } from "@/types/reseller"
 import type { CreateResellerTypeData, UpdateResellerTypeData } from "@/hooks/use-resellers"
@@ -47,6 +49,15 @@ export default function ResellersConfigPage() {
   const [form, setForm] = useState<CreateResellerTypeData>(EMPTY_FORM)
   const [editing, setEditing] = useState<EditingState>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+
+  // Settings
+  const { data: settings } = useResellerSettings()
+  const updateSetting = useUpdateResellerSetting()
+  const [editingMinWithdrawal, setEditingMinWithdrawal] = useState(false)
+  const [minWithdrawalPesos, setMinWithdrawalPesos] = useState("")
+
+  const currentMinWithdrawal = settings?.find((s) => s.key === "min_withdrawal_amount")
+  const currentMinPesos = currentMinWithdrawal ? Number(currentMinWithdrawal.value) / 100 : null
 
   function handleCreate() {
     if (!form.name.trim() || !form.display_name.trim()) return
@@ -516,6 +527,85 @@ export default function ResellersConfigPage() {
                   (deleteMutation.error as Error)?.message}
               </p>
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Settings section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Configuración General</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Min withdrawal amount */}
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div>
+              <h4 className="font-medium text-sm">Monto mínimo de retiro</h4>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Las revendedoras no podrán solicitar retiros por debajo de este monto
+              </p>
+            </div>
+            {editingMinWithdrawal ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">$</span>
+                <Input
+                  type="number"
+                  min={0}
+                  step={100}
+                  className="w-32 h-8 text-sm"
+                  value={minWithdrawalPesos}
+                  onChange={(e) => setMinWithdrawalPesos(e.target.value)}
+                  placeholder="ej: 5000"
+                />
+                <button
+                  className="p-1.5 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
+                  disabled={updateSetting.isPending || !minWithdrawalPesos}
+                  onClick={() => {
+                    const centavos = Math.round(Number(minWithdrawalPesos) * 100)
+                    updateSetting.mutate(
+                      { key: "min_withdrawal_amount", value: String(centavos) },
+                      {
+                        onSuccess: () => {
+                          setEditingMinWithdrawal(false)
+                          setMinWithdrawalPesos("")
+                        },
+                      }
+                    )
+                  }}
+                  title="Guardar"
+                >
+                  <Check className="w-4 h-4" />
+                </button>
+                <button
+                  className="p-1.5 text-gray-400 hover:bg-gray-50 rounded"
+                  onClick={() => { setEditingMinWithdrawal(false); setMinWithdrawalPesos("") }}
+                  title="Cancelar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-sm font-medium">
+                  {currentMinPesos != null
+                    ? `$${currentMinPesos.toLocaleString("es-AR")}`
+                    : "$1.000 (default)"}
+                </span>
+                <button
+                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                  onClick={() => {
+                    setMinWithdrawalPesos(currentMinPesos != null ? String(currentMinPesos) : "1000")
+                    setEditingMinWithdrawal(true)
+                  }}
+                  title="Editar"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+          {updateSetting.isError && (
+            <p className="text-sm text-red-500">{(updateSetting.error as Error).message}</p>
           )}
         </CardContent>
       </Card>

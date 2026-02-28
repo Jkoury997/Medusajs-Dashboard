@@ -435,3 +435,45 @@ export function useDeleteInvitationCode() {
     },
   })
 }
+
+// ============================================================
+// SETTINGS
+// ============================================================
+
+export interface ResellerSetting {
+  key: string
+  value: string
+}
+
+export function useResellerSettings() {
+  return useQuery({
+    queryKey: ["resellers", "settings"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/admin/settings`)
+      if (!res.ok) throw new Error("Error al obtener settings")
+      const data = await res.json()
+      return (data.settings ?? []) as ResellerSetting[]
+    },
+  })
+}
+
+export function useUpdateResellerSetting() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      const res = await fetch(`${BASE}/admin/settings/${key}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al actualizar setting")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers", "settings"] })
+    },
+  })
+}
