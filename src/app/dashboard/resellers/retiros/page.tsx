@@ -72,6 +72,8 @@ export default function ResellersRetirosPage() {
   const [paymentRef, setPaymentRef] = useState("")
   const [paymentProof, setPaymentProof] = useState("")
   const [paymentNotes, setPaymentNotes] = useState("")
+  const [uploading, setUploading] = useState(false)
+  const [uploadFileName, setUploadFileName] = useState("")
 
   const { data, isLoading, error } = useWithdrawals({
     status: statusFilter || undefined,
@@ -108,6 +110,24 @@ export default function ResellersRetirosPage() {
     }
   }
 
+  async function handleFileUpload(file: File) {
+    setUploading(true)
+    setActionError(null)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/upload", { method: "POST", body: formData })
+      if (!res.ok) throw new Error("Error al subir archivo")
+      const data = await res.json()
+      setPaymentProof(data.url)
+      setUploadFileName(file.name)
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : "Error al subir comprobante")
+    } finally {
+      setUploading(false)
+    }
+  }
+
   async function handleMarkPaid() {
     if (!modal || modal.kind !== "mark-paid") return
     setActionError(null)
@@ -124,6 +144,7 @@ export default function ResellersRetirosPage() {
       setPaymentRef("")
       setPaymentProof("")
       setPaymentNotes("")
+      setUploadFileName("")
     } catch (e: unknown) {
       setActionError(e instanceof Error ? e.message : "Error al marcar como pagado")
     }
@@ -135,6 +156,7 @@ export default function ResellersRetirosPage() {
     setPaymentRef("")
     setPaymentProof("")
     setPaymentNotes("")
+    setUploadFileName("")
   }
 
   if (error) {
@@ -208,12 +230,34 @@ export default function ResellersRetirosPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-600 mb-1">URL comprobante</label>
-                <Input
-                  value={paymentProof}
-                  onChange={(e) => setPaymentProof(e.target.value)}
-                  placeholder="https://..."
-                />
+                <label className="block text-sm text-gray-600 mb-1">Comprobante de pago</label>
+                {paymentProof ? (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-green-600">
+                      {uploadFileName || "Archivo subido"}
+                    </span>
+                    <button
+                      className="text-xs text-red-500 hover:underline"
+                      onClick={() => { setPaymentProof(""); setUploadFileName("") }}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    className="w-full text-sm border rounded-md p-1.5 file:mr-2 file:py-1 file:px-3 file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 file:rounded file:cursor-pointer"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleFileUpload(file)
+                    }}
+                  />
+                )}
+                {uploading && (
+                  <p className="text-xs text-blue-500 mt-1">Subiendo comprobante...</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Notas</label>
@@ -232,7 +276,7 @@ export default function ResellersRetirosPage() {
               </button>
               <button
                 className="px-4 py-2 text-sm bg-green-600 text-white rounded-md disabled:opacity-50"
-                disabled={isActioning}
+                disabled={isActioning || uploading}
                 onClick={handleMarkPaid}
               >
                 Confirmar Pago
