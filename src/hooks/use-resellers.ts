@@ -301,6 +301,76 @@ export function useWithdrawals(filters: WithdrawalFilters = {}) {
   })
 }
 
+export function useApproveWithdrawal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${BASE}/admin/withdrawals/${id}/approve`, {
+        method: "POST",
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || err.message || "Error al aprobar retiro")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers", "withdrawals"] })
+      qc.invalidateQueries({ queryKey: ["resellers", "stats"] })
+    },
+  })
+}
+
+export function useRejectWithdrawal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, rejection_reason }: { id: string; rejection_reason: string }) => {
+      const res = await fetch(`${BASE}/admin/withdrawals/${id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rejection_reason }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || err.message || "Error al rechazar retiro")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers", "withdrawals"] })
+      qc.invalidateQueries({ queryKey: ["resellers", "stats"] })
+    },
+  })
+}
+
+export interface MarkPaidData {
+  payment_reference?: string
+  payment_proof?: string
+  payment_notes?: string
+}
+
+export function useMarkWithdrawalPaid() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: MarkPaidData }) => {
+      const res = await fetch(`${BASE}/admin/withdrawals/${id}/mark-paid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || err.message || "Error al marcar como pagado")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers", "withdrawals"] })
+      qc.invalidateQueries({ queryKey: ["resellers", "stats"] })
+    },
+  })
+}
+
 // ============================================================
 // FRAUD ALERTS
 // ============================================================
