@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import {
   useResellerTypes,
   useCreateResellerType,
@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Pencil, Trash2, Plus, X, Check, Building2, FileText, Settings2, PenTool, Upload, Trash } from "lucide-react"
+import { Pencil, Trash2, Plus, X, Check, Building2, FileText, Settings2, PenTool, Upload, Trash, Eraser, RotateCcw } from "lucide-react"
 
 type EditingState = {
   id: string
@@ -1141,6 +1141,164 @@ function ContractSection({
 }
 
 /* ══════════════════════════════════════════════════════════════
+   Signature Pad Component
+   ══════════════════════════════════════════════════════════════ */
+
+function SignaturePad({
+  onSave,
+  onCancel,
+  saving,
+}: {
+  onSave: (base64: string) => void
+  onCancel: () => void
+  saving: boolean
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [hasDrawn, setHasDrawn] = useState(false)
+  const [penColor, setPenColor] = useState("#000000")
+  const [penSize, setPenSize] = useState(2)
+
+  const getCoords = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current
+      if (!canvas) return { x: 0, y: 0 }
+      const rect = canvas.getBoundingClientRect()
+      const scaleX = canvas.width / rect.width
+      const scaleY = canvas.height / rect.height
+      if ("touches" in e) {
+        const touch = e.touches[0]
+        return {
+          x: (touch.clientX - rect.left) * scaleX,
+          y: (touch.clientY - rect.top) * scaleY,
+        }
+      }
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY,
+      }
+    },
+    []
+  )
+
+  function startDraw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    e.preventDefault()
+    const ctx = canvasRef.current?.getContext("2d")
+    if (!ctx) return
+    const { x, y } = getCoords(e)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.strokeStyle = penColor
+    ctx.lineWidth = penSize
+    ctx.lineCap = "round"
+    ctx.lineJoin = "round"
+    setIsDrawing(true)
+  }
+
+  function draw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    e.preventDefault()
+    if (!isDrawing) return
+    const ctx = canvasRef.current?.getContext("2d")
+    if (!ctx) return
+    const { x, y } = getCoords(e)
+    ctx.lineTo(x, y)
+    ctx.stroke()
+    setHasDrawn(true)
+  }
+
+  function stopDraw() {
+    setIsDrawing(false)
+  }
+
+  function clearCanvas() {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    setHasDrawn(false)
+  }
+
+  function handleSave() {
+    const canvas = canvasRef.current
+    if (!canvas || !hasDrawn) return
+    const base64 = canvas.toDataURL("image/png")
+    onSave(base64)
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500">Color:</label>
+          <input
+            type="color"
+            value={penColor}
+            onChange={(e) => setPenColor(e.target.value)}
+            className="w-8 h-8 rounded cursor-pointer border"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500">Grosor:</label>
+          <input
+            type="range"
+            min={1}
+            max={6}
+            value={penSize}
+            onChange={(e) => setPenSize(Number(e.target.value))}
+            className="w-24"
+          />
+          <span className="text-xs text-gray-400 w-4">{penSize}</span>
+        </div>
+        <button
+          onClick={clearCanvas}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs border rounded-md text-gray-600 hover:bg-gray-50"
+        >
+          <Eraser className="w-3.5 h-3.5" />
+          Limpiar
+        </button>
+      </div>
+
+      <div className="border-2 border-gray-300 rounded-lg overflow-hidden bg-white">
+        <canvas
+          ref={canvasRef}
+          width={600}
+          height={200}
+          className="w-full cursor-crosshair touch-none"
+          style={{ height: "200px" }}
+          onMouseDown={startDraw}
+          onMouseMove={draw}
+          onMouseUp={stopDraw}
+          onMouseLeave={stopDraw}
+          onTouchStart={startDraw}
+          onTouchMove={draw}
+          onTouchEnd={stopDraw}
+        />
+      </div>
+      <p className="text-xs text-gray-400 text-center">
+        Dibujá tu firma con el mouse o el dedo en pantallas táctiles
+      </p>
+
+      <div className="flex gap-2">
+        <button
+          onClick={handleSave}
+          disabled={!hasDrawn || saving}
+          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md disabled:opacity-50"
+        >
+          {saving ? "Guardando..." : "Guardar firma"}
+        </button>
+        <button
+          onClick={onCancel}
+          className="px-4 py-2 text-sm border rounded-md text-gray-600"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════
    Company Signature Section
    ══════════════════════════════════════════════════════════════ */
 
@@ -1152,6 +1310,7 @@ function CompanySignatureSection({
   updateSetting: ReturnType<typeof useUpdateResellerSetting>
 }) {
   const [removing, setRemoving] = useState(false)
+  const [showPad, setShowPad] = useState(false)
 
   const signatureBase64 = settings?.find((s) => s.key === "company_signature")?.value ?? ""
   const hasSignature = signatureBase64.length > 0
@@ -1176,9 +1335,14 @@ function CompanySignatureSection({
       updateSetting.mutate({ key: "company_signature", value: base64 })
     }
     reader.readAsDataURL(file)
-
-    // Reset input
     e.target.value = ""
+  }
+
+  function handleSaveSignature(base64: string) {
+    updateSetting.mutate(
+      { key: "company_signature", value: base64 },
+      { onSuccess: () => setShowPad(false) }
+    )
   }
 
   function handleRemove() {
@@ -1201,10 +1365,16 @@ function CompanySignatureSection({
       <CardContent className="space-y-4">
         <p className="text-sm text-gray-500">
           Esta firma aparecerá en el PDF del contrato junto a la firma de la revendedora.
-          Subí una imagen PNG con fondo transparente para mejores resultados.
+          Podés dibujarla directamente o subir una imagen PNG con fondo transparente.
         </p>
 
-        {hasSignature ? (
+        {showPad ? (
+          <SignaturePad
+            onSave={handleSaveSignature}
+            onCancel={() => setShowPad(false)}
+            saving={updateSetting.isPending}
+          />
+        ) : hasSignature ? (
           <div className="space-y-3">
             <div className="border rounded-lg p-4 bg-gray-50 flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1214,10 +1384,17 @@ function CompanySignatureSection({
                 className="max-h-32 max-w-full object-contain"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setShowPad(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-md text-blue-600 hover:bg-blue-50"
+              >
+                <PenTool className="w-3.5 h-3.5" />
+                Dibujar nueva
+              </button>
               <label className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-md text-blue-600 hover:bg-blue-50 cursor-pointer">
                 <Upload className="w-3.5 h-3.5" />
-                Cambiar imagen
+                Subir imagen
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
@@ -1227,7 +1404,7 @@ function CompanySignatureSection({
               </label>
               {removing ? (
                 <div className="flex items-center gap-1">
-                  <span className="text-sm text-gray-500 mr-1">Eliminar?</span>
+                  <span className="text-sm text-gray-500 mr-1">¿Eliminar?</span>
                   <button
                     onClick={handleRemove}
                     disabled={updateSetting.isPending}
@@ -1256,20 +1433,32 @@ function CompanySignatureSection({
             </div>
           </div>
         ) : (
-          <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer transition-colors">
-            <Upload className="w-8 h-8 text-gray-400 mb-2" />
-            <span className="text-sm font-medium text-gray-600">Subir imagen de firma</span>
-            <span className="text-xs text-gray-400 mt-1">PNG, JPG o WebP (max 500KB)</span>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Draw signature */}
+            <button
+              onClick={() => setShowPad(true)}
+              className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer transition-colors"
+            >
+              <PenTool className="w-8 h-8 text-gray-400 mb-2" />
+              <span className="text-sm font-medium text-gray-600">Dibujar firma</span>
+              <span className="text-xs text-gray-400 mt-1">Dibujá con el mouse o dedo</span>
+            </button>
+            {/* Upload image */}
+            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer transition-colors">
+              <Upload className="w-8 h-8 text-gray-400 mb-2" />
+              <span className="text-sm font-medium text-gray-600">Subir imagen</span>
+              <span className="text-xs text-gray-400 mt-1">PNG, JPG o WebP (max 500KB)</span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </label>
+          </div>
         )}
 
-        {updateSetting.isPending && (
+        {updateSetting.isPending && !showPad && (
           <p className="text-sm text-blue-600">Guardando...</p>
         )}
         {updateSetting.isError && (
