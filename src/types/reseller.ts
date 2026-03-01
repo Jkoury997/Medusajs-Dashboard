@@ -61,7 +61,7 @@ export interface Reseller {
   referral_code: string
   status: ResellerStatus
   reseller_type_id: string
-  type?: {
+  reseller_type?: {
     id: string
     name: string
     display_name: string

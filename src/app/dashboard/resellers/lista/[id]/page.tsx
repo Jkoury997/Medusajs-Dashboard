@@ -303,7 +303,7 @@ export default function ResellerDetailPage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Datos Generales</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <Row label="Tipo" value={reseller.type?.display_name ?? "-"} />
+              <Row label="Tipo" value={reseller.reseller_type?.display_name ?? "-"} />
               <Row label="Código referido" value={reseller.referral_code} mono />
               <Row label="Contrato firmado" value={reseller.has_signed_contract ? "Sí" : "No"} />
               <Row label="Cert. Monotributo" value={reseller.has_monotributo_cert ? "Sí" : "No"} />
@@ -339,7 +339,7 @@ export default function ResellerDetailPage() {
                         className="w-full border rounded-md px-3 py-2 text-sm"
                         value={editCommission}
                         onChange={(e) => setEditCommission(e.target.value)}
-                        placeholder={`Default: ${reseller.type?.default_commission_percentage ?? "N/A"}%`}
+                        placeholder={`Default: ${reseller.reseller_type?.default_commission_percentage ?? "N/A"}%`}
                       />
                     </div>
                     <div>
@@ -387,7 +387,7 @@ export default function ResellerDetailPage() {
                     value={
                       reseller.custom_commission_percentage != null
                         ? `${reseller.custom_commission_percentage}%`
-                        : `Default del tipo (${reseller.type?.default_commission_percentage ?? "N/A"}%)`
+                        : `Default del tipo (${reseller.reseller_type?.default_commission_percentage ?? "N/A"}%)`
                     }
                   />
                   <Row

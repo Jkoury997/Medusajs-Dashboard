@@ -270,7 +270,7 @@ export default function ResellersListaPage() {
                         </TableCell>
                         <TableCell>
                           <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-                            {r.type?.display_name ?? "-"}
+                            {r.reseller_type?.display_name ?? "-"}
                           </span>
                         </TableCell>
                         <TableCell>
