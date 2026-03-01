@@ -22,6 +22,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { FileDown } from "lucide-react"
+
+const BASE = "/api/reseller-proxy"
 
 const STATUS_CONFIG: Record<ResellerStatus, { label: string; className: string }> = {
   active: { label: "Activa", className: "bg-green-100 text-green-700" },
@@ -65,6 +68,7 @@ export default function ResellerDetailPage() {
   const [editNotes, setEditNotes] = useState("")
   const [suspendReason, setSuspendReason] = useState("")
   const [showSuspend, setShowSuspend] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
 
   const approve = useApproveReseller()
   const suspend = useSuspendReseller()
@@ -72,6 +76,31 @@ export default function ResellerDetailPage() {
   const update = useUpdateReseller()
 
   const isActioning = approve.isPending || suspend.isPending || reactivate.isPending || update.isPending
+
+  async function handleDownloadContract() {
+    if (!reseller) return
+    setDownloadingPdf(true)
+    try {
+      const res = await fetch(`${BASE}/admin/resellers/${reseller.id}/contract/pdf`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || err.message || "Error al descargar contrato")
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `contrato-${reseller.referral_code}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : "Error al descargar contrato")
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
 
   function startEdit() {
     if (!reseller) return
@@ -235,6 +264,16 @@ export default function ResellerDetailPage() {
             onClick={handleReactivate}
           >
             Reactivar
+          </button>
+        )}
+        {reseller.has_signed_contract && (
+          <button
+            className="flex items-center gap-2 px-4 py-2 text-sm border rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            disabled={downloadingPdf}
+            onClick={handleDownloadContract}
+          >
+            <FileDown className="w-4 h-4" />
+            {downloadingPdf ? "Descargando..." : "Descargar Contrato PDF"}
           </button>
         )}
         {!editing && (
