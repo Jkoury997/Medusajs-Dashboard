@@ -1311,11 +1311,22 @@ function CompanySignatureSection({
 }) {
   const [removing, setRemoving] = useState(false)
   const [showPad, setShowPad] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
-  const signatureBase64 = settings?.find((s) => s.key === "company_signature")?.value ?? ""
-  const hasSignature = signatureBase64.length > 0
+  const signatureUrl = settings?.find((s) => s.key === "company_signature_url")?.value ?? ""
+  const hasSignature = signatureUrl.length > 0
 
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function uploadToBlob(file: File | Blob, filename: string): Promise<string> {
+    const formData = new FormData()
+    formData.append("file", file, filename)
+    const res = await fetch("/api/upload", { method: "POST", body: formData })
+    if (!res.ok) throw new Error("Error al subir imagen")
+    const data = await res.json()
+    return data.url
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -1329,28 +1340,46 @@ function CompanySignatureSection({
       return
     }
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      const base64 = reader.result as string
-      updateSetting.mutate({ key: "company_signature", value: base64 })
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const url = await uploadToBlob(file, `firma-empresa-${Date.now()}.png`)
+      updateSetting.mutate({ key: "company_signature_url", value: url })
+    } catch (err: unknown) {
+      setUploadError(err instanceof Error ? err.message : "Error al subir imagen")
+    } finally {
+      setUploading(false)
+      e.target.value = ""
     }
-    reader.readAsDataURL(file)
-    e.target.value = ""
   }
 
-  function handleSaveSignature(base64: string) {
-    updateSetting.mutate(
-      { key: "company_signature", value: base64 },
-      { onSuccess: () => setShowPad(false) }
-    )
+  async function handleSaveSignature(base64: string) {
+    setUploading(true)
+    setUploadError(null)
+    try {
+      // Convert base64 to blob
+      const res = await fetch(base64)
+      const blob = await res.blob()
+      const url = await uploadToBlob(blob, `firma-empresa-${Date.now()}.png`)
+      updateSetting.mutate(
+        { key: "company_signature_url", value: url },
+        { onSuccess: () => setShowPad(false) }
+      )
+    } catch (err: unknown) {
+      setUploadError(err instanceof Error ? err.message : "Error al guardar firma")
+    } finally {
+      setUploading(false)
+    }
   }
 
   function handleRemove() {
     updateSetting.mutate(
-      { key: "company_signature", value: "" },
+      { key: "company_signature_url", value: "" },
       { onSuccess: () => setRemoving(false) }
     )
   }
+
+  const isBusy = uploading || updateSetting.isPending
 
   return (
     <Card>
@@ -1372,14 +1401,14 @@ function CompanySignatureSection({
           <SignaturePad
             onSave={handleSaveSignature}
             onCancel={() => setShowPad(false)}
-            saving={updateSetting.isPending}
+            saving={isBusy}
           />
         ) : hasSignature ? (
           <div className="space-y-3">
             <div className="border rounded-lg p-4 bg-gray-50 flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={signatureBase64}
+                src={signatureUrl}
                 alt="Firma de la empresa"
                 className="max-h-32 max-w-full object-contain"
               />
@@ -1387,12 +1416,13 @@ function CompanySignatureSection({
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => setShowPad(true)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-md text-blue-600 hover:bg-blue-50"
+                disabled={isBusy}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-md text-blue-600 hover:bg-blue-50 disabled:opacity-50"
               >
                 <PenTool className="w-3.5 h-3.5" />
                 Dibujar nueva
               </button>
-              <label className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-md text-blue-600 hover:bg-blue-50 cursor-pointer">
+              <label className={`flex items-center gap-2 px-3 py-1.5 text-sm border rounded-md text-blue-600 hover:bg-blue-50 cursor-pointer ${isBusy ? "opacity-50 pointer-events-none" : ""}`}>
                 <Upload className="w-3.5 h-3.5" />
                 Subir imagen
                 <input
@@ -1400,6 +1430,7 @@ function CompanySignatureSection({
                   accept="image/png,image/jpeg,image/webp"
                   onChange={handleFileUpload}
                   className="hidden"
+                  disabled={isBusy}
                 />
               </label>
               {removing ? (
@@ -1407,7 +1438,7 @@ function CompanySignatureSection({
                   <span className="text-sm text-gray-500 mr-1">¿Eliminar?</span>
                   <button
                     onClick={handleRemove}
-                    disabled={updateSetting.isPending}
+                    disabled={isBusy}
                     className="p-1.5 text-red-600 hover:bg-red-50 rounded"
                     title="Confirmar"
                   >
@@ -1424,7 +1455,8 @@ function CompanySignatureSection({
               ) : (
                 <button
                   onClick={() => setRemoving(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-md text-red-500 hover:bg-red-50"
+                  disabled={isBusy}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-md text-red-500 hover:bg-red-50 disabled:opacity-50"
                 >
                   <Trash className="w-3.5 h-3.5" />
                   Eliminar
@@ -1437,14 +1469,15 @@ function CompanySignatureSection({
             {/* Draw signature */}
             <button
               onClick={() => setShowPad(true)}
-              className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer transition-colors"
+              disabled={isBusy}
+              className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer transition-colors disabled:opacity-50"
             >
               <PenTool className="w-8 h-8 text-gray-400 mb-2" />
               <span className="text-sm font-medium text-gray-600">Dibujar firma</span>
               <span className="text-xs text-gray-400 mt-1">Dibujá con el mouse o dedo</span>
             </button>
             {/* Upload image */}
-            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer transition-colors">
+            <label className={`flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer transition-colors ${isBusy ? "opacity-50 pointer-events-none" : ""}`}>
               <Upload className="w-8 h-8 text-gray-400 mb-2" />
               <span className="text-sm font-medium text-gray-600">Subir imagen</span>
               <span className="text-xs text-gray-400 mt-1">PNG, JPG o WebP (max 500KB)</span>
@@ -1453,13 +1486,19 @@ function CompanySignatureSection({
                 accept="image/png,image/jpeg,image/webp"
                 onChange={handleFileUpload}
                 className="hidden"
+                disabled={isBusy}
               />
             </label>
           </div>
         )}
 
-        {updateSetting.isPending && !showPad && (
-          <p className="text-sm text-blue-600">Guardando...</p>
+        {isBusy && !showPad && (
+          <p className="text-sm text-blue-600">
+            {uploading ? "Subiendo imagen..." : "Guardando..."}
+          </p>
+        )}
+        {uploadError && (
+          <p className="text-sm text-red-500">{uploadError}</p>
         )}
         {updateSetting.isError && (
           <p className="text-sm text-red-500">{(updateSetting.error as Error).message}</p>
