@@ -51,22 +51,22 @@ export default function ResellersResumenPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Total Revendedoras"
-              value={String(stats.total_resellers)}
+              value={String(stats.total_resellers ?? 0)}
               icon={<Users className="w-5 h-5 text-gray-400" />}
             />
             <MetricCard
               title="Activas"
-              value={String(stats.active_resellers)}
+              value={String(stats.active_resellers ?? 0)}
               icon={<UserCheck className="w-5 h-5 text-green-500" />}
             />
             <MetricCard
               title="Pendientes"
-              value={String(stats.pending_resellers)}
+              value={String(stats.pending_resellers ?? 0)}
               icon={<Clock className="w-5 h-5 text-yellow-500" />}
             />
             <MetricCard
               title="Suspendidas"
-              value={String(stats.suspended_resellers)}
+              value={String(stats.suspended_resellers ?? 0)}
               icon={<Ban className="w-5 h-5 text-red-500" />}
             />
           </div>
@@ -75,22 +75,22 @@ export default function ResellersResumenPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Ventas Totales"
-              value={formatCentavos(stats.total_sales_amount)}
+              value={formatCentavos(stats.total_sales_amount ?? 0)}
               icon={<DollarSign className="w-5 h-5 text-green-500" />}
             />
             <MetricCard
               title="Comisiones Ganadas"
-              value={formatCentavos(stats.total_commissions_earned)}
+              value={formatCentavos(stats.total_commissions_earned ?? 0)}
               icon={<TrendingUp className="w-5 h-5 text-blue-500" />}
             />
             <MetricCard
               title="Comisiones Pagadas"
-              value={formatCentavos(stats.total_commissions_paid)}
+              value={formatCentavos(stats.total_commissions_paid ?? 0)}
               icon={<Wallet className="w-5 h-5 text-purple-500" />}
             />
             <MetricCard
               title="Comisiones Pendientes"
-              value={formatCentavos(stats.total_commissions_pending)}
+              value={formatCentavos(stats.total_commissions_pending ?? 0)}
               icon={<Clock className="w-5 h-5 text-yellow-500" />}
             />
           </div>
@@ -99,24 +99,24 @@ export default function ResellersResumenPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Retiros Pendientes"
-              value={String(stats.total_withdrawals_pending)}
-              subtitle={formatCentavos(stats.total_withdrawals_pending_amount)}
+              value={String(stats.total_withdrawals_pending ?? 0)}
+              subtitle={stats.total_withdrawals_pending_amount ? formatCentavos(stats.total_withdrawals_pending_amount) : undefined}
               icon={<Wallet className="w-5 h-5 text-orange-500" />}
             />
             <MetricCard
               title="Total Pedidos"
-              value={String(stats.total_orders)}
+              value={String(stats.total_orders ?? 0)}
               icon={<ShoppingCart className="w-5 h-5 text-blue-500" />}
             />
             <MetricCard
               title="Clientes Totales"
-              value={String(stats.total_customers)}
+              value={String(stats.total_customers ?? 0)}
               icon={<Users className="w-5 h-5 text-indigo-500" />}
             />
             <MetricCard
               title="Clientes Activos"
-              value={String(stats.active_customers)}
-              subtitle={`${stats.inactive_customers} inactivos`}
+              value={String(stats.active_customers ?? 0)}
+              subtitle={stats.inactive_customers ? `${stats.inactive_customers} inactivos` : undefined}
               icon={<UserCheck className="w-5 h-5 text-green-500" />}
             />
           </div>
@@ -135,19 +135,19 @@ export default function ResellersResumenPage() {
                       className="border rounded-lg p-4 space-y-2"
                     >
                       <p className="font-medium text-gray-900">{t.type_name}</p>
-                      <div className="flex gap-3 text-sm">
+                      <div className="flex gap-3 text-sm flex-wrap">
                         <span className="text-gray-500">
                           Total: <span className="font-medium text-gray-900">{t.count}</span>
                         </span>
-                        <span className="text-green-600">
-                          Activas: {t.active}
-                        </span>
-                        <span className="text-yellow-600">
-                          Pendientes: {t.pending}
-                        </span>
-                        <span className="text-red-600">
-                          Suspendidas: {t.suspended}
-                        </span>
+                        {t.active != null && (
+                          <span className="text-green-600">Activas: {t.active}</span>
+                        )}
+                        {t.pending != null && (
+                          <span className="text-yellow-600">Pendientes: {t.pending}</span>
+                        )}
+                        {t.suspended != null && (
+                          <span className="text-red-600">Suspendidas: {t.suspended}</span>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -11,9 +11,9 @@ export interface ResellerDashboardStats {
     type_id: string
     type_name: string
     count: number
-    active: number
-    pending: number
-    suspended: number
+    active?: number
+    pending?: number
+    suspended?: number
   }[]
   total_sales_amount: number
   total_orders: number
