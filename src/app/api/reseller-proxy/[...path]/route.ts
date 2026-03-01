@@ -37,6 +37,19 @@ async function proxyRequest(
       return NextResponse.json(error, { status: response.status })
     }
 
+    // Handle binary responses (PDF, images, etc.)
+    const contentType = response.headers.get("content-type") || ""
+    if (!contentType.includes("application/json")) {
+      const buffer = await response.arrayBuffer()
+      return new NextResponse(buffer, {
+        status: response.status,
+        headers: {
+          "Content-Type": contentType,
+          "Content-Disposition": response.headers.get("content-disposition") || "",
+        },
+      })
+    }
+
     const data = await response.json()
     return NextResponse.json(data)
   } catch (error: unknown) {
