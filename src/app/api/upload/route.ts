@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   }
 
   const blob = await put(`comprobantes/${Date.now()}-${file.name}`, file, {
-    access: "private",
+    access: "public",
     token,
   })
 
