@@ -513,6 +513,8 @@ export function useDeleteInvitationCode() {
 export interface ResellerSetting {
   key: string
   value: string
+  value_type?: string
+  description?: string
 }
 
 export function useResellerSettings() {

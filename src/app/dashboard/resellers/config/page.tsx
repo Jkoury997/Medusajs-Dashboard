@@ -10,7 +10,7 @@ import {
   useUpdateResellerSetting,
 } from "@/hooks/use-resellers"
 import type { ResellerType } from "@/types/reseller"
-import type { CreateResellerTypeData, UpdateResellerTypeData } from "@/hooks/use-resellers"
+import type { CreateResellerTypeData, UpdateResellerTypeData, ResellerSetting } from "@/hooks/use-resellers"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -53,11 +53,6 @@ export default function ResellersConfigPage() {
   // Settings
   const { data: settings } = useResellerSettings()
   const updateSetting = useUpdateResellerSetting()
-  const [editingMinWithdrawal, setEditingMinWithdrawal] = useState(false)
-  const [minWithdrawalPesos, setMinWithdrawalPesos] = useState("")
-
-  const currentMinWithdrawal = settings?.find((s) => s.key === "min_withdrawal_amount")
-  const currentMinPesos = currentMinWithdrawal ? Number(currentMinWithdrawal.value) / 100 : null
 
   function handleCreate() {
     if (!form.name.trim() || !form.display_name.trim()) return
@@ -532,11 +527,65 @@ export default function ResellersConfigPage() {
       </Card>
 
       {/* Settings section */}
+      <SettingsSection settings={settings} updateSetting={updateSetting} />
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Settings Section
+   ══════════════════════════════════════════════════════════════ */
+
+interface SettingsSectionProps {
+  settings: ResellerSetting[] | undefined
+  updateSetting: ReturnType<typeof useUpdateResellerSetting>
+}
+
+function SettingsSection({ settings, updateSetting }: SettingsSectionProps) {
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState("")
+
+  function getSetting(key: string) {
+    return settings?.find((s) => s.key === key)
+  }
+
+  function getSettingValue(key: string, fallback: string = "") {
+    return getSetting(key)?.value ?? fallback
+  }
+
+  function startEdit(key: string, currentValue: string) {
+    setEditingKey(key)
+    setEditValue(currentValue)
+  }
+
+  function cancelEdit() {
+    setEditingKey(null)
+    setEditValue("")
+  }
+
+  function saveEdit(key: string, value: string) {
+    updateSetting.mutate(
+      { key, value },
+      { onSuccess: () => cancelEdit() }
+    )
+  }
+
+  function toggleBoolean(key: string, current: string) {
+    const newVal = current === "true" ? "false" : "true"
+    updateSetting.mutate({ key, value: newVal })
+  }
+
+  const minWithdrawalCentavos = Number(getSettingValue("min_withdrawal_amount", "100000"))
+  const minWithdrawalPesos = minWithdrawalCentavos / 100
+
+  return (
+    <>
+      {/* General Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Configuración General</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           {/* Min withdrawal amount */}
           <div className="flex items-center justify-between p-4 border rounded-lg">
             <div>
@@ -545,7 +594,7 @@ export default function ResellersConfigPage() {
                 Las revendedoras no podrán solicitar retiros por debajo de este monto
               </p>
             </div>
-            {editingMinWithdrawal ? (
+            {editingKey === "min_withdrawal_amount" ? (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-500">$</span>
                 <Input
@@ -553,32 +602,21 @@ export default function ResellersConfigPage() {
                   min={0}
                   step={100}
                   className="w-32 h-8 text-sm"
-                  value={minWithdrawalPesos}
-                  onChange={(e) => setMinWithdrawalPesos(e.target.value)}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
                   placeholder="ej: 5000"
                 />
                 <button
                   className="p-1.5 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
-                  disabled={updateSetting.isPending || !minWithdrawalPesos}
-                  onClick={() => {
-                    const centavos = Math.round(Number(minWithdrawalPesos) * 100)
-                    updateSetting.mutate(
-                      { key: "min_withdrawal_amount", value: String(centavos) },
-                      {
-                        onSuccess: () => {
-                          setEditingMinWithdrawal(false)
-                          setMinWithdrawalPesos("")
-                        },
-                      }
-                    )
-                  }}
+                  disabled={updateSetting.isPending || !editValue}
+                  onClick={() => saveEdit("min_withdrawal_amount", String(Math.round(Number(editValue) * 100)))}
                   title="Guardar"
                 >
                   <Check className="w-4 h-4" />
                 </button>
                 <button
                   className="p-1.5 text-gray-400 hover:bg-gray-50 rounded"
-                  onClick={() => { setEditingMinWithdrawal(false); setMinWithdrawalPesos("") }}
+                  onClick={cancelEdit}
                   title="Cancelar"
                 >
                   <X className="w-4 h-4" />
@@ -587,16 +625,11 @@ export default function ResellersConfigPage() {
             ) : (
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm font-medium">
-                  {currentMinPesos != null
-                    ? `$${currentMinPesos.toLocaleString("es-AR")}`
-                    : "$1.000 (default)"}
+                  ${minWithdrawalPesos.toLocaleString("es-AR")}
                 </span>
                 <button
                   className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                  onClick={() => {
-                    setMinWithdrawalPesos(currentMinPesos != null ? String(currentMinPesos) : "1000")
-                    setEditingMinWithdrawal(true)
-                  }}
+                  onClick={() => startEdit("min_withdrawal_amount", String(minWithdrawalPesos))}
                   title="Editar"
                 >
                   <Pencil className="w-4 h-4" />
@@ -604,11 +637,163 @@ export default function ResellersConfigPage() {
               </div>
             )}
           </div>
+
+          {/* Contract version */}
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div>
+              <h4 className="font-medium text-sm">Versión del contrato</h4>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Al cambiar la versión, las revendedoras deberán firmar nuevamente
+              </p>
+            </div>
+            {editingKey === "contract_version" ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  className="w-24 h-8 text-sm"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  placeholder="ej: 1.0"
+                />
+                <button
+                  className="p-1.5 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
+                  disabled={updateSetting.isPending || !editValue.trim()}
+                  onClick={() => saveEdit("contract_version", editValue)}
+                  title="Guardar"
+                >
+                  <Check className="w-4 h-4" />
+                </button>
+                <button
+                  className="p-1.5 text-gray-400 hover:bg-gray-50 rounded"
+                  onClick={cancelEdit}
+                  title="Cancelar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-sm font-medium">
+                  v{getSettingValue("contract_version", "1.0")}
+                </span>
+                <button
+                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                  onClick={() => startEdit("contract_version", getSettingValue("contract_version", "1.0"))}
+                  title="Editar"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Boolean toggles */}
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div>
+              <h4 className="font-medium text-sm">Requiere contrato para 1er retiro</h4>
+              <p className="text-xs text-gray-500 mt-0.5">
+                La revendedora debe firmar el contrato antes de su primer retiro
+              </p>
+            </div>
+            <button
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                getSettingValue("first_withdrawal_requires_contract", "true") === "true"
+                  ? "bg-blue-600"
+                  : "bg-gray-300"
+              }`}
+              disabled={updateSetting.isPending}
+              onClick={() =>
+                toggleBoolean("first_withdrawal_requires_contract", getSettingValue("first_withdrawal_requires_contract", "true"))
+              }
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  getSettingValue("first_withdrawal_requires_contract", "true") === "true"
+                    ? "translate-x-6"
+                    : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div>
+              <h4 className="font-medium text-sm">Requiere monotributo para 1er retiro</h4>
+              <p className="text-xs text-gray-500 mt-0.5">
+                La revendedora debe subir su constancia de monotributo antes de su primer retiro
+              </p>
+            </div>
+            <button
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                getSettingValue("first_withdrawal_requires_monotributo", "true") === "true"
+                  ? "bg-blue-600"
+                  : "bg-gray-300"
+              }`}
+              disabled={updateSetting.isPending}
+              onClick={() =>
+                toggleBoolean("first_withdrawal_requires_monotributo", getSettingValue("first_withdrawal_requires_monotributo", "true"))
+              }
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  getSettingValue("first_withdrawal_requires_monotributo", "true") === "true"
+                    ? "translate-x-6"
+                    : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+
           {updateSetting.isError && (
             <p className="text-sm text-red-500">{(updateSetting.error as Error).message}</p>
           )}
         </CardContent>
       </Card>
-    </div>
+
+      {/* Contract text */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Texto del Contrato</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {editingKey === "contract_text" ? (
+            <div className="space-y-3">
+              <textarea
+                className="w-full border rounded-md p-3 text-sm font-mono leading-relaxed min-h-[300px]"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md disabled:opacity-50"
+                  disabled={updateSetting.isPending}
+                  onClick={() => saveEdit("contract_text", editValue)}
+                >
+                  {updateSetting.isPending ? "Guardando..." : "Guardar"}
+                </button>
+                <button
+                  className="px-4 py-2 text-sm border rounded-md text-gray-600"
+                  onClick={cancelEdit}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <pre className="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 border rounded-md p-4 max-h-[400px] overflow-y-auto leading-relaxed">
+                {getSettingValue("contract_text", "Sin contrato configurado")}
+              </pre>
+              <button
+                className="mt-3 flex items-center gap-2 px-4 py-2 text-sm border rounded-md text-blue-600 hover:bg-blue-50"
+                onClick={() => startEdit("contract_text", getSettingValue("contract_text", ""))}
+              >
+                <Pencil className="w-4 h-4" />
+                Editar contrato
+              </button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   )
 }
