@@ -135,6 +135,11 @@ export interface WithdrawalRequest {
     email: string
     first_name: string
     last_name: string
+    phone?: string
+    bank_account_configured?: boolean
+    bank_account_holder?: string | null
+    bank_name?: string | null
+    bank_cbu?: string | null
   }
   requested_amount: number
   currency_code: string

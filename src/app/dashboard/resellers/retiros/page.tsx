@@ -7,7 +7,7 @@ import {
   useRejectWithdrawal,
   useMarkWithdrawalPaid,
 } from "@/hooks/use-resellers"
-import type { WithdrawalStatus } from "@/types/reseller"
+import type { WithdrawalStatus, WithdrawalRequest } from "@/types/reseller"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -54,9 +54,42 @@ function formatDate(iso: string): string {
   })
 }
 
+/* ── Bank details card component ── */
+function BankDetailsCard({ reseller }: { reseller?: WithdrawalRequest["reseller"] }) {
+  if (!reseller?.bank_account_configured) {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+        <p className="text-sm text-yellow-700 font-medium">⚠ Sin datos bancarios configurados</p>
+        <p className="text-xs text-yellow-600 mt-1">La revendedora aún no cargó sus datos bancarios.</p>
+      </div>
+    )
+  }
+  return (
+    <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+      <p className="text-sm font-semibold text-blue-800 mb-2">Datos bancarios para transferir</p>
+      <div className="space-y-1 text-sm">
+        <div className="flex justify-between">
+          <span className="text-gray-600">Titular:</span>
+          <span className="font-medium text-gray-900">{reseller.bank_account_holder ?? "-"}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-600">Banco:</span>
+          <span className="font-medium text-gray-900">{reseller.bank_name ?? "-"}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-600">CBU / Alias:</span>
+          <span className="font-mono font-medium text-gray-900">{reseller.bank_cbu ?? "-"}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 type ModalType =
   | { kind: "reject"; id: string; name: string }
-  | { kind: "mark-paid"; id: string; name: string; amount: number }
+  | { kind: "approve"; id: string; name: string; amount: number; reseller?: WithdrawalRequest["reseller"] }
+  | { kind: "mark-paid"; id: string; name: string; amount: number; reseller?: WithdrawalRequest["reseller"] }
+  | { kind: "bank-details"; name: string; reseller?: WithdrawalRequest["reseller"] }
   | null
 
 export default function ResellersRetirosPage() {
@@ -88,10 +121,12 @@ export default function ResellersRetirosPage() {
   const isActioning = approve.isPending || reject.isPending || markPaid.isPending
   const count = data?.count ?? 0
 
-  async function handleApprove(id: string) {
+  async function handleApprove() {
+    if (!modal || modal.kind !== "approve") return
     setActionError(null)
     try {
-      await approve.mutateAsync(id)
+      await approve.mutateAsync(modal.id)
+      setModal(null)
     } catch (e: unknown) {
       setActionError(e instanceof Error ? e.message : "Error al aprobar")
     }
@@ -182,7 +217,35 @@ export default function ResellersRetirosPage() {
         </div>
       )}
 
-      {/* Reject modal */}
+      {/* ── Approve modal with bank details ── */}
+      {modal?.kind === "approve" && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
+            <h3 className="font-semibold text-lg mb-1">Aprobar Retiro</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              {modal.name} — {formatCentavos(modal.amount)}
+            </p>
+            <BankDetailsCard reseller={modal.reseller} />
+            <p className="text-sm text-gray-600 mb-4">
+              ¿Confirmar la aprobación de este retiro?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button className="px-4 py-2 text-sm border rounded-md" onClick={closeModal}>
+                Cancelar
+              </button>
+              <button
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md disabled:opacity-50"
+                disabled={isActioning}
+                onClick={handleApprove}
+              >
+                Aprobar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reject modal ── */}
       {modal?.kind === "reject" && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
@@ -212,14 +275,15 @@ export default function ResellersRetirosPage() {
         </div>
       )}
 
-      {/* Mark paid modal */}
+      {/* ── Mark paid modal with bank details ── */}
       {modal?.kind === "mark-paid" && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg">
             <h3 className="font-semibold text-lg mb-1">Marcar como Pagado</h3>
             <p className="text-sm text-gray-500 mb-4">
               {modal.name} — {formatCentavos(modal.amount)}
             </p>
+            <BankDetailsCard reseller={modal.reseller} />
             <div className="space-y-3 mb-4">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Nro. de transacción / referencia</label>
@@ -286,6 +350,22 @@ export default function ResellersRetirosPage() {
         </div>
       )}
 
+      {/* ── Bank details view modal ── */}
+      {modal?.kind === "bank-details" && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
+            <h3 className="font-semibold text-lg mb-1">Datos Bancarios</h3>
+            <p className="text-sm text-gray-500 mb-4">{modal.name}</p>
+            <BankDetailsCard reseller={modal.reseller} />
+            <div className="flex justify-end">
+              <button className="px-4 py-2 text-sm border rounded-md" onClick={closeModal}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Status tabs */}
       <div className="flex gap-1 border-b">
         {STATUS_TABS.map((tab) => (
@@ -316,9 +396,8 @@ export default function ResellersRetirosPage() {
                   <TableHead>Revendedora</TableHead>
                   <TableHead className="text-right">Monto</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Método</TableHead>
+                  <TableHead>Banco</TableHead>
                   <TableHead>Referencia</TableHead>
-                  <TableHead>Notas</TableHead>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -327,7 +406,7 @@ export default function ResellersRetirosPage() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 8 }).map((_, j) => (
+                      {Array.from({ length: 7 }).map((_, j) => (
                         <TableCell key={j}>
                           <div className="h-4 bg-gray-200 rounded animate-pulse w-20" />
                         </TableCell>
@@ -336,7 +415,7 @@ export default function ResellersRetirosPage() {
                   ))
                 ) : !data?.withdrawals?.length ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                       No hay retiros
                     </TableCell>
                   </TableRow>
@@ -370,28 +449,30 @@ export default function ResellersRetirosPage() {
                           </span>
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
-                          {w.payment_method ?? "-"}
+                          {w.reseller?.bank_name ?? "-"}
                         </TableCell>
                         <TableCell className="text-sm text-gray-500 font-mono">
                           {w.payment_reference ?? "-"}
-                        </TableCell>
-                        <TableCell
-                          className="text-sm text-gray-500 max-w-[150px] truncate"
-                          title={w.reseller_notes || w.payment_notes || ""}
-                        >
-                          {w.reseller_notes || w.payment_notes || "-"}
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
                           {formatDate(w.created_at)}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 flex-wrap">
                             {w.status === "pending" && (
                               <>
                                 <button
                                   className="px-2 py-1 text-xs bg-blue-600 text-white rounded disabled:opacity-50"
                                   disabled={isActioning}
-                                  onClick={() => handleApprove(w.id)}
+                                  onClick={() =>
+                                    setModal({
+                                      kind: "approve",
+                                      id: w.id,
+                                      name: resellerName,
+                                      amount: w.requested_amount,
+                                      reseller: w.reseller,
+                                    })
+                                  }
                                 >
                                   Aprobar
                                 </button>
@@ -416,22 +497,31 @@ export default function ResellersRetirosPage() {
                                     id: w.id,
                                     name: resellerName,
                                     amount: w.requested_amount,
+                                    reseller: w.reseller,
                                   })
                                 }
                               >
                                 Marcar Pagado
                               </button>
                             )}
-                            {w.status === "rejected" && w.payment_notes && (
-                              <span className="text-xs text-red-500" title={w.payment_notes}>
-                                {w.payment_notes.slice(0, 30)}...
-                              </span>
-                            )}
                             {w.status === "paid" && w.payment_reference && (
                               <span className="text-xs text-green-600 font-mono">
                                 {w.payment_reference}
                               </span>
                             )}
+                            {/* Bank details button - always visible */}
+                            <button
+                              className="px-2 py-1 text-xs border border-gray-300 text-gray-600 rounded hover:bg-gray-50"
+                              onClick={() =>
+                                setModal({
+                                  kind: "bank-details",
+                                  name: resellerName,
+                                  reseller: w.reseller,
+                                })
+                              }
+                            >
+                              Datos bancarios
+                            </button>
                           </div>
                         </TableCell>
                       </TableRow>
