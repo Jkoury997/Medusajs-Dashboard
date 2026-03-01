@@ -18,17 +18,18 @@ import {
 } from "@/components/ui/table"
 
 const PAGE_SIZE = 20
+const BASE = "/api/reseller-proxy"
 
 const STATUS_CONFIG: Record<DocumentStatus, { label: string; className: string }> = {
   pending: { label: "Pendiente", className: "bg-yellow-100 text-yellow-700" },
-  verified: { label: "Verificado", className: "bg-green-100 text-green-700" },
+  approved: { label: "Aprobado", className: "bg-green-100 text-green-700" },
   rejected: { label: "Rechazado", className: "bg-red-100 text-red-700" },
 }
 
 const STATUS_TABS: { value: DocumentStatus | ""; label: string }[] = [
   { value: "", label: "Todos" },
   { value: "pending", label: "Pendientes" },
-  { value: "verified", label: "Verificados" },
+  { value: "approved", label: "Aprobados" },
   { value: "rejected", label: "Rechazados" },
 ]
 
@@ -54,6 +55,7 @@ function formatFileSize(bytes: number): string {
 
 type ModalType =
   | { kind: "reject"; id: string; name: string }
+  | { kind: "view"; id: string; name: string; mimeType: string }
   | null
 
 export default function ResellersDocumentosPage() {
@@ -62,6 +64,8 @@ export default function ResellersDocumentosPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [modal, setModal] = useState<ModalType>(null)
   const [rejectReason, setRejectReason] = useState("")
+  const [fileContent, setFileContent] = useState<string | null>(null)
+  const [fileLoading, setFileLoading] = useState(false)
 
   const { data, isLoading, error } = useDocuments({
     status: statusFilter || undefined,
@@ -97,6 +101,25 @@ export default function ResellersDocumentosPage() {
     }
   }
 
+  async function handleViewFile(id: string, name: string, mimeType: string) {
+    setModal({ kind: "view", id, name, mimeType })
+    setFileContent(null)
+    setFileLoading(true)
+    try {
+      const res = await fetch(`${BASE}/admin/documents/${id}`)
+      if (!res.ok) throw new Error("Error al obtener archivo")
+      const data = await res.json()
+      const content = data.document?.file_content
+      if (!content) throw new Error("El documento no tiene archivo")
+      setFileContent(content)
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : "Error al cargar archivo")
+      setModal(null)
+    } finally {
+      setFileLoading(false)
+    }
+  }
+
   if (error) {
     return (
       <div className="p-6">
@@ -117,6 +140,58 @@ export default function ResellersDocumentosPage() {
       {actionError && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm">
           {actionError}
+        </div>
+      )}
+
+      {/* View file modal */}
+      {modal?.kind === "view" && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-semibold text-lg truncate">{modal.name}</h3>
+              <button
+                className="px-3 py-1 text-sm border rounded-md hover:bg-gray-50"
+                onClick={() => { setModal(null); setFileContent(null) }}
+              >
+                Cerrar
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center min-h-[300px]">
+              {fileLoading ? (
+                <div className="text-gray-500 text-sm">Cargando archivo...</div>
+              ) : fileContent ? (
+                modal.mimeType.startsWith("image/") ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`data:${modal.mimeType};base64,${fileContent}`}
+                    alt={modal.name}
+                    className="max-w-full max-h-[70vh] object-contain"
+                  />
+                ) : modal.mimeType === "application/pdf" ? (
+                  <iframe
+                    src={`data:application/pdf;base64,${fileContent}`}
+                    className="w-full h-[70vh]"
+                    title={modal.name}
+                  />
+                ) : (
+                  <div className="text-center space-y-3">
+                    <p className="text-gray-500 text-sm">
+                      No se puede previsualizar este tipo de archivo ({modal.mimeType})
+                    </p>
+                    <a
+                      href={`data:${modal.mimeType};base64,${fileContent}`}
+                      download={modal.name}
+                      className="inline-block px-4 py-2 text-sm bg-blue-600 text-white rounded-md"
+                    >
+                      Descargar
+                    </a>
+                  </div>
+                )
+              ) : (
+                <div className="text-gray-400 text-sm">Sin contenido</div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -207,7 +282,7 @@ export default function ResellersDocumentosPage() {
                   </TableRow>
                 ) : (
                   data.documents.map((doc) => {
-                    const statusCfg = STATUS_CONFIG[doc.status] ?? {
+                    const statusCfg = STATUS_CONFIG[doc.status as DocumentStatus] ?? {
                       label: doc.status,
                       className: "bg-gray-100 text-gray-600",
                     }
@@ -231,9 +306,19 @@ export default function ResellersDocumentosPage() {
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
                           <div>
-                            <p className="truncate max-w-[200px]" title={doc.original_filename}>
+                            <button
+                              className="text-blue-600 hover:underline truncate max-w-[200px] block text-left"
+                              title={doc.original_filename}
+                              onClick={() =>
+                                handleViewFile(
+                                  doc.id,
+                                  doc.original_filename,
+                                  doc.mime_type
+                                )
+                              }
+                            >
                               {doc.original_filename}
-                            </p>
+                            </button>
                             <p className="text-xs text-gray-400">
                               {formatFileSize(doc.file_size)} — {doc.mime_type}
                             </p>
@@ -256,6 +341,18 @@ export default function ResellersDocumentosPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
+                            <button
+                              className="px-2 py-1 text-xs bg-blue-600 text-white rounded"
+                              onClick={() =>
+                                handleViewFile(
+                                  doc.id,
+                                  doc.original_filename,
+                                  doc.mime_type
+                                )
+                              }
+                            >
+                              Ver
+                            </button>
                             {doc.status === "pending" && (
                               <>
                                 <button
@@ -263,7 +360,7 @@ export default function ResellersDocumentosPage() {
                                   disabled={isActioning}
                                   onClick={() => handleVerify(doc.id)}
                                 >
-                                  Verificar
+                                  Aprobar
                                 </button>
                                 <button
                                   className="px-2 py-1 text-xs bg-red-600 text-white rounded disabled:opacity-50"
@@ -276,9 +373,9 @@ export default function ResellersDocumentosPage() {
                                 </button>
                               </>
                             )}
-                            {doc.status === "verified" && doc.verified_at && (
+                            {doc.status === "approved" && doc.verified_at && (
                               <span className="text-xs text-green-600">
-                                Verificado {formatDate(doc.verified_at)}
+                                Aprobado {formatDate(doc.verified_at)}
                               </span>
                             )}
                           </div>

@@ -413,18 +413,17 @@ export default function ResellerDetailPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead className="text-center">Pedidos</TableHead>
-                    <TableHead className="text-right">Total Gastado</TableHead>
-                    <TableHead>Registro</TableHead>
+                    <TableHead>Email Cliente</TableHead>
+                    <TableHead>Origen</TableHead>
+                    <TableHead className="text-center">Estado</TableHead>
+                    <TableHead>Vinculado</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loadingCustomers ? (
                     Array.from({ length: 3 }).map((_, i) => (
                       <TableRow key={i}>
-                        {Array.from({ length: 5 }).map((_, j) => (
+                        {Array.from({ length: 4 }).map((_, j) => (
                           <TableCell key={j}>
                             <div className="h-4 bg-gray-200 rounded animate-pulse w-20" />
                           </TableCell>
@@ -433,22 +432,23 @@ export default function ResellerDetailPage() {
                     ))
                   ) : !customers || customers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
                         Esta revendedora no tiene clientes aún
                       </TableCell>
                     </TableRow>
                   ) : (
                     customers.map((c) => (
                       <TableRow key={c.id}>
-                        <TableCell className="font-medium">
-                          {c.first_name} {c.last_name}
+                        <TableCell className="font-medium text-sm">
+                          {c.customer_email}
                         </TableCell>
-                        <TableCell className="text-sm text-gray-500">{c.email}</TableCell>
-                        <TableCell className="text-center">{c.total_orders}</TableCell>
-                        <TableCell className="text-right font-mono text-sm">
-                          {formatCentavos(c.total_spent)}
+                        <TableCell className="text-sm text-gray-500">{c.link_source}</TableCell>
+                        <TableCell className="text-center">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                            {c.is_active ? "Activo" : "Inactivo"}
+                          </span>
                         </TableCell>
-                        <TableCell className="text-sm text-gray-500">{fmtDate(c.created_at)}</TableCell>
+                        <TableCell className="text-sm text-gray-500">{fmtDate(c.linked_at)}</TableCell>
                       </TableRow>
                     ))
                   )}
@@ -496,10 +496,10 @@ export default function ResellerDetailPage() {
                     commissions.map((c) => (
                       <TableRow key={c.id}>
                         <TableCell className="font-mono text-sm">
-                          #{c.order_display_id ?? c.order_id?.slice(-6)}
+                          #{c.order_id?.slice(-8)}
                         </TableCell>
                         <TableCell className="text-right font-mono text-sm">
-                          {formatCentavos(c.sale_amount)}
+                          {formatCentavos(c.order_total)}
                         </TableCell>
                         <TableCell className="text-center text-sm">
                           {c.commission_percentage}%

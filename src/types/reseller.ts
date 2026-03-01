@@ -101,24 +101,31 @@ export interface ResellerFilters {
 
 export interface ResellerCustomer {
   id: string
-  email: string
-  first_name: string
-  last_name: string
-  total_orders: number
-  total_spent: number
+  reseller_id: string
+  customer_id: string
+  customer_email: string
+  link_source: string
+  is_active: boolean
+  linked_at: string
   created_at: string
 }
 
 export interface ResellerCommission {
   id: string
+  reseller_id: string
   order_id: string
-  order_display_id?: string
-  sale_amount: number
+  customer_id: string
+  customer_email: string
+  order_total: number
   commission_percentage: number
   commission_amount: number
   status: string
   currency_code: string
+  refund_amount: number | null
+  adjusted_commission_amount: number | null
+  notes: string | null
   created_at: string
+  updated_at: string
 }
 
 // ============================================================
@@ -278,7 +285,7 @@ export interface InvitationCodeFilters {
 // DOCUMENTS
 // ============================================================
 
-export type DocumentStatus = "pending" | "verified" | "rejected"
+export type DocumentStatus = "pending" | "approved" | "rejected"
 
 export interface ResellerDocument {
   id: string
