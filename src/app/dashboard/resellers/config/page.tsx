@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Pencil, Trash2, Plus, X, Check, Building2, FileText, Settings2 } from "lucide-react"
+import { Pencil, Trash2, Plus, X, Check, Building2, FileText, Settings2, PenTool, Upload, Trash } from "lucide-react"
 
 type EditingState = {
   id: string
@@ -121,6 +121,9 @@ export default function ResellersConfigPage() {
 
       {/* Contract */}
       <ContractSection settings={settings} updateSetting={updateSetting} />
+
+      {/* Company Signature */}
+      <CompanySignatureSection settings={settings} updateSetting={updateSetting} />
 
       {/* Reseller Types */}
       <div className="space-y-4">
@@ -1129,6 +1132,146 @@ function ContractSection({
           </pre>
         )}
 
+        {updateSetting.isError && (
+          <p className="text-sm text-red-500">{(updateSetting.error as Error).message}</p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Company Signature Section
+   ══════════════════════════════════════════════════════════════ */
+
+function CompanySignatureSection({
+  settings,
+  updateSetting,
+}: {
+  settings: ResellerSetting[] | undefined
+  updateSetting: ReturnType<typeof useUpdateResellerSetting>
+}) {
+  const [removing, setRemoving] = useState(false)
+
+  const signatureBase64 = settings?.find((s) => s.key === "company_signature")?.value ?? ""
+  const hasSignature = signatureBase64.length > 0
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith("image/")) {
+      alert("Solo se permiten archivos de imagen (PNG, JPG, etc.)")
+      return
+    }
+
+    if (file.size > 500 * 1024) {
+      alert("La imagen no debe superar los 500KB")
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64 = reader.result as string
+      updateSetting.mutate({ key: "company_signature", value: base64 })
+    }
+    reader.readAsDataURL(file)
+
+    // Reset input
+    e.target.value = ""
+  }
+
+  function handleRemove() {
+    updateSetting.mutate(
+      { key: "company_signature", value: "" },
+      { onSuccess: () => setRemoving(false) }
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <PenTool className="w-5 h-5" />
+            Firma de la Empresa
+          </CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-gray-500">
+          Esta firma aparecerá en el PDF del contrato junto a la firma de la revendedora.
+          Subí una imagen PNG con fondo transparente para mejores resultados.
+        </p>
+
+        {hasSignature ? (
+          <div className="space-y-3">
+            <div className="border rounded-lg p-4 bg-gray-50 flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={signatureBase64}
+                alt="Firma de la empresa"
+                className="max-h-32 max-w-full object-contain"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-md text-blue-600 hover:bg-blue-50 cursor-pointer">
+                <Upload className="w-3.5 h-3.5" />
+                Cambiar imagen
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+              {removing ? (
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-gray-500 mr-1">Eliminar?</span>
+                  <button
+                    onClick={handleRemove}
+                    disabled={updateSetting.isPending}
+                    className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                    title="Confirmar"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setRemoving(false)}
+                    className="p-1.5 text-gray-400 hover:bg-gray-50 rounded"
+                    title="Cancelar"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setRemoving(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-md text-red-500 hover:bg-red-50"
+                >
+                  <Trash className="w-3.5 h-3.5" />
+                  Eliminar
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer transition-colors">
+            <Upload className="w-8 h-8 text-gray-400 mb-2" />
+            <span className="text-sm font-medium text-gray-600">Subir imagen de firma</span>
+            <span className="text-xs text-gray-400 mt-1">PNG, JPG o WebP (max 500KB)</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </label>
+        )}
+
+        {updateSetting.isPending && (
+          <p className="text-sm text-blue-600">Guardando...</p>
+        )}
         {updateSetting.isError && (
           <p className="text-sm text-red-500">{(updateSetting.error as Error).message}</p>
         )}
