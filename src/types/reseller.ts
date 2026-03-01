@@ -273,3 +273,46 @@ export interface InvitationCodeFilters {
   limit?: number
   offset?: number
 }
+
+// ============================================================
+// DOCUMENTS
+// ============================================================
+
+export type DocumentStatus = "pending" | "verified" | "rejected"
+
+export interface ResellerDocument {
+  id: string
+  reseller_id: string
+  document_type: string
+  original_filename: string
+  mime_type: string
+  file_size: number
+  status: DocumentStatus
+  verified_at: string | null
+  verified_by_user_id: string | null
+  verification_notes: string | null
+  rejection_reason: string | null
+  has_file: boolean
+  reseller?: {
+    id: string
+    referral_code: string
+    email: string
+    first_name: string
+    last_name: string
+  } | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DocumentListResponse {
+  documents: ResellerDocument[]
+  count: number
+  limit: number
+  offset: number
+}
+
+export interface DocumentFilters {
+  status?: DocumentStatus
+  limit?: number
+  offset?: number
+}

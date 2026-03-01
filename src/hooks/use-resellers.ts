@@ -17,6 +17,8 @@ import type {
   VoucherFilters,
   InvitationCodeListResponse,
   InvitationCodeFilters,
+  DocumentListResponse,
+  DocumentFilters,
 } from "@/types/reseller"
 
 const BASE = "/api/reseller-proxy"
@@ -307,6 +309,8 @@ export function useApproveWithdrawal() {
     mutationFn: async (id: string) => {
       const res = await fetch(`${BASE}/admin/withdrawals/${id}/approve`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payment_method: "transferencia_bancaria" }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Error desconocido" }))
@@ -546,6 +550,66 @@ export function useUpdateResellerSetting() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["resellers", "settings"] })
+    },
+  })
+}
+
+// ============================================================
+// DOCUMENTS
+// ============================================================
+
+export function useDocuments(filters: DocumentFilters = {}) {
+  const params = new URLSearchParams()
+  if (filters.status) params.set("status", filters.status)
+  params.set("limit", String(filters.limit ?? 20))
+  params.set("offset", String(filters.offset ?? 0))
+
+  return useQuery({
+    queryKey: ["resellers", "documents", filters],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/admin/documents?${params}`)
+      if (!res.ok) throw new Error("Error al obtener documentos")
+      return res.json() as Promise<DocumentListResponse>
+    },
+  })
+}
+
+export function useVerifyDocument() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${BASE}/admin/documents/${id}/verify`, {
+        method: "POST",
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || err.message || "Error al verificar documento")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers", "documents"] })
+    },
+  })
+}
+
+export function useRejectDocument() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, rejection_reason }: { id: string; rejection_reason: string }) => {
+      const res = await fetch(`${BASE}/admin/documents/${id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rejection_reason }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || err.message || "Error al rechazar documento")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers", "documents"] })
     },
   })
 }

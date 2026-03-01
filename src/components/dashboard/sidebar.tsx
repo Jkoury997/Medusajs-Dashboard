@@ -32,6 +32,7 @@ import {
   ShieldAlert,
   Ticket,
   KeyRound,
+  FileCheck,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -102,6 +103,7 @@ const navEntries: NavEntry[] = [
       { href: "/dashboard/resellers/retiros", label: "Retiros", icon: Wallet },
       { href: "/dashboard/resellers/alertas", label: "Alertas de Fraude", icon: ShieldAlert },
       { href: "/dashboard/resellers/vouchers", label: "Vouchers", icon: Ticket },
+      { href: "/dashboard/resellers/documentos", label: "Documentos", icon: FileCheck },
       { href: "/dashboard/resellers/invitaciones", label: "Invitaciones", icon: KeyRound },
       { href: "/dashboard/resellers/config", label: "Configuración", icon: Settings },
     ],
