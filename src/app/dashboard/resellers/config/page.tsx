@@ -21,7 +21,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Pencil, Trash2, Plus, X, Check, Building2, FileText, Settings2, PenTool, Upload, Trash, Eraser, RotateCcw, Rocket } from "lucide-react"
+import { Pencil, Trash2, Plus, X, Check, Building2, FileText, Settings2, PenTool, Upload, Trash, Eraser, RotateCcw, Rocket, RefreshCw, Link2, CheckCircle2, AlertCircle } from "lucide-react"
+import {
+  useMedusaCustomerGroups,
+  useMedusaPromotions,
+  useSyncAllResellerTypes,
+  computeSyncStatus,
+} from "@/hooks/use-medusa-sync"
 
 type EditingState = {
   id: string
@@ -127,6 +133,9 @@ export default function ResellersConfigPage() {
 
       {/* Product Boost Settings */}
       <ProductBoostSettingsSection settings={settings} updateSetting={updateSetting} />
+
+      {/* Medusa Sync */}
+      <MedusaSyncSection resellerTypes={types} />
 
       {/* Reseller Types */}
       <div className="space-y-4">
@@ -1758,6 +1767,161 @@ function ProductBoostSettingsSection({ settings, updateSetting }: SettingsSectio
             </div>
           )}
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ============================================================
+// MEDUSA SYNC SECTION
+// ============================================================
+
+function MedusaSyncSection({ resellerTypes }: { resellerTypes: ResellerType[] | undefined }) {
+  const { data: customerGroups, isLoading: loadingGroups } = useMedusaCustomerGroups()
+  const { data: promotions, isLoading: loadingPromos } = useMedusaPromotions()
+  const syncAll = useSyncAllResellerTypes()
+
+  const isLoading = loadingGroups || loadingPromos
+
+  const syncStatuses = resellerTypes && customerGroups && promotions
+    ? computeSyncStatus(resellerTypes, customerGroups, promotions)
+    : []
+
+  const allSynced = syncStatuses.length > 0 && syncStatuses.every((s) => s.synced)
+  const pendingCount = syncStatuses.filter((s) => !s.synced).length
+
+  function handleSyncAll() {
+    if (!syncStatuses.length) return
+    syncAll.mutate({ statuses: syncStatuses })
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Link2 className="w-5 h-5" />
+            Sincronización con Medusa
+          </CardTitle>
+          <button
+            onClick={handleSyncAll}
+            disabled={syncAll.isPending || isLoading || !resellerTypes?.length}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncAll.isPending ? "animate-spin" : ""}`} />
+            {syncAll.isPending ? "Sincronizando..." : "Sincronizar Todo"}
+          </button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-gray-500">
+          Sincroniza los tipos de revendedora con Medusa para crear <strong>Customer Groups</strong> y{" "}
+          <strong>Promotions automáticas</strong>. Cuando un cliente pertenezca al grupo, el descuento
+          se aplica automáticamente en su compra.
+        </p>
+
+        {allSynced && (
+          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <CheckCircle2 className="w-4 h-4 text-green-600" />
+            <span className="text-sm text-green-700">Todos los tipos están sincronizados con Medusa</span>
+          </div>
+        )}
+
+        {pendingCount > 0 && !syncAll.isPending && (
+          <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-amber-600" />
+            <span className="text-sm text-amber-700">
+              {pendingCount} tipo{pendingCount > 1 ? "s" : ""} sin sincronizar
+            </span>
+          </div>
+        )}
+
+        {syncAll.isSuccess && (
+          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <CheckCircle2 className="w-4 h-4 text-green-600" />
+            <span className="text-sm text-green-700">Sincronización completada exitosamente</span>
+          </div>
+        )}
+
+        {syncAll.isError && (
+          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-red-600" />
+            <span className="text-sm text-red-700">
+              Error: {(syncAll.error as Error).message}
+            </span>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
+            ))}
+          </div>
+        ) : syncStatuses.length > 0 ? (
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tipo de Revendedora</TableHead>
+                  <TableHead className="text-center">Descuento</TableHead>
+                  <TableHead className="text-center">Customer Group</TableHead>
+                  <TableHead className="text-center">Promotion</TableHead>
+                  <TableHead className="text-center">Estado</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {syncStatuses.map((status) => (
+                  <TableRow key={status.resellerType.id}>
+                    <TableCell className="font-medium">
+                      {status.resellerType.display_name}
+                    </TableCell>
+                    <TableCell className="text-center font-mono">
+                      {status.resellerType.default_customer_discount_percentage}%
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {status.customerGroup ? (
+                        <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                          <CheckCircle2 className="w-3 h-3" />
+                          {status.customerGroup.name}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">Sin crear</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {status.promotion ? (
+                        <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                          <CheckCircle2 className="w-3 h-3" />
+                          {status.promotion.code}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">Sin crear</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {status.synced ? (
+                        <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Sincronizado
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
+                          <AlertCircle className="w-3 h-3" />
+                          Pendiente
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400 text-center py-4">
+            No hay tipos de revendedora para sincronizar
+          </p>
+        )}
       </CardContent>
     </Card>
   )
