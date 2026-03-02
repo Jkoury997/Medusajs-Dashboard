@@ -323,3 +323,49 @@ export interface DocumentFilters {
   limit?: number
   offset?: number
 }
+
+// ============================================================
+// PRODUCT BOOSTS
+// ============================================================
+
+export type ProductBoostReason = "stagnant" | "manual"
+
+export interface ProductBoost {
+  id: string
+  product_id: string
+  product_title: string
+  product_handle: string
+  thumbnail: string | null
+  bonus_percentage: number
+  reason: ProductBoostReason
+  is_active: boolean
+  last_sale_at: string | null
+  total_sales_30d: number
+  auto_detected_at: string | null
+  expires_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProductBoostListResponse {
+  product_boosts: ProductBoost[]
+  count: number
+  page: number
+  limit: number
+}
+
+export interface ProductBoostStats {
+  total: number
+  total_active: number
+  active_stagnant: number
+  active_manual: number
+  inactive: number
+  avg_bonus_percentage: number
+}
+
+export interface ProductBoostFilters {
+  is_active?: boolean
+  reason?: ProductBoostReason
+  page?: number
+  limit?: number
+}

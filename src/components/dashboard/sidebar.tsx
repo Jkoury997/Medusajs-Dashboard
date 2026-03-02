@@ -33,6 +33,7 @@ import {
   Ticket,
   KeyRound,
   FileCheck,
+  Rocket,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -108,6 +109,7 @@ const navEntries: NavEntry[] = [
       { href: "/dashboard/resellers/config", label: "Configuración", icon: Settings },
     ],
   },
+  { href: "/dashboard/product-boosts", label: "Boosts", icon: Rocket },
   { href: "/dashboard/analytics", label: "Analítica", icon: Satellite },
   { href: "/dashboard/ai", label: "IA Insights", icon: Bot },
 ]

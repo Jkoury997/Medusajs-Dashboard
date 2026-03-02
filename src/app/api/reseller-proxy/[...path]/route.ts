@@ -16,6 +16,7 @@ async function proxyRequest(
 
     const headers: Record<string, string> = {
       "x-api-key": RESELLER_API_KEY,
+      "x-admin-api-key": RESELLER_API_KEY,
       "Content-Type": "application/json",
     }
 

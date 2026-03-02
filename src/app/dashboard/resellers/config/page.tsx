@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Pencil, Trash2, Plus, X, Check, Building2, FileText, Settings2, PenTool, Upload, Trash, Eraser, RotateCcw } from "lucide-react"
+import { Pencil, Trash2, Plus, X, Check, Building2, FileText, Settings2, PenTool, Upload, Trash, Eraser, RotateCcw, Rocket } from "lucide-react"
 
 type EditingState = {
   id: string
@@ -124,6 +124,9 @@ export default function ResellersConfigPage() {
 
       {/* Company Signature */}
       <CompanySignatureSection settings={settings} updateSetting={updateSetting} />
+
+      {/* Product Boost Settings */}
+      <ProductBoostSettingsSection settings={settings} updateSetting={updateSetting} />
 
       {/* Reseller Types */}
       <div className="space-y-4">
@@ -1503,6 +1506,230 @@ function CompanySignatureSection({
         {updateSetting.isError && (
           <p className="text-sm text-red-500">{(updateSetting.error as Error).message}</p>
         )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// ============================================================
+// PRODUCT BOOST SETTINGS
+// ============================================================
+
+function ProductBoostSettingsSection({ settings, updateSetting }: SettingsSectionProps) {
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState("")
+
+  function getSettingValue(key: string, fallback: string = "") {
+    return settings?.find((s) => s.key === key)?.value ?? fallback
+  }
+
+  function startEdit(key: string, currentValue: string) {
+    setEditingKey(key)
+    setEditValue(currentValue)
+  }
+
+  function cancelEdit() {
+    setEditingKey(null)
+    setEditValue("")
+  }
+
+  function saveEdit(key: string, value: string) {
+    updateSetting.mutate(
+      { key, value },
+      { onSuccess: () => cancelEdit() }
+    )
+  }
+
+  function toggleBoolean(key: string, current: string) {
+    const newVal = current === "true" ? "false" : "true"
+    updateSetting.mutate({ key, value: newVal })
+  }
+
+  const isEnabled = getSettingValue("product_boost_enabled", "false") === "true"
+  const stagnantDays = getSettingValue("product_boost_stagnant_days", "30")
+  const defaultPct = getSettingValue("product_boost_default_percentage", "5")
+  const maxPct = getSettingValue("product_boost_max_percentage", "15")
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Rocket className="w-5 h-5" />
+          Product Boosts
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Enabled toggle */}
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div>
+            <h4 className="font-medium text-sm">Boosts habilitados</h4>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Activa o desactiva el sistema de bonus por productos estancados
+            </p>
+          </div>
+          <button
+            onClick={() => toggleBoolean("product_boost_enabled", String(isEnabled))}
+            disabled={updateSetting.isPending}
+            className={`relative w-10 h-6 rounded-full transition-colors ${
+              isEnabled ? "bg-green-500" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                isEnabled ? "translate-x-4" : ""
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Stagnant days */}
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div>
+            <h4 className="font-medium text-sm">Días para estancado</h4>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Cantidad de días sin ventas para considerar un producto como estancado
+            </p>
+          </div>
+          {editingKey === "product_boost_stagnant_days" ? (
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={1}
+                max={365}
+                className="w-24 h-8 text-sm"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+              />
+              <span className="text-xs text-gray-500">días</span>
+              <button
+                className="p-1.5 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
+                disabled={updateSetting.isPending || !editValue}
+                onClick={() => saveEdit("product_boost_stagnant_days", editValue)}
+                title="Guardar"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+              <button
+                className="p-1.5 text-gray-400 hover:bg-gray-50 rounded"
+                onClick={cancelEdit}
+                title="Cancelar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-sm font-medium">{stagnantDays} días</span>
+              <button
+                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                onClick={() => startEdit("product_boost_stagnant_days", stagnantDays)}
+                title="Editar"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Default percentage */}
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div>
+            <h4 className="font-medium text-sm">Bonus por defecto</h4>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Porcentaje de bonus de comisión asignado automáticamente a productos estancados
+            </p>
+          </div>
+          {editingKey === "product_boost_default_percentage" ? (
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                className="w-24 h-8 text-sm"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+              />
+              <span className="text-xs text-gray-500">%</span>
+              <button
+                className="p-1.5 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
+                disabled={updateSetting.isPending || !editValue}
+                onClick={() => saveEdit("product_boost_default_percentage", editValue)}
+                title="Guardar"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+              <button
+                className="p-1.5 text-gray-400 hover:bg-gray-50 rounded"
+                onClick={cancelEdit}
+                title="Cancelar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-sm font-medium">{defaultPct}%</span>
+              <button
+                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                onClick={() => startEdit("product_boost_default_percentage", defaultPct)}
+                title="Editar"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Max percentage */}
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div>
+            <h4 className="font-medium text-sm">Bonus máximo</h4>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Porcentaje máximo de bonus que se puede asignar a un producto
+            </p>
+          </div>
+          {editingKey === "product_boost_max_percentage" ? (
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                className="w-24 h-8 text-sm"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+              />
+              <span className="text-xs text-gray-500">%</span>
+              <button
+                className="p-1.5 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
+                disabled={updateSetting.isPending || !editValue}
+                onClick={() => saveEdit("product_boost_max_percentage", editValue)}
+                title="Guardar"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+              <button
+                className="p-1.5 text-gray-400 hover:bg-gray-50 rounded"
+                onClick={cancelEdit}
+                title="Cancelar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-sm font-medium">{maxPct}%</span>
+              <button
+                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                onClick={() => startEdit("product_boost_max_percentage", maxPct)}
+                title="Editar"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   )
