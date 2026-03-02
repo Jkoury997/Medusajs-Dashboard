@@ -44,6 +44,7 @@ export interface ResellerType {
   has_wholesale_prices: boolean
   is_active: boolean
   priority: number
+  customer_group_id: string | null
 }
 
 // ============================================================

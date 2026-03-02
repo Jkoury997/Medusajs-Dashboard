@@ -8,9 +8,10 @@ import {
   useDeleteResellerType,
   useResellerSettings,
   useUpdateResellerSetting,
+  useMedusaCustomerGroups,
 } from "@/hooks/use-resellers"
 import type { ResellerType } from "@/types/reseller"
-import type { CreateResellerTypeData, UpdateResellerTypeData, ResellerSetting } from "@/hooks/use-resellers"
+import type { CreateResellerTypeData, UpdateResellerTypeData, ResellerSetting, MedusaCustomerGroup } from "@/hooks/use-resellers"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -37,6 +38,7 @@ const EMPTY_FORM: CreateResellerTypeData = {
   default_customer_discount_percentage: 0,
   has_wholesale_prices: false,
   priority: 0,
+  customer_group_id: null,
 }
 
 export default function ResellersConfigPage() {
@@ -53,6 +55,9 @@ export default function ResellersConfigPage() {
   // Settings
   const { data: settings } = useResellerSettings()
   const updateSetting = useUpdateResellerSetting()
+
+  // Medusa customer groups for dropdown
+  const { data: customerGroups } = useMedusaCustomerGroups()
 
   function handleCreate() {
     if (!form.name.trim() || !form.display_name.trim()) return
@@ -92,6 +97,7 @@ export default function ResellersConfigPage() {
         has_wholesale_prices: t.has_wholesale_prices,
         is_active: t.is_active,
         priority: t.priority,
+        customer_group_id: t.customer_group_id,
       },
     })
   }
@@ -224,6 +230,25 @@ export default function ResellersConfigPage() {
                     onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })}
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Customer Group (Medusa)
+                  </label>
+                  <select
+                    className="w-full h-9 rounded-md border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-mk-pink"
+                    value={form.customer_group_id ?? ""}
+                    onChange={(e) =>
+                      setForm({ ...form, customer_group_id: e.target.value || null })
+                    }
+                  >
+                    <option value="">Sin grupo</option>
+                    {customerGroups?.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="flex items-center gap-6 pt-6">
                   <label className="flex items-center gap-2 text-sm">
                     <input
@@ -285,6 +310,7 @@ export default function ResellersConfigPage() {
                     <TableHead className="text-center">Mayorista</TableHead>
                     <TableHead className="text-center">Activo</TableHead>
                     <TableHead className="text-center">Prioridad</TableHead>
+                    <TableHead>Customer Group</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -292,7 +318,7 @@ export default function ResellersConfigPage() {
                   {isLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
                       <TableRow key={i}>
-                        {Array.from({ length: 9 }).map((_, j) => (
+                        {Array.from({ length: 10 }).map((_, j) => (
                           <TableCell key={j}>
                             <div className="h-4 bg-gray-200 rounded animate-pulse w-16" />
                           </TableCell>
@@ -301,7 +327,7 @@ export default function ResellersConfigPage() {
                     ))
                   ) : !types?.length ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                         No hay tipos de revendedora
                       </TableCell>
                     </TableRow>
@@ -425,6 +451,28 @@ export default function ResellersConfigPage() {
                                 }
                               />
                             </TableCell>
+                            <TableCell>
+                              <select
+                                className="h-8 rounded-md border border-gray-300 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-mk-pink"
+                                value={editing.data.customer_group_id ?? ""}
+                                onChange={(e) =>
+                                  setEditing({
+                                    ...editing,
+                                    data: {
+                                      ...editing.data,
+                                      customer_group_id: e.target.value || null,
+                                    },
+                                  })
+                                }
+                              >
+                                <option value="">Sin grupo</option>
+                                {customerGroups?.map((g) => (
+                                  <option key={g.id} value={g.id}>
+                                    {g.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button
@@ -490,6 +538,15 @@ export default function ResellersConfigPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-center">{t.priority}</TableCell>
+                          <TableCell>
+                            {t.customer_group_id ? (
+                              <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
+                                {customerGroups?.find((g) => g.id === t.customer_group_id)?.name ?? t.customer_group_id}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               <button

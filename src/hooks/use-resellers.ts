@@ -210,6 +210,7 @@ export interface CreateResellerTypeData {
   default_customer_discount_percentage: number
   has_wholesale_prices?: boolean
   priority?: number
+  customer_group_id?: string | null
 }
 
 export interface UpdateResellerTypeData {
@@ -221,6 +222,29 @@ export interface UpdateResellerTypeData {
   has_wholesale_prices?: boolean
   is_active?: boolean
   priority?: number
+  customer_group_id?: string | null
+}
+
+// ============================================================
+// MEDUSA CUSTOMER GROUPS (via reseller API)
+// ============================================================
+
+export interface MedusaCustomerGroup {
+  id: string
+  name: string
+  metadata?: Record<string, string>
+}
+
+export function useMedusaCustomerGroups() {
+  return useQuery({
+    queryKey: ["resellers", "medusa-customer-groups"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/admin/reseller-types/medusa-customer-groups`)
+      if (!res.ok) return [] as MedusaCustomerGroup[]
+      const data = await res.json()
+      return (data.customer_groups ?? []) as MedusaCustomerGroup[]
+    },
+  })
 }
 
 export function useCreateResellerType() {
