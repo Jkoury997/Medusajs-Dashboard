@@ -263,7 +263,7 @@ function NavGroupItem({
       <div
         className={cn(
           "overflow-hidden transition-all duration-200 ease-in-out",
-          isOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
+          isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
         )}
       >
         <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-gray-200 pl-3">
