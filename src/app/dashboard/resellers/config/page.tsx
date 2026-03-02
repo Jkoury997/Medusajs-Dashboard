@@ -1001,6 +1001,34 @@ function SettingsSection({ settings, updateSetting }: SettingsSectionProps) {
           </button>
         </div>
 
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div>
+            <h4 className="font-medium text-sm">Requiere Ingresos Brutos para 1er retiro</h4>
+            <p className="text-xs text-gray-500 mt-0.5">
+              La revendedora debe presentar su constancia de Ingresos Brutos antes de su primer retiro
+            </p>
+          </div>
+          <button
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              getSettingValue("first_withdrawal_requires_ingresos_brutos", "true") === "true"
+                ? "bg-blue-600"
+                : "bg-gray-300"
+            }`}
+            disabled={updateSetting.isPending}
+            onClick={() =>
+              toggleBoolean("first_withdrawal_requires_ingresos_brutos", getSettingValue("first_withdrawal_requires_ingresos_brutos", "true"))
+            }
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                getSettingValue("first_withdrawal_requires_ingresos_brutos", "true") === "true"
+                  ? "translate-x-6"
+                  : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+
         {updateSetting.isError && (
           <p className="text-sm text-red-500">{(updateSetting.error as Error).message}</p>
         )}
