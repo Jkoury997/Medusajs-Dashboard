@@ -16,18 +16,30 @@ async function proxyRequest(
 
     const headers: Record<string, string> = {
       "X-API-Key": EMAIL_API_KEY,
-      "Content-Type": "application/json",
     }
 
     const fetchOptions: RequestInit = { method, headers }
 
+    // Detect multipart upload (media/upload)
+    const isMultipart = apiPath.startsWith("media/upload") && method === "POST"
+
     if (["POST", "PUT", "PATCH"].includes(method)) {
-      try {
-        const body = await request.json()
-        fetchOptions.body = JSON.stringify(body)
-      } catch {
-        // No body — fine for action endpoints like /pause, /resume
+      if (isMultipart) {
+        const contentType = request.headers.get("content-type")
+        if (contentType) headers["Content-Type"] = contentType
+        fetchOptions.body = await request.arrayBuffer()
+      } else {
+        headers["Content-Type"] = "application/json"
+        try {
+          const body = await request.json()
+          fetchOptions.body = JSON.stringify(body)
+        } catch {
+          // No body — fine for action endpoints like /pause, /resume
+          headers["Content-Type"] = "application/json"
+        }
       }
+    } else {
+      headers["Content-Type"] = "application/json"
     }
 
     const response = await fetch(url, fetchOptions)

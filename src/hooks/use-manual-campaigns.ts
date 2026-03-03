@@ -23,6 +23,11 @@ import type {
   ManualCampaignDiscount,
   GenerateTemplateContentData,
   GenerateTemplateContentResponse,
+  MediaItem,
+  MediaListResponse,
+  AggregatedStatsResponse,
+  ContactGroupLocal,
+  ContactTagsResponse,
 } from "@/types/campaigns"
 
 const BASE = "/api/campaigns-proxy"
@@ -449,6 +454,97 @@ export function useGenerateTemplateContent() {
         throw new Error(err.error || "Error al generar contenido AI")
       }
       return res.json() as Promise<GenerateTemplateContentResponse>
+    },
+  })
+}
+
+// --- Media ---
+
+export function useMediaList() {
+  return useQuery({
+    queryKey: ["media", "list"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/media`)
+      if (!res.ok) throw new Error("Error al obtener media")
+      return res.json() as Promise<MediaListResponse>
+    },
+  })
+}
+
+export function useMediaUpload() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch(`${BASE}/media`, {
+        method: "POST",
+        body: formData,
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al subir imagen")
+      }
+      return res.json() as Promise<MediaItem>
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["media"] })
+    },
+  })
+}
+
+export function useMediaDelete() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${BASE}/media/${id}`, { method: "DELETE" })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al eliminar imagen")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["media"] })
+    },
+  })
+}
+
+// --- Contact Groups & Tags (campaign segment endpoints) ---
+
+export function useSegmentContactGroups() {
+  return useQuery({
+    queryKey: ["manual-campaigns", "segment-contact-groups"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/segments/contact-groups`)
+      if (!res.ok) throw new Error("Error al obtener grupos de contacto")
+      const data = await res.json()
+      return (data.groups ?? data) as ContactGroupLocal[]
+    },
+  })
+}
+
+export function useSegmentContactTags() {
+  return useQuery({
+    queryKey: ["manual-campaigns", "segment-contact-tags"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/segments/contact-tags`)
+      if (!res.ok) throw new Error("Error al obtener tags de contacto")
+      const data = await res.json()
+      return (data.tags ?? []) as string[]
+    },
+  })
+}
+
+// --- Aggregated Stats ---
+
+export function useAggregatedStats() {
+  return useQuery({
+    queryKey: ["manual-campaigns", "aggregated-stats"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/stats/aggregated`)
+      if (!res.ok) throw new Error("Error al obtener estadísticas agregadas")
+      return res.json() as Promise<AggregatedStatsResponse>
     },
   })
 }

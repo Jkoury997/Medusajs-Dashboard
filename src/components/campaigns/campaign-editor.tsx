@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -36,8 +37,15 @@ import {
   useSegmentGroups,
   useContentPresets,
   useSaveAsPreset,
+  useMediaList,
+  useMediaUpload,
+  useMediaDelete,
+  useSegmentContactGroups,
+  useSegmentContactTags,
 } from "@/hooks/use-manual-campaigns"
+import { useSegmentList } from "@/hooks/use-segments"
 import type { SegmentRule, SegmentMatchType, ContentSection } from "@/types/campaigns"
+import { ImagePlus, Trash2, Upload } from "lucide-react"
 
 const TONE_OPTIONS = [
   { value: "formal", label: "Formal" },
@@ -58,8 +66,10 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   const [name, setName] = useState("")
   const [subject, setSubject] = useState("")
   const [previewText, setPreviewText] = useState("")
+  const [templateType, setTemplateType] = useState<"standard" | "template">("standard")
   const [rules, setRules] = useState<SegmentRule[]>([{ type: "all_customers" }])
   const [match, setMatch] = useState<SegmentMatchType>("all")
+  const [segmentId, setSegmentId] = useState<string | null>(null)
 
   // Form state — content
   const [heading, setHeading] = useState("")
@@ -93,10 +103,17 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   const [draftMsg, setDraftMsg] = useState<string | null>(null)
   const [showTemplatePicker, setShowTemplatePicker] = useState(!campaignId)
 
+  // Media upload ref
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   // Hooks
   const { data: detail } = useManualCampaignDetail(campaignId ?? null)
   const { data: groups } = useSegmentGroups()
   const { data: presets } = useContentPresets()
+  const { data: savedSegments } = useSegmentList()
+  const { data: contactGroupsData } = useSegmentContactGroups()
+  const { data: contactTagsData } = useSegmentContactTags()
+  const { data: mediaData } = useMediaList()
   const createMutation = useCreateCampaign()
   const updateMutation = useUpdateCampaign()
   const sendMutation = useSendCampaign()
@@ -105,15 +122,19 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   const generateMutation = useGenerateContent()
   const estimateMutation = useEstimateSegment()
   const savePresetMutation = useSaveAsPreset()
+  const mediaUploadMutation = useMediaUpload()
+  const mediaDeleteMutation = useMediaDelete()
 
   // Populate form when editing
   useEffect(() => {
     if (detail && campaignId) {
       setName(detail.name || "")
+      setTemplateType(detail.template_type || "standard")
       setSubject(detail.content?.subject || "")
       setPreviewText(detail.content?.preview_text || "")
       setRules(detail.segment?.rules || [{ type: "all_customers" }])
       setMatch(detail.segment?.match || "all")
+      setSegmentId(detail.segment_id || detail.segment?.segment_id || null)
       setHeading(detail.content?.heading || "")
       setBodyText(detail.content?.body_text || "")
       setButtonText(detail.content?.button_text || "")
@@ -140,8 +161,8 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   // Reset form when dialog opens for creation
   useEffect(() => {
     if (open && !campaignId) {
-      setName(""); setSubject(""); setPreviewText("")
-      setRules([{ type: "all_customers" }]); setMatch("all")
+      setName(""); setSubject(""); setPreviewText(""); setTemplateType("standard")
+      setRules([{ type: "all_customers" }]); setMatch("all"); setSegmentId(null)
       setHeading(""); setBodyText(""); setButtonText(""); setButtonUrl("")
       setBannerGradient(""); setFooterText(""); setBodySections(undefined)
       setFeaturedProductIds([]); setIncludePersonalized(false)
@@ -157,7 +178,9 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
 
   const buildPayload = () => ({
     name,
-    segment: { rules, match },
+    template_type: templateType,
+    segment: { rules, match, segment_id: segmentId },
+    segment_id: segmentId,
     content: {
       subject: subject || undefined,
       preview_text: previewText || undefined,
@@ -234,7 +257,6 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
   const handlePreviewEmail = async () => {
     if (!savedId) return
     try {
-      // Save first so preview uses latest content
       await updateMutation.mutateAsync({ id: savedId, data: buildPayload() })
       const result = await previewMutation.mutateAsync(savedId)
       setPreviewHtml(result.html)
@@ -278,6 +300,23 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
     }
   }
 
+  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    mediaUploadMutation.mutate(file, {
+      onSuccess: (media) => {
+        setDraftMsg(`Imagen "${media.filename}" subida`)
+      },
+    })
+    e.target.value = ""
+  }
+
+  const insertMediaUrl = (url: string) => {
+    const newSection: ContentSection = { type: "image", src: url }
+    setBodySections([...(bodySections || []), newSection])
+    setDraftMsg("Imagen insertada en el contenido")
+  }
+
   const loadPreset = (preset: typeof presets extends (infer T)[] | undefined ? T : never) => {
     if (!preset) return
     setSubject(preset.content.subject || "")
@@ -301,7 +340,6 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
     setDraftMsg(`Preset "${preset.name}" cargado`)
   }
 
-  // Extraer grupo del segmento para precios en ProductPicker
   const selectedCustomerGroup = useMemo(() => {
     const groupRule = rules.find((r) => r.type === "customer_group")
     return groupRule?.value || undefined
@@ -309,6 +347,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
 
   const isSaving = createMutation.isPending || updateMutation.isPending
   const isSending = sendMutation.isPending
+  const mediaItems = mediaData?.media ?? []
 
   return (
     <>
@@ -336,8 +375,8 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
             />
           ) : (
           <div className="space-y-5 py-2">
-            {/* Nombre y Asunto */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Nombre, Asunto y Tipo */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Nombre de la campana</Label>
                 <Input
@@ -355,6 +394,18 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
                   placeholder="Ej: Aprovecha 20% OFF solo hoy"
                   className="mt-1"
                 />
+              </div>
+              <div>
+                <Label>Tipo de plantilla</Label>
+                <Select value={templateType} onValueChange={(v) => setTemplateType(v as "standard" | "template")}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">Estándar</SelectItem>
+                    <SelectItem value="template">Plantilla visual</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -383,6 +434,11 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
                   estimatedCount={estimateMutation.data?.estimated_count ?? null}
                   isEstimating={estimateMutation.isPending}
                   groups={groups ?? undefined}
+                  contactGroups={contactGroupsData ?? undefined}
+                  contactTags={contactTagsData ?? undefined}
+                  savedSegments={savedSegments ?? undefined}
+                  segmentId={segmentId}
+                  onSegmentIdChange={setSegmentId}
                 />
               </div>
             </div>
@@ -470,6 +526,66 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
                   className="mt-1"
                   placeholder="Texto al pie del email"
                 />
+              </div>
+
+              <Separator className="my-2" />
+
+              {/* Media / Imágenes */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Imágenes (Media)</Label>
+                <div className="flex gap-2 items-center">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={mediaUploadMutation.isPending}
+                  >
+                    <Upload className="w-3.5 h-3.5 mr-1" />
+                    {mediaUploadMutation.isPending ? "Subiendo..." : "Subir imagen"}
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleMediaUpload}
+                  />
+                  {mediaUploadMutation.isError && (
+                    <span className="text-xs text-red-600">{mediaUploadMutation.error?.message}</span>
+                  )}
+                </div>
+                {mediaItems.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 mt-2">
+                    {mediaItems.slice(0, 8).map((m) => (
+                      <div key={m.id} className="relative group border rounded-md overflow-hidden">
+                        <img src={m.url} alt={m.filename} className="w-full h-16 object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={() => insertMediaUrl(m.url)}
+                          >
+                            <ImagePlus className="w-3 h-3 mr-0.5" /> Insertar
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="h-6 w-6 p-0"
+                            onClick={() => mediaDeleteMutation.mutate(m.id)}
+                          >
+                            <Trash2 className="w-3 h-3 text-red-500" />
+                          </Button>
+                        </div>
+                        <p className="text-[9px] text-gray-500 truncate px-1 py-0.5">{m.filename}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <Separator className="my-2" />
@@ -746,7 +862,7 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
             </Button>
             <Button
               onClick={handleSend}
-              disabled={isSending || isSaving || !name || rules.length === 0}
+              disabled={isSending || isSaving || !name || (!segmentId && rules.length === 0)}
             >
               {isSending ? "Enviando..." : scheduleMode === "later" ? "Programar envio" : "Enviar ahora"}
             </Button>

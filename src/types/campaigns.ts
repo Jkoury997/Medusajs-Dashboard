@@ -13,6 +13,21 @@ export type ManualCampaignStatus =
 // --- Segments ---
 
 export type SegmentType =
+  | "contact_all"
+  | "contact_group"
+  | "contact_tag"
+  | "contact_source"
+  | "contact_engaged"
+  | "contact_not_engaged"
+  | "contact_added_days"
+  | "contact_not_added_days"
+  | "contact_birthday_month"
+  | "contact_birthday_today"
+  | "contact_has_phone"
+  | "contact_no_phone"
+  | "contact_not_emailed_days"
+  | "contact_custom_field"
+  | "contact_email_count_gte"
   | "all_customers"
   | "customer_group"
   | "has_purchased"
@@ -33,6 +48,7 @@ export interface SegmentRule {
 export interface SegmentConfig {
   rules: SegmentRule[]
   match: SegmentMatchType
+  segment_id?: string | null
 }
 
 // --- Content Sections ---
@@ -88,8 +104,10 @@ export interface ManualCampaignDiscount {
 export interface ManualCampaign {
   _id: string
   name: string
+  template_type?: "standard" | "template"
   status: ManualCampaignStatus
   segment: SegmentConfig
+  segment_id?: string | null
   estimated_recipients: number
   content: ManualCampaignContent
   discount: ManualCampaignDiscount | null
@@ -122,7 +140,9 @@ export interface ManualCampaignListResponse {
 
 export interface CreateCampaignData {
   name: string
+  template_type?: "standard" | "template"
   segment: SegmentConfig
+  segment_id?: string | null
   content?: ManualCampaignContent
   discount?: ManualCampaignDiscount | null
 }
@@ -143,7 +163,17 @@ export interface TestSendData {
 
 export interface AudiencePreviewResponse {
   count: number
-  samples: Array<{
+  by_rule?: Array<{
+    type: string
+    count: number
+  }>
+  sample: Array<{
+    email: string
+    customer_name?: string
+    customer_group?: string
+  }>
+  /** @deprecated Use sample instead */
+  samples?: Array<{
     email: string
     name?: string
     group?: string
@@ -259,6 +289,41 @@ export interface ContentPreset {
   discount: ManualCampaignDiscount | null
   created_at: string
   updated_at: string
+}
+
+// --- Aggregated Stats ---
+
+export interface AggregatedStatsResponse {
+  total_campaigns: number
+  total_sent: number
+  total_delivered: number
+  total_opened: number
+  total_clicked: number
+  total_bounced: number
+  avg_open_rate: string
+  avg_click_rate: string
+  avg_bounce_rate: string
+}
+
+// --- Contact Groups (local campaign endpoint) ---
+
+export interface ContactGroupLocal {
+  id: string
+  name: string
+  count?: number
+}
+
+// --- Contact Tags (local campaign endpoint) ---
+
+export interface ContactTagsResponse {
+  tags: string[]
+}
+
+// --- Media List Response ---
+
+export interface MediaListResponse {
+  media: MediaItem[]
+  total: number
 }
 
 // --- Product (for product picker) ---
