@@ -34,6 +34,7 @@ import {
   KeyRound,
   FileCheck,
   Rocket,
+  BookUser,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -80,6 +81,7 @@ const navEntries: NavEntry[] = [
     icon: Mail,
     children: [
       { href: "/dashboard/campaigns", label: "Campañas", icon: Megaphone },
+      { href: "/dashboard/contacts", label: "Contactos", icon: BookUser },
       { href: "/dashboard/templates", label: "Plantillas", icon: Palette },
       { href: "/dashboard/email-stats", label: "Estadísticas", icon: BarChart3 },
       { href: "/dashboard/email-marketing", label: "Configuración", icon: Settings },
