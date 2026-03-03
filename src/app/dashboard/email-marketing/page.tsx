@@ -43,7 +43,6 @@ import {
 } from "@/hooks/use-campaigns"
 import { useHealthCheck } from "@/hooks/use-health-check"
 import { TemplateEditor } from "@/components/email-marketing/template-editor"
-import { AbandonedCartsSection } from "@/components/email-marketing/abandoned-carts-section"
 import { formatNumber, formatCurrency } from "@/lib/format"
 import type {
   DiscountType,
@@ -191,7 +190,6 @@ export default function EmailMarketingPage() {
         <Tabs defaultValue="resumen">
           <TabsList>
             <TabsTrigger value="resumen">Resumen</TabsTrigger>
-            <TabsTrigger value="carritos">Carritos Abandonados</TabsTrigger>
             <TabsTrigger value="campanas">Campañas AI</TabsTrigger>
             <TabsTrigger value="config">Configuración</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
@@ -418,11 +416,6 @@ export default function EmailMarketingPage() {
                 </CardContent>
               </Card>
             )}
-          </TabsContent>
-
-          {/* TAB: Carritos Abandonados */}
-          <TabsContent value="carritos" className="mt-4">
-            <AbandonedCartsSection />
           </TabsContent>
 
           {/* TAB: Campañas AI */}

@@ -81,6 +81,7 @@ const navEntries: NavEntry[] = [
     label: "Email Marketing",
     icon: Mail,
     children: [
+      { href: "/dashboard/carritos-abandonados", label: "Carritos Abandonados", icon: ShoppingCart },
       { href: "/dashboard/campaigns", label: "Campañas", icon: Megaphone },
       { href: "/dashboard/contacts", label: "Contactos", icon: BookUser },
       { href: "/dashboard/segments", label: "Segmentos", icon: Filter },
