@@ -61,7 +61,7 @@ export function SegmentEditor({ open, onOpenChange, segmentId, onSaved }: Segmen
       setName(existing.name)
       setDescription(existing.description || "")
       setMatch(existing.match)
-      setRules(existing.rules.length > 0 ? existing.rules : [{ type: "contact_all" }])
+      setRules(existing.rules?.length > 0 ? existing.rules : [{ type: "contact_all" }])
     } else if (open && !isEditing) {
       setName("")
       setDescription("")
@@ -341,11 +341,11 @@ export function SegmentEditor({ open, onOpenChange, segmentId, onSaved }: Segmen
               <div className="flex items-center gap-2">
                 <Badge className="bg-blue-100 text-blue-700 border-blue-200">
                   <Users className="w-3 h-3 mr-1" />
-                  {estimateMutation.data.estimated_count.toLocaleString("es-AR")} contactos
+                  {(estimateMutation.data.estimated_count ?? 0).toLocaleString("es-AR")} contactos
                 </Badge>
-                {(estimateMutation.data.sample_recipients?.length ?? 0) > 0 && (
+                {Array.isArray(estimateMutation.data.sample_recipients) && estimateMutation.data.sample_recipients.length > 0 && (
                   <span className="text-xs text-gray-500">
-                    Ej: {estimateMutation.data.sample_recipients!.slice(0, 3).map((r) => r.email).join(", ")}
+                    Ej: {estimateMutation.data.sample_recipients.slice(0, 3).map((r) => r.email).join(", ")}
                   </span>
                 )}
               </div>
