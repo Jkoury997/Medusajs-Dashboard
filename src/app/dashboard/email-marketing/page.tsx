@@ -1,13 +1,8 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { Header } from "@/components/dashboard/header"
 import { MetricCard } from "@/components/dashboard/metric-card"
-import {
-  DateRangePicker,
-  getDefaultDateRange,
-  type DateRange,
-} from "@/components/dashboard/date-range-picker"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -33,11 +28,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import {
   useAbandonedCartStats,
-  useAbandonedCartList,
   useEmailConfig,
   useProcessAbandonedCarts,
-  useForceSendEmail,
-  useDeleteAbandonedCart,
   useUpdateGlobalConfig,
   useUpdateGroupConfig,
   useDeleteGroupConfig,
@@ -51,9 +43,9 @@ import {
 } from "@/hooks/use-campaigns"
 import { useHealthCheck } from "@/hooks/use-health-check"
 import { TemplateEditor } from "@/components/email-marketing/template-editor"
+import { AbandonedCartsSection } from "@/components/email-marketing/abandoned-carts-section"
 import { formatNumber, formatCurrency } from "@/lib/format"
 import type {
-  AbandonedCartListFilters,
   DiscountType,
   CampaignType,
   CampaignEmailRecord,
@@ -128,35 +120,8 @@ function buildForceSendData(
 }
 
 export default function EmailMarketingPage() {
-  const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange())
-
   // Stats
   const { data: stats, isLoading: statsLoading } = useAbandonedCartStats()
-
-  // List filters
-  const [recoveredFilter, setRecoveredFilter] = useState("all")
-  const [email1Filter, setEmail1Filter] = useState("all")
-  const [email2Filter, setEmail2Filter] = useState("all")
-  const [groupFilter, setGroupFilter] = useState("all")
-  const [listPage, setListPage] = useState(0)
-  const listLimit = 50
-
-  const listFilters = useMemo<AbandonedCartListFilters>(() => {
-    const f: AbandonedCartListFilters = {
-      limit: listLimit,
-      offset: listPage * listLimit,
-    }
-    if (recoveredFilter !== "all") f.recovered = recoveredFilter as "true" | "false"
-    if (email1Filter !== "all") f.email_1 = email1Filter as "true" | "false"
-    if (email2Filter !== "all") f.email_2 = email2Filter as "true" | "false"
-    if (groupFilter !== "all") f.customer_group = groupFilter
-    if (dateRange.from) f.from = dateRange.from.toISOString()
-    if (dateRange.to) f.to = dateRange.to.toISOString()
-    return f
-  }, [recoveredFilter, email1Filter, email2Filter, groupFilter, listPage, dateRange])
-
-  const { data: cartList, isLoading: listLoading } = useAbandonedCartList(listFilters)
-  const totalListPages = cartList ? Math.ceil(cartList.total / listLimit) : 0
 
   // Config
   const { data: config, isLoading: configLoading } = useEmailConfig()
@@ -172,8 +137,6 @@ export default function EmailMarketingPage() {
 
   // Mutations
   const processMutation = useProcessAbandonedCarts()
-  const forceSendMutation = useForceSendEmail()
-  const deleteCartMutation = useDeleteAbandonedCart()
   const updateGlobalMutation = useUpdateGlobalConfig()
   const updateGroupMutation = useUpdateGroupConfig()
   const deleteGroupMutation = useDeleteGroupConfig()
@@ -458,204 +421,8 @@ export default function EmailMarketingPage() {
           </TabsContent>
 
           {/* TAB: Carritos Abandonados */}
-          <TabsContent value="carritos" className="space-y-4 mt-4">
-            <div className="flex flex-wrap gap-3 items-end">
-              <div>
-                <DateRangePicker value={dateRange} onChange={(v) => { setDateRange(v); setListPage(0) }} />
-              </div>
-
-              <Select value={recoveredFilter} onValueChange={(v) => { setRecoveredFilter(v); setListPage(0) }}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Recuperado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="true">Recuperados</SelectItem>
-                  <SelectItem value="false">No recuperados</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={email1Filter} onValueChange={(v) => { setEmail1Filter(v); setListPage(0) }}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Email 1" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Email 1: Todos</SelectItem>
-                  <SelectItem value="true">Email 1: Enviado</SelectItem>
-                  <SelectItem value="false">Email 1: Pendiente</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={email2Filter} onValueChange={(v) => { setEmail2Filter(v); setListPage(0) }}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Email 2" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Email 2: Todos</SelectItem>
-                  <SelectItem value="true">Email 2: Enviado</SelectItem>
-                  <SelectItem value="false">Email 2: Pendiente</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={groupFilter} onValueChange={(v) => { setGroupFilter(v); setListPage(0) }}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Grupo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los grupos</SelectItem>
-                  <SelectItem value="minorista">Minorista</SelectItem>
-                  <SelectItem value="mayorista">Mayorista</SelectItem>
-                  <SelectItem value="revendedora">Revendedora</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {listLoading ? (
-              <Skeleton className="h-[400px]" />
-            ) : cartList?.records?.length ? (
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <CardTitle className="text-base">
-                      Carritos Abandonados ({formatNumber(cartList.total)} total)
-                    </CardTitle>
-                    <span className="text-sm text-gray-500">
-                      Página {listPage + 1} de {totalListPages}
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Grupo</TableHead>
-                        <TableHead className="text-right">Items</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead>Paso</TableHead>
-                        <TableHead>Email 1</TableHead>
-                        <TableHead>Email 2</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {cartList.records.map((r) => (
-                        <TableRow key={r._id}>
-                          <TableCell className="text-xs whitespace-nowrap">
-                            {new Date(r.abandoned_at).toLocaleString("es-AR")}
-                          </TableCell>
-                          <TableCell className="text-xs max-w-[180px] truncate">
-                            {r.customer_name || r.email || "-"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={`text-xs ${GROUP_COLORS[r.customer_group] || "bg-gray-100 text-gray-700"}`}>
-                              {GROUP_LABELS[r.customer_group] || r.customer_group}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">{r.items_count}</TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatCurrency(r.cart_total)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs">{r.checkout_step || "-"}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <EmailStatusBadge
-                              sent={!!r.email_1_sent_at}
-                              delivered={!!r.email_1_delivered_at}
-                              opened={!!r.email_1_opened_at}
-                              clicked={!!r.email_1_clicked_at}
-                              bounced={r.email_1_bounced}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <EmailStatusBadge
-                                sent={!!r.email_2_sent_at}
-                                delivered={!!r.email_2_delivered_at}
-                                opened={!!r.email_2_opened_at}
-                                clicked={!!r.email_2_clicked_at}
-                                bounced={r.email_2_bounced}
-                              />
-                              {r.coupon_code && (
-                                <Badge className="bg-pink-100 text-pink-700 text-[10px]">🎟️</Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {r.recovered ? (
-                              <Badge className="bg-green-100 text-green-700">Recuperado</Badge>
-                            ) : (
-                              <Badge className="bg-red-100 text-red-700">Perdido</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              {!r.recovered && (!r.email_1_sent_at || !r.email_2_sent_at) && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs h-7"
-                                  disabled={forceSendMutation.isPending && forceSendMutation.variables?.cart_id === r.cart_id}
-                                  onClick={() => forceSendMutation.mutate({ cart_id: r.cart_id, email_type: "next" })}
-                                >
-                                  {forceSendMutation.isPending && forceSendMutation.variables?.cart_id === r.cart_id
-                                    ? "..."
-                                    : !r.email_1_sent_at
-                                      ? "📧 Email 1"
-                                      : "📧 Email 2"
-                                  }
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-xs h-7 text-red-500 hover:text-red-700"
-                                disabled={deleteCartMutation.isPending && deleteCartMutation.variables === r.cart_id}
-                                onClick={() => {
-                                  if (window.confirm(`Eliminar registro de ${r.customer_name || r.email}?`)) {
-                                    deleteCartMutation.mutate(r.cart_id)
-                                  }
-                                }}
-                              >
-                                {deleteCartMutation.isPending && deleteCartMutation.variables === r.cart_id ? "..." : "🗑️"}
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-
-                  <div className="flex justify-between items-center mt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setListPage((p) => Math.max(0, p - 1))}
-                      disabled={listPage === 0}
-                    >
-                      Anterior
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setListPage((p) => p + 1)}
-                      disabled={listPage + 1 >= totalListPages}
-                    >
-                      Siguiente
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="py-8 text-center text-gray-500">
-                  No se encontraron carritos abandonados con los filtros seleccionados
-                </CardContent>
-              </Card>
-            )}
+          <TabsContent value="carritos" className="mt-4">
+            <AbandonedCartsSection />
           </TabsContent>
 
           {/* TAB: Campañas AI */}
