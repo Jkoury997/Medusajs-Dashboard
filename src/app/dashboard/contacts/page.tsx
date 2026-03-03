@@ -167,7 +167,8 @@ function ContactsTab() {
 
   const resetPage = () => setListPage(0)
 
-  const getGroupNames = (groupIds: string[]) => {
+  const getGroupNames = (groupIds?: string[]) => {
+    if (!groupIds || groupIds.length === 0) return []
     return groupIds
       .map((gid) => groups.find((g) => g._id === gid))
       .filter(Boolean)
@@ -303,7 +304,7 @@ function ContactsTab() {
                             {g!.name}
                           </span>
                         ))}
-                        {c.groups.length === 0 && <span className="text-xs text-gray-400">-</span>}
+                        {(!c.groups || c.groups.length === 0) && <span className="text-xs text-gray-400">-</span>}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -663,7 +664,7 @@ function ImportTab() {
                         {imp.skipped}
                       </TableCell>
                       <TableCell className="text-right text-sm">
-                        {imp.errors.length > 0 ? (
+                        {(imp.errors?.length ?? 0) > 0 ? (
                           <span className="text-red-600 font-medium">{imp.errors.length}</span>
                         ) : (
                           "0"
