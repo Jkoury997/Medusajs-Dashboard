@@ -532,6 +532,9 @@ function GroupsTab() {
 
 function ImportTab() {
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [medusaGroups, setMedusaGroups] = useState<string[]>([])
+  const [medusaTags, setMedusaTags] = useState<string[]>([])
+  const [medusaTagInput, setMedusaTagInput] = useState("")
   const { data: historyData, isLoading: historyLoading } = useImportHistory()
   const { data: groupsData } = useContactGroupList()
   const medusaImport = useImportMedusa()
@@ -539,9 +542,30 @@ function ImportTab() {
   const imports = historyData?.imports ?? []
   const groups = groupsData?.groups ?? []
 
+  const toggleMedusaGroup = (groupId: string) => {
+    setMedusaGroups((prev) =>
+      prev.includes(groupId) ? prev.filter((g) => g !== groupId) : [...prev, groupId]
+    )
+  }
+
+  const addMedusaTag = (tag: string) => {
+    const t = tag.trim().toLowerCase()
+    if (t && !medusaTags.includes(t)) setMedusaTags([...medusaTags, t])
+    setMedusaTagInput("")
+  }
+
   const handleMedusaImport = () => {
     if (window.confirm("¿Importar todos los clientes desde Medusa?")) {
-      medusaImport.mutate({})
+      medusaImport.mutate({
+        group_ids: medusaGroups.length > 0 ? medusaGroups : undefined,
+        tags: medusaTags.length > 0 ? medusaTags : undefined,
+      }, {
+        onSuccess: () => {
+          setMedusaGroups([])
+          setMedusaTags([])
+          setMedusaTagInput("")
+        },
+      })
     }
   }
 
@@ -597,9 +621,59 @@ function ImportTab() {
               </div>
             </div>
             <p className="text-sm text-gray-500 mb-3">
-              Importa todos los clientes registrados en Medusa como contactos.
-              Los existentes se actualizan automáticamente.
+              Importa todos los clientes registrados en Medusa. Los existentes se actualizan automáticamente.
             </p>
+
+            {/* Medusa group selection */}
+            {groups.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-medium text-gray-600 mb-1.5">Asignar a grupos (opcional)</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {groups.map((g) => (
+                    <button
+                      key={g._id}
+                      type="button"
+                      onClick={() => toggleMedusaGroup(g._id)}
+                      className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
+                        medusaGroups.includes(g._id)
+                          ? "bg-purple-50 border-purple-300 text-purple-700"
+                          : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      {g.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Medusa tags */}
+            <div className="mb-3">
+              <p className="text-xs font-medium text-gray-600 mb-1.5">Tags (opcional)</p>
+              <div className="flex flex-wrap gap-1 mb-1.5">
+                {medusaTags.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="gap-1 text-xs">
+                    {tag}
+                    <button type="button" onClick={() => setMedusaTags(medusaTags.filter((t) => t !== tag))}>
+                      <span className="text-xs">&times;</span>
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <Input
+                value={medusaTagInput}
+                onChange={(e) => setMedusaTagInput(e.target.value)}
+                placeholder="Agregar tag y presionar Enter"
+                className="h-8 text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    addMedusaTag(medusaTagInput)
+                  }
+                }}
+              />
+            </div>
+
             <Button
               onClick={handleMedusaImport}
               variant="outline"
