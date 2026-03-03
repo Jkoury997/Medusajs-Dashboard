@@ -413,6 +413,7 @@ export function useImportHistory(limit = 20) {
       if (!res.ok) throw new Error("Error al obtener historial de importaciones")
       return res.json() as Promise<ImportHistoryResponse>
     },
+    retry: false,
   })
 }
 

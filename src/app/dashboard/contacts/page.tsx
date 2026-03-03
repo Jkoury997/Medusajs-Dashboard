@@ -535,7 +535,7 @@ function ImportTab() {
   const [medusaGroups, setMedusaGroups] = useState<string[]>([])
   const [medusaTags, setMedusaTags] = useState<string[]>([])
   const [medusaTagInput, setMedusaTagInput] = useState("")
-  const { data: historyData, isLoading: historyLoading } = useImportHistory()
+  const { data: historyData, isLoading: historyLoading, isError: historyError } = useImportHistory()
   const { data: groupsData } = useContactGroupList()
   const medusaImport = useImportMedusa()
 
@@ -698,6 +698,12 @@ function ImportTab() {
         <h3 className="font-medium text-gray-900 mb-3">Historial de Importaciones</h3>
         {historyLoading ? (
           <Skeleton className="h-[200px]" />
+        ) : historyError ? (
+          <Card>
+            <CardContent className="py-6 text-center text-gray-400 text-sm">
+              No se pudo cargar el historial de importaciones
+            </CardContent>
+          </Card>
         ) : imports.length > 0 ? (
           <Card>
             <CardContent className="pt-4">
