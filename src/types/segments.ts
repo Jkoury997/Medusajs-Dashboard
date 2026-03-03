@@ -81,7 +81,7 @@ export interface SampleRecipient {
 
 export interface EstimateResponse {
   estimated_count: number
-  sample_recipients: SampleRecipient[]
+  sample_recipients?: SampleRecipient[]
 }
 
 // --- Rule metadata for UI ---

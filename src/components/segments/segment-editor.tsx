@@ -343,9 +343,9 @@ export function SegmentEditor({ open, onOpenChange, segmentId, onSaved }: Segmen
                   <Users className="w-3 h-3 mr-1" />
                   {estimateMutation.data.estimated_count.toLocaleString("es-AR")} contactos
                 </Badge>
-                {estimateMutation.data.sample_recipients.length > 0 && (
+                {(estimateMutation.data.sample_recipients?.length ?? 0) > 0 && (
                   <span className="text-xs text-gray-500">
-                    Ej: {estimateMutation.data.sample_recipients.slice(0, 3).map((r) => r.email).join(", ")}
+                    Ej: {estimateMutation.data.sample_recipients!.slice(0, 3).map((r) => r.email).join(", ")}
                   </span>
                 )}
               </div>
