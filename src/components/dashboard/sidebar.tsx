@@ -35,6 +35,7 @@ import {
   FileCheck,
   Rocket,
   BookUser,
+  Filter,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -82,6 +83,7 @@ const navEntries: NavEntry[] = [
     children: [
       { href: "/dashboard/campaigns", label: "Campañas", icon: Megaphone },
       { href: "/dashboard/contacts", label: "Contactos", icon: BookUser },
+      { href: "/dashboard/segments", label: "Segmentos", icon: Filter },
       { href: "/dashboard/templates", label: "Plantillas", icon: Palette },
       { href: "/dashboard/email-stats", label: "Estadísticas", icon: BarChart3 },
       { href: "/dashboard/email-marketing", label: "Configuración", icon: Settings },
