@@ -46,12 +46,16 @@ const GROUP_LABELS: Record<string, string> = {
   minorista: "Minorista",
   mayorista: "Mayorista",
   revendedora: "Revendedora",
+  comercios: "Comercios",
+  "personal interno": "Personal Interno",
 }
 
 const GROUP_COLORS: Record<string, string> = {
   minorista: "bg-blue-100 text-blue-700",
   mayorista: "bg-purple-100 text-purple-700",
   revendedora: "bg-amber-100 text-amber-700",
+  comercios: "bg-cyan-100 text-cyan-700",
+  "personal interno": "bg-indigo-100 text-indigo-700",
 }
 
 function EmailStatusBadge({
@@ -439,14 +443,16 @@ export function AbandonedCartsSection() {
               </Select>
 
               <Select value={groupFilter} onValueChange={(v) => { setGroupFilter(v); setListPage(0) }}>
-                <SelectTrigger className="w-[155px]">
+                <SelectTrigger className="w-[175px]">
                   <SelectValue placeholder="Grupo" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los grupos</SelectItem>
-                  <SelectItem value="minorista">Minorista</SelectItem>
-                  <SelectItem value="mayorista">Mayorista</SelectItem>
-                  <SelectItem value="revendedora">Revendedora</SelectItem>
+                  {stats?.by_group?.map((g) => (
+                    <SelectItem key={g.group} value={g.group}>
+                      {GROUP_LABELS[g.group] || g.group}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

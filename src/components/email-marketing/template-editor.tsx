@@ -27,9 +27,10 @@ import {
   useDeleteTemplate,
   useTemplatePreview,
 } from "@/hooks/use-email-templates"
+import { useMedusaCustomerGroups } from "@/hooks/use-resellers"
 import type { EmailTemplateType, EmailTemplateFields } from "@/types/email-marketing"
 
-const GROUP_OPTIONS = [
+const DEFAULT_GROUP_OPTIONS = [
   { value: "global", label: "Global (por defecto)" },
   { value: "minorista", label: "Minorista" },
   { value: "mayorista", label: "Mayorista" },
@@ -78,6 +79,15 @@ export function TemplateEditor() {
   // Selection
   const [selectedType, setSelectedType] = useState<EmailTemplateType>("reminder")
   const [selectedGroup, setSelectedGroup] = useState("global")
+
+  // Dynamic group options from Medusa
+  const { data: customerGroups } = useMedusaCustomerGroups()
+  const groupOptions = customerGroups && customerGroups.length > 0
+    ? [
+        { value: "global", label: "Global (por defecto)" },
+        ...customerGroups.map((cg) => ({ value: cg.name.toLowerCase(), label: cg.name })),
+      ]
+    : DEFAULT_GROUP_OPTIONS
 
   // "global" → undefined para los hooks (sin filtro de grupo)
   const groupForApi = selectedGroup === "global" ? undefined : selectedGroup
@@ -214,7 +224,7 @@ export function TemplateEditor() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {GROUP_OPTIONS.map((o) => (
+                  {groupOptions.map((o) => (
                     <SelectItem key={o.value} value={o.value}>
                       {o.label}
                     </SelectItem>

@@ -55,12 +55,16 @@ const GROUP_LABELS: Record<string, string> = {
   minorista: "Minorista",
   mayorista: "Mayorista",
   revendedora: "Revendedora",
+  comercios: "Comercios",
+  "personal interno": "Personal Interno",
 }
 
 const GROUP_COLORS: Record<string, string> = {
   minorista: "bg-blue-100 text-blue-700",
   mayorista: "bg-purple-100 text-purple-700",
   revendedora: "bg-amber-100 text-amber-700",
+  comercios: "bg-cyan-100 text-cyan-700",
+  "personal interno": "bg-indigo-100 text-indigo-700",
 }
 
 const CAMPAIGN_LABELS: Record<string, string> = {
@@ -739,9 +743,11 @@ export default function EmailMarketingPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="all">Todos</SelectItem>
-                                  <SelectItem value="minorista">Minorista</SelectItem>
-                                  <SelectItem value="mayorista">Mayorista</SelectItem>
-                                  <SelectItem value="revendedora">Revendedora</SelectItem>
+                                  {(customerGroups || []).map((cg) => (
+                                    <SelectItem key={cg.id} value={cg.name.toLowerCase()}>
+                                      {cg.name}
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                             </div>
@@ -806,12 +812,16 @@ export default function EmailMarketingPage() {
                 </div>
 
                 {/* Config por grupo */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {["minorista", "mayorista", "revendedora"].map((groupName) => {
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {(customerGroups && customerGroups.length > 0
+                    ? customerGroups.map((cg) => ({ name: cg.name.toLowerCase(), id: cg.id }))
+                    : [
+                        { name: "minorista", id: undefined },
+                        { name: "mayorista", id: undefined },
+                        { name: "revendedora", id: undefined },
+                      ]
+                  ).map(({ name: groupName, id: medusaGroupId }) => {
                     const groupConfig = config.groups.find((g) => g.group_name === groupName)
-                    const medusaGroupId = customerGroups?.find(
-                      (g) => g.name.toLowerCase() === groupName.toLowerCase()
-                    )?.id
                     return (
                       <GroupConfigCard
                         key={groupName}

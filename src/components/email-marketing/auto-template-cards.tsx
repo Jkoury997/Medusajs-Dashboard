@@ -28,6 +28,7 @@ import {
   useDeleteTemplate,
   useTemplatePreview,
 } from "@/hooks/use-email-templates"
+import { useMedusaCustomerGroups } from "@/hooks/use-resellers"
 import type { EmailTemplateType, EmailTemplateFields } from "@/types/email-marketing"
 
 // ─── Static info per template type ───
@@ -104,7 +105,8 @@ const TYPE_INFO: Record<
   },
 }
 
-const GROUP_OPTIONS = [
+// Fallback group options if Medusa groups haven't loaded yet
+const DEFAULT_GROUP_OPTIONS = [
   { value: "global", label: "Global (por defecto)" },
   { value: "minorista", label: "Minorista" },
   { value: "mayorista", label: "Mayorista" },
@@ -145,6 +147,15 @@ function TemplateEditorDialog({
   const info = TYPE_INFO[type]
   const [selectedGroup, setSelectedGroup] = useState("global")
   const groupForApi = selectedGroup === "global" ? undefined : selectedGroup
+
+  // Dynamic group options from Medusa
+  const { data: customerGroups } = useMedusaCustomerGroups()
+  const groupOptions = customerGroups && customerGroups.length > 0
+    ? [
+        { value: "global", label: "Global (por defecto)" },
+        ...customerGroups.map((cg) => ({ value: cg.name.toLowerCase(), label: cg.name })),
+      ]
+    : DEFAULT_GROUP_OPTIONS
 
   const [formData, setFormData] = useState<EmailTemplateFields>({ ...EMPTY_FORM })
   const [isDirty, setIsDirty] = useState(false)
@@ -246,7 +257,7 @@ function TemplateEditorDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {GROUP_OPTIONS.map((o) => (
+                  {groupOptions.map((o) => (
                     <SelectItem key={o.value} value={o.value}>
                       {o.label}
                     </SelectItem>
