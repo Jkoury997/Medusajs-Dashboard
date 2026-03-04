@@ -39,6 +39,7 @@ import {
   useForceSendEmail,
   useDeleteAbandonedCart,
 } from "@/hooks/use-email-marketing"
+import { useTemplatePreview } from "@/hooks/use-email-templates"
 import { formatNumber, formatCurrency } from "@/lib/format"
 import type { AbandonedCartListFilters } from "@/types/email-marketing"
 
@@ -88,6 +89,8 @@ function EngagementFunnel({
   bounced,
   openRate,
   clickRate,
+  onPreviewTemplate,
+  isPreviewLoading,
 }: {
   label: string
   sent: number
@@ -97,11 +100,26 @@ function EngagementFunnel({
   bounced: number
   openRate: string
   clickRate: string
+  onPreviewTemplate?: () => void
+  isPreviewLoading?: boolean
 }) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium">{label}</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium">{label}</CardTitle>
+          {onPreviewTemplate && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={onPreviewTemplate}
+              disabled={isPreviewLoading}
+            >
+              {isPreviewLoading ? "Cargando..." : "Ver Plantilla"}
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center justify-between">
@@ -218,6 +236,10 @@ export function AbandonedCartsSection() {
   // Email preview modal
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
+  // Template preview (plantilla, no email enviado)
+  const [templatePreviewHtml, setTemplatePreviewHtml] = useState<string | null>(null)
+  const templatePreviewMutation = useTemplatePreview()
+
   if (statsLoading) {
     return (
       <div className="space-y-4">
@@ -284,6 +306,13 @@ export function AbandonedCartsSection() {
           bounced={stats.engagement.email_1_bounced}
           openRate={stats.engagement.email_1_open_rate}
           clickRate={stats.engagement.email_1_click_rate}
+          onPreviewTemplate={() => {
+            templatePreviewMutation.mutate(
+              { type: "reminder" },
+              { onSuccess: (result) => setTemplatePreviewHtml(result.html) },
+            )
+          }}
+          isPreviewLoading={templatePreviewMutation.isPending}
         />
         <EngagementFunnel
           label="Email 2 — Cupon de descuento"
@@ -294,6 +323,13 @@ export function AbandonedCartsSection() {
           bounced={stats.engagement.email_2_bounced}
           openRate={stats.engagement.email_2_open_rate}
           clickRate={stats.engagement.email_2_click_rate}
+          onPreviewTemplate={() => {
+            templatePreviewMutation.mutate(
+              { type: "coupon" },
+              { onSuccess: (result) => setTemplatePreviewHtml(result.html) },
+            )
+          }}
+          isPreviewLoading={templatePreviewMutation.isPending}
         />
       </div>
 
@@ -805,7 +841,7 @@ export function AbandonedCartsSection() {
         </CardContent>
       </Card>
 
-      {/* Modal preview de email */}
+      {/* Modal preview de email enviado */}
       <Dialog open={!!previewUrl} onOpenChange={(open) => !open && setPreviewUrl(null)}>
         <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
           <DialogHeader>
@@ -817,6 +853,23 @@ export function AbandonedCartsSection() {
               className="w-full flex-1 border rounded-md bg-white"
               sandbox="allow-same-origin"
               title="Email preview"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal preview de plantilla */}
+      <Dialog open={!!templatePreviewHtml} onOpenChange={(open) => !open && setTemplatePreviewHtml(null)}>
+        <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Vista previa de la plantilla</DialogTitle>
+          </DialogHeader>
+          {templatePreviewHtml && (
+            <iframe
+              srcDoc={templatePreviewHtml}
+              className="w-full flex-1 border rounded-md bg-white"
+              sandbox="allow-same-origin"
+              title="Template preview"
             />
           )}
         </DialogContent>
