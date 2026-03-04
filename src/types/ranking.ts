@@ -38,7 +38,6 @@ export interface RankingJobStatus {
   errors: string[] | number
   started_at?: string
   completed_at?: string
-  duration_seconds?: number
 }
 
 // --- Stats Summary ---

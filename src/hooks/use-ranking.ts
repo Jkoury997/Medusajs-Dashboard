@@ -40,7 +40,10 @@ export function useRankingLastJobStatus() {
     queryFn: async () => {
       const res = await fetch(`${BASE}/rankings/status/last`)
       if (!res.ok) throw new Error("Error al obtener estado del último job")
-      return res.json() as Promise<RankingJobStatus>
+      const data = await res.json()
+      // When no jobs exist, API returns { message: "..." } — treat as null
+      if (!data.status) return null
+      return data as RankingJobStatus
     },
     refetchInterval: 30_000,
   })

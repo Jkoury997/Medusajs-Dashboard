@@ -208,9 +208,19 @@ export default function RankingPage() {
                     <div className="mt-2">
                       <StatusBadge status={lastJob.status} />
                     </div>
-                    {lastJob.duration_seconds != null && (
+                    {lastJob.started_at && (
                       <p className="text-xs text-gray-400 mt-2">
-                        Duración: {lastJob.duration_seconds.toFixed(1)}s
+                        Inicio: {new Date(lastJob.started_at).toLocaleString("es-AR")}
+                      </p>
+                    )}
+                    {lastJob.completed_at && lastJob.started_at && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Duración: {((new Date(lastJob.completed_at).getTime() - new Date(lastJob.started_at).getTime()) / 1000).toFixed(1)}s
+                      </p>
+                    )}
+                    {lastJob.status === "running" && lastJob.started_at && (
+                      <p className="text-xs text-yellow-600 mt-1">
+                        Los valores se actualizan al finalizar el ciclo
                       </p>
                     )}
                   </CardContent>
