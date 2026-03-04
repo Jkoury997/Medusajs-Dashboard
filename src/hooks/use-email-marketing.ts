@@ -105,7 +105,7 @@ export function useUpdateGroupConfig() {
       group: string
       data: EmailConfigUpdateData
     }) => {
-      const res = await fetch(`/api/email-proxy/config/group/${group}`, {
+      const res = await fetch(`/api/email-proxy/config/group/${encodeURIComponent(group)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -170,7 +170,7 @@ export function useDeleteGroupConfig() {
   return useMutation({
     mutationFn: async ({ group, group_id }: { group: string; group_id?: string }) => {
       const params = group_id ? `?group_id=${encodeURIComponent(group_id)}` : ""
-      const res = await fetch(`/api/email-proxy/config/group/${group}${params}`, {
+      const res = await fetch(`/api/email-proxy/config/group/${encodeURIComponent(group)}${params}`, {
         method: "DELETE",
       })
       if (!res.ok) throw new Error(`Error al eliminar configuración de ${group}`)

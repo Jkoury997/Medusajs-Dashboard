@@ -10,7 +10,8 @@ async function proxyRequest(
 ) {
   try {
     const { path } = await params
-    const apiPath = path.join("/")
+    // Re-encode each segment so names with spaces (e.g. "personal interno") produce valid URLs
+    const apiPath = path.map((segment) => encodeURIComponent(segment)).join("/")
     const searchParams = request.nextUrl.searchParams.toString()
     const url = `${EMAIL_API_URL}/api/${apiPath}${searchParams ? `?${searchParams}` : ""}`
 

@@ -10,7 +10,7 @@ async function proxyRequest(
 ) {
   try {
     const { path } = await params
-    const apiPath = path.join("/")
+    const apiPath = path.map((segment) => encodeURIComponent(segment)).join("/")
     const searchParams = request.nextUrl.searchParams.toString()
     const url = `${EMAIL_API_URL}/api/contacts/${apiPath}${searchParams ? `?${searchParams}` : ""}`
 
