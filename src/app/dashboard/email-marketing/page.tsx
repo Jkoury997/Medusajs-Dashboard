@@ -131,6 +131,8 @@ export default function EmailMarketingPage() {
   const [globalDiscountEnabled, setGlobalDiscountEnabled] = useState<boolean | null>(null)
   const [globalDiscountPct, setGlobalDiscountPct] = useState<string>("")
   const [globalDiscountType, setGlobalDiscountType] = useState<DiscountType | null>(null)
+  const [globalDiscountMinPct, setGlobalDiscountMinPct] = useState<string>("")
+  const [globalDiscountMinFixed, setGlobalDiscountMinFixed] = useState<string>("")
   const [globalDiscountMaxPct, setGlobalDiscountMaxPct] = useState<string>("")
   const [globalDiscountMaxFixed, setGlobalDiscountMaxFixed] = useState<string>("")
 
@@ -155,6 +157,8 @@ export default function EmailMarketingPage() {
   const effectiveGlobalDiscountEnabled = globalDiscountEnabled ?? config?.global?.discount_enabled ?? true
   const effectiveGlobalDiscountPct = globalDiscountPct || String(config?.global?.discount_percentage ?? 10)
   const effectiveGlobalDiscountType = globalDiscountType ?? config?.global?.discount_type ?? "percentage"
+  const effectiveGlobalDiscountMinPct = globalDiscountMinPct || String(config?.global?.discount_min_percentage ?? "")
+  const effectiveGlobalDiscountMinFixed = globalDiscountMinFixed || String(config?.global?.discount_min_fixed ?? "")
   const effectiveGlobalDiscountMaxPct = globalDiscountMaxPct || String(config?.global?.discount_max_percentage ?? "")
   const effectiveGlobalDiscountMaxFixed = globalDiscountMaxFixed || String(config?.global?.discount_max_fixed ?? "")
 
@@ -489,30 +493,55 @@ export default function EmailMarketingPage() {
                         Fuente: {config.global.source}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
-                        <Label>Máximo descuento porcentaje (%)</Label>
-                        <p className="text-xs text-gray-400">Límite superior para descuentos porcentuales (vacío = sin límite)</p>
+                        <Label className="text-xs">Mín porcentaje (%)</Label>
+                        <p className="text-[10px] text-gray-400">Nunca menos de X%</p>
                         <Input
                           type="number"
                           min={0}
                           max={100}
-                          placeholder="Sin límite"
-                          value={effectiveGlobalDiscountMaxPct}
-                          onChange={(e) => setGlobalDiscountMaxPct(e.target.value)}
-                          className="mt-1 w-32"
+                          placeholder="Sin mín"
+                          value={effectiveGlobalDiscountMinPct}
+                          onChange={(e) => setGlobalDiscountMinPct(e.target.value)}
+                          className="mt-1 w-28"
                         />
                       </div>
                       <div>
-                        <Label>Máximo descuento fijo ($)</Label>
-                        <p className="text-xs text-gray-400">Límite superior para descuentos de monto fijo (vacío = sin límite)</p>
+                        <Label className="text-xs">Máx porcentaje (%)</Label>
+                        <p className="text-[10px] text-gray-400">Nunca más de X%</p>
                         <Input
                           type="number"
                           min={0}
-                          placeholder="Sin límite"
+                          max={100}
+                          placeholder="Sin máx"
+                          value={effectiveGlobalDiscountMaxPct}
+                          onChange={(e) => setGlobalDiscountMaxPct(e.target.value)}
+                          className="mt-1 w-28"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Mín fijo ($)</Label>
+                        <p className="text-[10px] text-gray-400">Nunca menos de $X</p>
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="Sin mín"
+                          value={effectiveGlobalDiscountMinFixed}
+                          onChange={(e) => setGlobalDiscountMinFixed(e.target.value)}
+                          className="mt-1 w-28"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Máx fijo ($)</Label>
+                        <p className="text-[10px] text-gray-400">Nunca más de $X</p>
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="Sin máx"
                           value={effectiveGlobalDiscountMaxFixed}
                           onChange={(e) => setGlobalDiscountMaxFixed(e.target.value)}
-                          className="mt-1 w-32"
+                          className="mt-1 w-28"
                         />
                       </div>
                     </div>
@@ -785,6 +814,8 @@ export default function EmailMarketingPage() {
                         discount_enabled: effectiveGlobalDiscountEnabled,
                         discount_percentage: Number(effectiveGlobalDiscountPct),
                         discount_type: effectiveGlobalDiscountType,
+                        discount_min_percentage: effectiveGlobalDiscountMinPct ? Number(effectiveGlobalDiscountMinPct) : null,
+                        discount_min_fixed: effectiveGlobalDiscountMinFixed ? Number(effectiveGlobalDiscountMinFixed) : null,
                         discount_max_percentage: effectiveGlobalDiscountMaxPct ? Number(effectiveGlobalDiscountMaxPct) : null,
                         discount_max_fixed: effectiveGlobalDiscountMaxFixed ? Number(effectiveGlobalDiscountMaxFixed) : null,
                         campaigns_enabled: effectiveCampaignsEnabled,
@@ -874,9 +905,9 @@ function GroupConfigCard({
   isDeleting,
 }: {
   groupName: string
-  groupConfig: { enabled: boolean; discount_enabled: boolean; discount_percentage: number; discount_type: DiscountType } | null
+  groupConfig: { enabled: boolean; discount_enabled: boolean; discount_percentage: number; discount_type: DiscountType; discount_min_percentage?: number | null; discount_min_fixed?: number | null; discount_max_percentage?: number | null; discount_max_fixed?: number | null } | null
   globalConfig: { enabled: boolean; discount_enabled: boolean; discount_percentage: number; discount_type: DiscountType }
-  onSave: (data: { enabled?: boolean; discount_enabled?: boolean; discount_percentage?: number; discount_type?: DiscountType }) => void
+  onSave: (data: { enabled?: boolean; discount_enabled?: boolean; discount_percentage?: number; discount_type?: DiscountType; discount_min_percentage?: number | null; discount_min_fixed?: number | null; discount_max_percentage?: number | null; discount_max_fixed?: number | null }) => void
   onDelete: () => void
   isSaving: boolean
   isDeleting: boolean
@@ -888,11 +919,20 @@ function GroupConfigCard({
   const [discountEnabled, setDiscountEnabled] = useState<boolean | null>(null)
   const [discountPct, setDiscountPct] = useState("")
   const [discountType, setDiscountType] = useState<DiscountType | null>(null)
+  const [discountMinPct, setDiscountMinPct] = useState("")
+  const [discountMinFixed, setDiscountMinFixed] = useState("")
+  const [discountMaxPct, setDiscountMaxPct] = useState("")
+  const [discountMaxFixed, setDiscountMaxFixed] = useState("")
 
   const effectiveEnabled = enabled ?? effective.enabled
   const effectiveDiscountEnabled = discountEnabled ?? effective.discount_enabled
   const effectiveDiscountPct = discountPct || String(effective.discount_percentage)
   const effectiveDiscountType = discountType ?? effective.discount_type ?? "percentage"
+  const gc = groupConfig as { discount_min_percentage?: number | null; discount_min_fixed?: number | null; discount_max_percentage?: number | null; discount_max_fixed?: number | null } | null
+  const effectiveDiscountMinPct = discountMinPct || String(gc?.discount_min_percentage ?? "")
+  const effectiveDiscountMinFixed = discountMinFixed || String(gc?.discount_min_fixed ?? "")
+  const effectiveDiscountMaxPct = discountMaxPct || String(gc?.discount_max_percentage ?? "")
+  const effectiveDiscountMaxFixed = discountMaxFixed || String(gc?.discount_max_fixed ?? "")
 
   return (
     <Card>
@@ -951,6 +991,54 @@ function GroupConfigCard({
             className="mt-1 w-24 h-8 text-sm"
           />
         </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label className="text-[10px] text-gray-400">Mín %</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              placeholder="—"
+              value={effectiveDiscountMinPct}
+              onChange={(e) => setDiscountMinPct(e.target.value)}
+              className="mt-0.5 w-full h-7 text-xs"
+            />
+          </div>
+          <div>
+            <Label className="text-[10px] text-gray-400">Máx %</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              placeholder="—"
+              value={effectiveDiscountMaxPct}
+              onChange={(e) => setDiscountMaxPct(e.target.value)}
+              className="mt-0.5 w-full h-7 text-xs"
+            />
+          </div>
+          <div>
+            <Label className="text-[10px] text-gray-400">Mín $</Label>
+            <Input
+              type="number"
+              min={0}
+              placeholder="—"
+              value={effectiveDiscountMinFixed}
+              onChange={(e) => setDiscountMinFixed(e.target.value)}
+              className="mt-0.5 w-full h-7 text-xs"
+            />
+          </div>
+          <div>
+            <Label className="text-[10px] text-gray-400">Máx $</Label>
+            <Input
+              type="number"
+              min={0}
+              placeholder="—"
+              value={effectiveDiscountMaxFixed}
+              onChange={(e) => setDiscountMaxFixed(e.target.value)}
+              className="mt-0.5 w-full h-7 text-xs"
+            />
+          </div>
+        </div>
         <div className="flex gap-2 pt-2">
           <Button
             size="sm"
@@ -960,6 +1048,10 @@ function GroupConfigCard({
                 discount_enabled: effectiveDiscountEnabled,
                 discount_percentage: Number(effectiveDiscountPct),
                 discount_type: effectiveDiscountType,
+                discount_min_percentage: effectiveDiscountMinPct ? Number(effectiveDiscountMinPct) : null,
+                discount_min_fixed: effectiveDiscountMinFixed ? Number(effectiveDiscountMinFixed) : null,
+                discount_max_percentage: effectiveDiscountMaxPct ? Number(effectiveDiscountMaxPct) : null,
+                discount_max_fixed: effectiveDiscountMaxFixed ? Number(effectiveDiscountMaxFixed) : null,
               })
             }}
             disabled={isSaving}

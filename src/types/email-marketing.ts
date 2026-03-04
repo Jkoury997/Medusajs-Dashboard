@@ -117,6 +117,8 @@ export interface EmailGlobalConfig {
   discount_enabled: boolean
   discount_percentage: number
   discount_type: DiscountType
+  discount_min_percentage?: number | null
+  discount_min_fixed?: number | null
   discount_max_percentage?: number | null
   discount_max_fixed?: number | null
   source?: string
@@ -132,6 +134,10 @@ export interface EmailGroupConfig {
   discount_enabled: boolean
   discount_percentage: number
   discount_type: DiscountType
+  discount_min_percentage?: number | null
+  discount_min_fixed?: number | null
+  discount_max_percentage?: number | null
+  discount_max_fixed?: number | null
   updated_at: string
 }
 
@@ -145,6 +151,8 @@ export interface EmailConfigUpdateData {
   discount_enabled?: boolean
   discount_percentage?: number
   discount_type?: DiscountType
+  discount_min_percentage?: number | null
+  discount_min_fixed?: number | null
   discount_max_percentage?: number | null
   discount_max_fixed?: number | null
   group_id?: string
@@ -342,6 +350,8 @@ export interface CampaignEffectiveGlobal {
   discount_enabled: boolean
   discount_percentage: number
   discount_type: DiscountType
+  discount_min_percentage: number | null
+  discount_min_fixed: number | null
   discount_max_percentage: number | null
   discount_max_fixed: number | null
   newsletter_cron_enabled: boolean
