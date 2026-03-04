@@ -38,6 +38,16 @@ async function proxyRequest(
       return NextResponse.json(error, { status: response.status })
     }
 
+    // Pass through HTML responses (e.g. email previews)
+    const contentType = response.headers.get("content-type") || ""
+    if (contentType.includes("text/html")) {
+      const html = await response.text()
+      return new NextResponse(html, {
+        status: 200,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      })
+    }
+
     const data = await response.json()
     return NextResponse.json(data)
   } catch (error: any) {

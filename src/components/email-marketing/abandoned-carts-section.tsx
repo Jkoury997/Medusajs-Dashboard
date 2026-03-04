@@ -27,6 +27,12 @@ import {
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   useAbandonedCartStats,
   useAbandonedCartList,
   useProcessAbandonedCarts,
@@ -204,6 +210,9 @@ export function AbandonedCartsSection() {
 
   // Expanded row
   const [expandedCartId, setExpandedCartId] = useState<string | null>(null)
+
+  // Email preview modal
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   if (statsLoading) {
     return (
@@ -620,6 +629,16 @@ export function AbandonedCartsSection() {
                                     {r.resend_email_1_id && (
                                       <DetailRow label="Resend ID" value={r.resend_email_1_id} />
                                     )}
+                                    {r.has_preview_1 && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-xs h-7 mt-2"
+                                        onClick={() => setPreviewUrl(`/api/email-proxy/campaigns/abandoned-carts/${r.cart_id}/preview/1`)}
+                                      >
+                                        Ver Email 1
+                                      </Button>
+                                    )}
                                   </div>
 
                                   {/* Email 2 timeline */}
@@ -669,6 +688,16 @@ export function AbandonedCartsSection() {
                                     )}
                                     {r.resend_email_2_id && (
                                       <DetailRow label="Resend ID" value={r.resend_email_2_id} />
+                                    )}
+                                    {r.has_preview_2 && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-xs h-7 mt-2"
+                                        onClick={() => setPreviewUrl(`/api/email-proxy/campaigns/abandoned-carts/${r.cart_id}/preview/2`)}
+                                      >
+                                        Ver Email 2
+                                      </Button>
                                     )}
                                   </div>
                                 </div>
@@ -769,6 +798,23 @@ export function AbandonedCartsSection() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal preview de email */}
+      <Dialog open={!!previewUrl} onOpenChange={(open) => !open && setPreviewUrl(null)}>
+        <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Vista previa del email</DialogTitle>
+          </DialogHeader>
+          {previewUrl && (
+            <iframe
+              src={previewUrl}
+              className="w-full flex-1 border rounded-md bg-white"
+              sandbox="allow-same-origin"
+              title="Email preview"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

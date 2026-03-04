@@ -84,6 +84,8 @@ export interface AbandonedCartRecord {
   email_2_clicked_at: string | null
   email_1_bounced: boolean
   email_2_bounced: boolean
+  has_preview_1: boolean
+  has_preview_2: boolean
   created_at: string
   updated_at: string
 }
@@ -263,6 +265,7 @@ export interface CampaignStats {
 }
 
 export interface CampaignEmailRecord {
+  _id: string
   customer_id: string
   email: string
   customer_name: string | null
@@ -278,6 +281,7 @@ export interface CampaignEmailRecord {
   coupon_code: string | null
   trigger_data: Record<string, unknown>
   created_at: string
+  has_preview: boolean
 }
 
 export interface CampaignRecentResponse {

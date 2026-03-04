@@ -11,6 +11,7 @@ import {
   useDeletePreset,
 } from "@/hooks/use-manual-campaigns"
 import { TemplateEditor } from "@/components/templates/template-editor"
+import { TemplateEditor as AutoTemplateEditor } from "@/components/email-marketing/template-editor"
 import type { ContentPreset, ManualCampaignContent, ManualCampaignDiscount } from "@/types/campaigns"
 
 export default function TemplatesPage() {
@@ -98,14 +99,35 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800">Plantillas de Email</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Gestiona las plantillas de campañas automáticas y manuales
+        </p>
+      </div>
+
+      {/* --- Campañas Automáticas --- */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-gray-700">Campañas Automáticas</h2>
+          <Badge className="bg-purple-100 text-purple-700">AI</Badge>
+        </div>
+        <p className="text-sm text-gray-500">
+          Templates de emails automáticos: carritos abandonados, post-compra, bienvenida, browse abandonment, newsletter y win-back
+        </p>
+        <AutoTemplateEditor />
+      </div>
+
+      {/* --- Divider --- */}
+      <hr className="border-gray-200" />
+
+      {/* --- Campañas Manuales --- */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Plantillas de Email</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Crea y edita plantillas reutilizables con el editor visual
-          </p>
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-gray-700">Campañas Manuales</h2>
+          <Badge variant="outline">Editor Visual</Badge>
         </div>
         <Button onClick={handleCreate}>
           + Nueva Plantilla

@@ -4,8 +4,9 @@
 
 export interface RankingHealthResponse {
   status: string
-  mongodb: string
-  uptime?: number
+  mongo: string
+  service?: string
+  timestamp?: string
 }
 
 // --- Rankings ---

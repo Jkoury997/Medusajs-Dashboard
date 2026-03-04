@@ -133,7 +133,7 @@ export default function RankingPage() {
   const costMax = (tokenCount / 1_000_000) * 15 // all output rate
 
   const isHealthy = health?.status === "ok"
-  const isMongoConnected = health?.mongodb === "connected"
+  const isMongoConnected = health?.mongo === "connected"
 
   return (
     <div>

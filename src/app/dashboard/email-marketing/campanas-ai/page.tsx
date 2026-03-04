@@ -16,6 +16,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   useCampaignStats,
   useCampaignRecent,
   useProcessCampaigns,
@@ -65,21 +71,24 @@ function buildForceSendData(
       return {
         customer_id: record.customer_id,
         ...(record.trigger_data?.order_id ? { order_id: record.trigger_data.order_id } : {}),
+        skip_duplicate_check: true,
       }
     case "welcome_1":
     case "welcome_2":
     case "welcome_3":
     case "win_back":
-      return { customer_id: record.customer_id }
+      return { customer_id: record.customer_id, skip_duplicate_check: true }
     case "browse_abandonment":
       return {
         customer_id: record.customer_id,
         product_id: (record.trigger_data?.product_id as string) || "",
+        skip_duplicate_check: true,
       }
     case "newsletter":
       return {
         customer_id: record.customer_id,
         ...(record.trigger_data?.theme ? { theme: record.trigger_data.theme } : {}),
+        skip_duplicate_check: true,
       }
     default:
       return null
@@ -113,6 +122,7 @@ export default function CampanasAIPage() {
   const { data: campaignRecent, isLoading: recentLoading } = useCampaignRecent(selectedCampaignType)
   const processCampaignsMutation = useProcessCampaigns()
   const campaignForceSendMutation = useCampaignForceSend()
+  const [previewId, setPreviewId] = useState<string | null>(null)
 
   return (
     <div>
@@ -326,23 +336,35 @@ export default function CampanasAIPage() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-xs h-7"
-                                disabled={campaignForceSendMutation.isPending}
-                                onClick={() => {
-                                  const data = buildForceSendData(selectedCampaignType!, r)
-                                  if (data) {
-                                    campaignForceSendMutation.mutate({
-                                      type: selectedCampaignType!,
-                                      data,
-                                    })
-                                  }
-                                }}
-                              >
-                                {campaignForceSendMutation.isPending ? "..." : "Reenviar"}
-                              </Button>
+                              <div className="flex gap-1">
+                                {r.has_preview && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs h-7"
+                                    onClick={() => setPreviewId(r._id)}
+                                  >
+                                    Ver email
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs h-7"
+                                  disabled={campaignForceSendMutation.isPending}
+                                  onClick={() => {
+                                    const data = buildForceSendData(selectedCampaignType!, r)
+                                    if (data) {
+                                      campaignForceSendMutation.mutate({
+                                        type: selectedCampaignType!,
+                                        data,
+                                      })
+                                    }
+                                  }}
+                                >
+                                  {campaignForceSendMutation.isPending ? "..." : "Reenviar"}
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -375,6 +397,23 @@ export default function CampanasAIPage() {
           </Card>
         )}
       </div>
+
+      {/* Modal preview de email */}
+      <Dialog open={!!previewId} onOpenChange={(open) => !open && setPreviewId(null)}>
+        <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Vista previa del email</DialogTitle>
+          </DialogHeader>
+          {previewId && (
+            <iframe
+              src={`/api/email-proxy/campaigns/emails/${previewId}/preview`}
+              className="w-full flex-1 border rounded-md bg-white"
+              sandbox="allow-same-origin"
+              title="Email preview"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
