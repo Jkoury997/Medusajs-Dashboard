@@ -8,6 +8,8 @@ import type {
   CampaignConfigResponse,
   CampaignProcessResponse,
   CampaignForceSendResponse,
+  NewsletterSendResult,
+  NewsletterScheduleResult,
 } from "@/types/email-marketing"
 
 export function useCampaignStats() {
@@ -90,6 +92,48 @@ export function useCampaignForceSend() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["email", "campaigns"] })
+    },
+  })
+}
+
+export function useNewsletterSend() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: { theme?: string; group?: string }) => {
+      const res = await fetch("/api/email-proxy/campaigns/newsletter/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al enviar newsletter")
+      }
+      return res.json() as Promise<NewsletterSendResult>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email", "campaigns"] })
+    },
+  })
+}
+
+export function useNewsletterSchedule() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: { enabled: boolean; cron_expression: string; default_theme?: string }) => {
+      const res = await fetch("/api/email-proxy/campaigns/newsletter/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al configurar cron de newsletter")
+      }
+      return res.json() as Promise<NewsletterScheduleResult>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email", "campaigns", "config"] })
     },
   })
 }

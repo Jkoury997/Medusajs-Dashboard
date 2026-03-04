@@ -44,6 +44,8 @@ const TYPE_OPTIONS: { value: EmailTemplateType; label: string }[] = [
   { value: "welcome_2", label: "Bienvenida 2 (Descuento)" },
   { value: "welcome_3", label: "Bienvenida 3 (IA)" },
   { value: "browse_abandonment", label: "Browse Abandonment" },
+  { value: "newsletter", label: "Newsletter" },
+  { value: "win_back", label: "Win-Back (Reactivación)" },
 ]
 
 const TEMPLATE_VARIABLES = [

@@ -168,8 +168,9 @@ export function useDeleteAbandonedCart() {
 export function useDeleteGroupConfig() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (group: string) => {
-      const res = await fetch(`/api/email-proxy/config/group/${group}`, {
+    mutationFn: async ({ group, group_id }: { group: string; group_id?: string }) => {
+      const params = group_id ? `?group_id=${encodeURIComponent(group_id)}` : ""
+      const res = await fetch(`/api/email-proxy/config/group/${group}${params}`, {
         method: "DELETE",
       })
       if (!res.ok) throw new Error(`Error al eliminar configuración de ${group}`)

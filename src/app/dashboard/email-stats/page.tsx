@@ -221,6 +221,8 @@ export default function EmailStatsPage() {
                       welcome_2: "Bienvenida 2",
                       welcome_3: "Bienvenida 3",
                       browse_abandonment: "Browse Abandon.",
+                      newsletter: "Newsletter",
+                      win_back: "Win-Back",
                     }
                     return (
                       <TableRow key={c.campaign_type}>

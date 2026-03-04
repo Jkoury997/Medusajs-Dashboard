@@ -34,18 +34,22 @@ import {
   useUpdateGroupConfig,
   useDeleteGroupConfig,
 } from "@/hooks/use-email-marketing"
+import { useMedusaCustomerGroups } from "@/hooks/use-resellers"
 import {
   useCampaignStats,
   useCampaignRecent,
   useCampaignConfig,
   useProcessCampaigns,
   useCampaignForceSend,
+  useNewsletterSend,
+  useNewsletterSchedule,
 } from "@/hooks/use-campaigns"
 import { useHealthCheck } from "@/hooks/use-health-check"
 import { TemplateEditor } from "@/components/email-marketing/template-editor"
 import { formatNumber, formatCurrency } from "@/lib/format"
 import type {
   DiscountType,
+  AiTone,
   CampaignType,
   CampaignEmailRecord,
   CampaignsEnabledMap,
@@ -70,6 +74,8 @@ const CAMPAIGN_LABELS: Record<string, string> = {
   welcome_2: "Bienvenida 2 (Descuento)",
   welcome_3: "Bienvenida 3 (IA)",
   browse_abandonment: "Browse Abandonment",
+  newsletter: "Newsletter",
+  win_back: "Win-Back",
 }
 
 const CAMPAIGN_COLORS: Record<string, string> = {
@@ -78,6 +84,8 @@ const CAMPAIGN_COLORS: Record<string, string> = {
   welcome_2: "bg-pink-100 text-pink-700",
   welcome_3: "bg-purple-100 text-purple-700",
   browse_abandonment: "bg-orange-100 text-orange-700",
+  newsletter: "bg-teal-100 text-teal-700",
+  win_back: "bg-rose-100 text-rose-700",
 }
 
 const TIMING_FIELDS: { key: keyof CampaignTimings; label: string; unit: string }[] = [
@@ -92,7 +100,17 @@ const TIMING_FIELDS: { key: keyof CampaignTimings; label: string; unit: string }
   { key: "abandoned_cart_email1_min_hours", label: "Carrito Email 1 mín", unit: "horas" },
   { key: "abandoned_cart_email1_max_hours", label: "Carrito Email 1 máx", unit: "horas" },
   { key: "abandoned_cart_email2_min_hours", label: "Carrito Email 2 mín", unit: "horas" },
+  { key: "winback_inactivity_days", label: "Win-Back inactividad", unit: "días" },
+  { key: "winback_cooldown_days", label: "Win-Back cooldown", unit: "días" },
 ]
+
+const AI_TONE_OPTIONS = [
+  { value: "warm", label: "Cálido" },
+  { value: "urgent", label: "Urgente" },
+  { value: "exclusive", label: "Exclusivo" },
+  { value: "professional", label: "Profesional" },
+  { value: "casual", label: "Casual" },
+] as const
 
 function buildForceSendData(
   type: CampaignType,
@@ -107,11 +125,17 @@ function buildForceSendData(
     case "welcome_1":
     case "welcome_2":
     case "welcome_3":
+    case "win_back":
       return { customer_id: record.customer_id }
     case "browse_abandonment":
       return {
         customer_id: record.customer_id,
         product_id: (record.trigger_data?.product_id as string) || "",
+      }
+    case "newsletter":
+      return {
+        customer_id: record.customer_id,
+        ...(record.trigger_data?.theme ? { theme: record.trigger_data.theme } : {}),
       }
     default:
       return null
@@ -134,6 +158,9 @@ export default function EmailMarketingPage() {
   // Health check
   const { data: health, isLoading: healthLoading } = useHealthCheck()
 
+  // Medusa customer groups (to resolve group_id for config operations)
+  const { data: customerGroups } = useMedusaCustomerGroups()
+
   // Mutations
   const processMutation = useProcessAbandonedCarts()
   const updateGlobalMutation = useUpdateGlobalConfig()
@@ -141,12 +168,16 @@ export default function EmailMarketingPage() {
   const deleteGroupMutation = useDeleteGroupConfig()
   const processCampaignsMutation = useProcessCampaigns()
   const campaignForceSendMutation = useCampaignForceSend()
+  const newsletterSendMutation = useNewsletterSend()
+  const newsletterScheduleMutation = useNewsletterSchedule()
 
   // Config local state for editing
   const [globalEnabled, setGlobalEnabled] = useState<boolean | null>(null)
   const [globalDiscountEnabled, setGlobalDiscountEnabled] = useState<boolean | null>(null)
   const [globalDiscountPct, setGlobalDiscountPct] = useState<string>("")
   const [globalDiscountType, setGlobalDiscountType] = useState<DiscountType | null>(null)
+  const [globalDiscountMaxPct, setGlobalDiscountMaxPct] = useState<string>("")
+  const [globalDiscountMaxFixed, setGlobalDiscountMaxFixed] = useState<string>("")
 
   // Campaign config local state
   const [campaignsEnabled, setCampaignsEnabled] = useState<Partial<CampaignsEnabledMap> | null>(null)
@@ -155,16 +186,26 @@ export default function EmailMarketingPage() {
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null)
   const [aiModel, setAiModel] = useState<string>("")
   const [aiModelRecommendations, setAiModelRecommendations] = useState<string>("")
+  const [aiTone, setAiTone] = useState<AiTone | null>(null)
+
+  // Newsletter config local state
+  const [newsletterCronEnabled, setNewsletterCronEnabled] = useState<boolean | null>(null)
+  const [newsletterCronExpression, setNewsletterCronExpression] = useState<string>("")
+  const [newsletterDefaultTheme, setNewsletterDefaultTheme] = useState<string>("")
+  const [newsletterSendTheme, setNewsletterSendTheme] = useState<string>("")
+  const [newsletterSendGroup, setNewsletterSendGroup] = useState<string>("")
 
   // Sync config state when data loads
   const effectiveGlobalEnabled = globalEnabled ?? config?.global?.enabled ?? true
   const effectiveGlobalDiscountEnabled = globalDiscountEnabled ?? config?.global?.discount_enabled ?? true
   const effectiveGlobalDiscountPct = globalDiscountPct || String(config?.global?.discount_percentage ?? 10)
   const effectiveGlobalDiscountType = globalDiscountType ?? config?.global?.discount_type ?? "percentage"
+  const effectiveGlobalDiscountMaxPct = globalDiscountMaxPct || String(config?.global?.discount_max_percentage ?? "")
+  const effectiveGlobalDiscountMaxFixed = globalDiscountMaxFixed || String(config?.global?.discount_max_fixed ?? "")
 
   // Campaign config effective values
   const defaultCampaignsEnabled: CampaignsEnabledMap = {
-    post_purchase: true, welcome_1: true, welcome_2: true, welcome_3: true, browse_abandonment: true,
+    post_purchase: true, welcome_1: true, welcome_2: true, welcome_3: true, browse_abandonment: true, newsletter: true, win_back: true,
   }
   const effectiveCampaignsEnabled = {
     ...defaultCampaignsEnabled,
@@ -179,6 +220,10 @@ export default function EmailMarketingPage() {
   const effectiveAiEnabled = aiEnabled ?? campaignConfig?.effective_global?.ai_enabled ?? true
   const effectiveAiModel = aiModel || campaignConfig?.effective_global?.ai_model || "gpt-4o-mini"
   const effectiveAiModelRecommendations = aiModelRecommendations || campaignConfig?.effective_global?.ai_model_recommendations || "gpt-4o-mini"
+  const effectiveAiTone = aiTone ?? campaignConfig?.effective_global?.ai_tone ?? "warm"
+  const effectiveNewsletterCronEnabled = newsletterCronEnabled ?? campaignConfig?.effective_global?.newsletter_cron_enabled ?? false
+  const effectiveNewsletterCronExpression = newsletterCronExpression || campaignConfig?.effective_global?.newsletter_cron_expression || "0 10 * * 1"
+  const effectiveNewsletterDefaultTheme = newsletterDefaultTheme || campaignConfig?.effective_global?.newsletter_default_theme || ""
 
   return (
     <div>
@@ -398,7 +443,7 @@ export default function EmailMarketingPage() {
                     </div>
                     {processCampaignsMutation.isSuccess && processCampaignsMutation.data && (
                       <div className="mt-3 p-3 bg-green-50 rounded-md text-sm text-green-700">
-                        Post-compra: {processCampaignsMutation.data.post_purchase} · Bienvenida: W1={processCampaignsMutation.data.welcome.w1} W2={processCampaignsMutation.data.welcome.w2} W3={processCampaignsMutation.data.welcome.w3} · Browse: {processCampaignsMutation.data.browse_abandonment} · Tiempo: {processCampaignsMutation.data.elapsed_seconds.toFixed(1)}s
+                        Post-compra: {processCampaignsMutation.data.post_purchase} · Bienvenida: W1={processCampaignsMutation.data.welcome.w1} W2={processCampaignsMutation.data.welcome.w2} W3={processCampaignsMutation.data.welcome.w3} · Browse: {processCampaignsMutation.data.browse_abandonment} · Win-Back: {processCampaignsMutation.data.win_back ?? 0} · Tiempo: {processCampaignsMutation.data.elapsed_seconds.toFixed(1)}s
                       </div>
                     )}
                     {processCampaignsMutation.isError && (
@@ -480,7 +525,7 @@ export default function EmailMarketingPage() {
                     </div>
                     {processCampaignsMutation.isSuccess && processCampaignsMutation.data && (
                       <div className="mt-3 p-3 bg-green-50 rounded-md text-sm text-green-700">
-                        Post-compra: {processCampaignsMutation.data.post_purchase} · Bienvenida: W1={processCampaignsMutation.data.welcome.w1} W2={processCampaignsMutation.data.welcome.w2} W3={processCampaignsMutation.data.welcome.w3} · Browse: {processCampaignsMutation.data.browse_abandonment} · Tiempo: {processCampaignsMutation.data.elapsed_seconds.toFixed(1)}s
+                        Post-compra: {processCampaignsMutation.data.post_purchase} · Bienvenida: W1={processCampaignsMutation.data.welcome.w1} W2={processCampaignsMutation.data.welcome.w2} W3={processCampaignsMutation.data.welcome.w3} · Browse: {processCampaignsMutation.data.browse_abandonment} · Win-Back: {processCampaignsMutation.data.win_back ?? 0} · Tiempo: {processCampaignsMutation.data.elapsed_seconds.toFixed(1)}s
                       </div>
                     )}
                     {processCampaignsMutation.isError && (
@@ -746,6 +791,33 @@ export default function EmailMarketingPage() {
                         Fuente: {config.global.source}
                       </Badge>
                     </div>
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <Label>Máximo descuento porcentaje (%)</Label>
+                        <p className="text-xs text-gray-400">Límite superior para descuentos porcentuales (vacío = sin límite)</p>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          placeholder="Sin límite"
+                          value={effectiveGlobalDiscountMaxPct}
+                          onChange={(e) => setGlobalDiscountMaxPct(e.target.value)}
+                          className="mt-1 w-32"
+                        />
+                      </div>
+                      <div>
+                        <Label>Máximo descuento fijo ($)</Label>
+                        <p className="text-xs text-gray-400">Límite superior para descuentos de monto fijo (vacío = sin límite)</p>
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="Sin límite"
+                          value={effectiveGlobalDiscountMaxFixed}
+                          onChange={(e) => setGlobalDiscountMaxFixed(e.target.value)}
+                          className="mt-1 w-32"
+                        />
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -758,7 +830,7 @@ export default function EmailMarketingPage() {
                     {campaignConfigLoading ? (
                       <Skeleton className="h-[120px]" />
                     ) : (
-                      (["post_purchase", "welcome_1", "welcome_2", "welcome_3", "browse_abandonment"] as const).map((key) => (
+                      (["post_purchase", "welcome_1", "welcome_2", "welcome_3", "browse_abandonment", "newsletter", "win_back"] as const).map((key) => (
                         <div key={key} className="flex items-center justify-between">
                           <Label className="text-sm">{CAMPAIGN_LABELS[key] || key}</Label>
                           <Switch
@@ -863,6 +935,23 @@ export default function EmailMarketingPage() {
                             </SelectContent>
                           </Select>
                         </div>
+                        <div>
+                          <Label>Tono AI</Label>
+                          <p className="text-xs text-gray-400">Estilo de comunicación para los emails generados con IA</p>
+                          <Select
+                            value={effectiveAiTone}
+                            onValueChange={(v) => setAiTone(v as AiTone)}
+                          >
+                            <SelectTrigger className="mt-1 w-64">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {AI_TONE_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </>
                     )}
                   </CardContent>
@@ -892,6 +981,101 @@ export default function EmailMarketingPage() {
                   </CardContent>
                 </Card>
 
+                {/* Newsletter */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Newsletter</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {campaignConfigLoading ? (
+                      <Skeleton className="h-[120px]" />
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Cron habilitado</Label>
+                            <p className="text-xs text-gray-400">Envío automático programado de newsletters</p>
+                          </div>
+                          <Switch
+                            checked={effectiveNewsletterCronEnabled}
+                            onCheckedChange={(v) => setNewsletterCronEnabled(v)}
+                          />
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <Label>Expresión Cron</Label>
+                            <Input
+                              value={effectiveNewsletterCronExpression}
+                              onChange={(e) => setNewsletterCronExpression(e.target.value)}
+                              placeholder="0 10 * * 1"
+                              className="mt-1 w-48"
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Formato cron (ej: &quot;0 10 * * 1&quot; = lunes 10am)</p>
+                          </div>
+                          <div>
+                            <Label>Tema por defecto</Label>
+                            <Input
+                              value={effectiveNewsletterDefaultTheme}
+                              onChange={(e) => setNewsletterDefaultTheme(e.target.value)}
+                              placeholder="ej: ofertas, novedades"
+                              className="mt-1 w-48"
+                            />
+                          </div>
+                        </div>
+                        <div className="border-t pt-4 mt-4">
+                          <p className="text-sm font-medium mb-3">Envío manual de Newsletter</p>
+                          <div className="flex items-end gap-3">
+                            <div>
+                              <Label className="text-xs">Tema</Label>
+                              <Input
+                                value={newsletterSendTheme}
+                                onChange={(e) => setNewsletterSendTheme(e.target.value)}
+                                placeholder="Opcional"
+                                className="mt-1 w-40 h-8 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Grupo</Label>
+                              <Select
+                                value={newsletterSendGroup}
+                                onValueChange={setNewsletterSendGroup}
+                              >
+                                <SelectTrigger className="mt-1 w-40 h-8 text-sm">
+                                  <SelectValue placeholder="Todos" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">Todos</SelectItem>
+                                  <SelectItem value="minorista">Minorista</SelectItem>
+                                  <SelectItem value="mayorista">Mayorista</SelectItem>
+                                  <SelectItem value="revendedora">Revendedora</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => newsletterSendMutation.mutate({
+                                ...(newsletterSendTheme ? { theme: newsletterSendTheme } : {}),
+                                ...(newsletterSendGroup && newsletterSendGroup !== "all" ? { group: newsletterSendGroup } : {}),
+                              })}
+                              disabled={newsletterSendMutation.isPending}
+                            >
+                              {newsletterSendMutation.isPending ? "Enviando..." : "Enviar Newsletter"}
+                            </Button>
+                          </div>
+                          {newsletterSendMutation.isSuccess && newsletterSendMutation.data && (
+                            <p className="text-sm text-green-600 mt-2">
+                              Newsletter enviado: {newsletterSendMutation.data.sent} emails
+                            </p>
+                          )}
+                          {newsletterSendMutation.isError && (
+                            <p className="text-sm text-red-600 mt-2">{newsletterSendMutation.error?.message}</p>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
                 {/* Botón guardar global (incluye todos los campos) */}
                 <div className="flex items-center gap-4">
                   <Button
@@ -901,12 +1085,18 @@ export default function EmailMarketingPage() {
                         discount_enabled: effectiveGlobalDiscountEnabled,
                         discount_percentage: Number(effectiveGlobalDiscountPct),
                         discount_type: effectiveGlobalDiscountType,
+                        discount_max_percentage: effectiveGlobalDiscountMaxPct ? Number(effectiveGlobalDiscountMaxPct) : null,
+                        discount_max_fixed: effectiveGlobalDiscountMaxFixed ? Number(effectiveGlobalDiscountMaxFixed) : null,
                         campaigns_enabled: effectiveCampaignsEnabled,
                         timings: effectiveTimings as CampaignTimings,
                         frequency_cap_per_week: Number(effectiveFrequencyCapPerWeek),
                         ai_enabled: effectiveAiEnabled,
                         ai_model: effectiveAiModel,
                         ai_model_recommendations: effectiveAiModelRecommendations,
+                        ai_tone: effectiveAiTone,
+                        newsletter_cron_enabled: effectiveNewsletterCronEnabled,
+                        newsletter_cron_expression: effectiveNewsletterCronExpression,
+                        newsletter_default_theme: effectiveNewsletterDefaultTheme,
                       })
                     }}
                     disabled={updateGlobalMutation.isPending}
@@ -925,14 +1115,23 @@ export default function EmailMarketingPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {["minorista", "mayorista", "revendedora"].map((groupName) => {
                     const groupConfig = config.groups.find((g) => g.group_name === groupName)
+                    const medusaGroupId = customerGroups?.find(
+                      (g) => g.name.toLowerCase() === groupName.toLowerCase()
+                    )?.id
                     return (
                       <GroupConfigCard
                         key={groupName}
                         groupName={groupName}
                         groupConfig={groupConfig || null}
                         globalConfig={config.global}
-                        onSave={(data) => updateGroupMutation.mutate({ group: groupName, data })}
-                        onDelete={() => deleteGroupMutation.mutate(groupName)}
+                        onSave={(data) => updateGroupMutation.mutate({
+                          group: groupName,
+                          data: { ...data, ...(medusaGroupId ? { group_id: medusaGroupId } : {}) },
+                        })}
+                        onDelete={() => deleteGroupMutation.mutate({
+                          group: groupName,
+                          group_id: medusaGroupId,
+                        })}
                         isSaving={updateGroupMutation.isPending}
                         isDeleting={deleteGroupMutation.isPending}
                       />

@@ -4,6 +4,10 @@
 
 export type DiscountType = "percentage" | "fixed"
 
+// --- AI Tone ---
+
+export type AiTone = "warm" | "urgent" | "exclusive" | "professional" | "casual"
+
 // --- Abandoned Cart Stats ---
 
 export interface AbandonedCartEngagement {
@@ -111,6 +115,8 @@ export interface EmailGlobalConfig {
   discount_enabled: boolean
   discount_percentage: number
   discount_type: DiscountType
+  discount_max_percentage?: number | null
+  discount_max_fixed?: number | null
   source?: string
   updated_at?: string
 }
@@ -119,6 +125,7 @@ export interface EmailGroupConfig {
   _id?: string
   config_type: string
   group_name: string
+  group_id?: string
   enabled: boolean
   discount_enabled: boolean
   discount_percentage: number
@@ -136,12 +143,19 @@ export interface EmailConfigUpdateData {
   discount_enabled?: boolean
   discount_percentage?: number
   discount_type?: DiscountType
+  discount_max_percentage?: number | null
+  discount_max_fixed?: number | null
+  group_id?: string
   campaigns_enabled?: Partial<CampaignsEnabledMap>
   timings?: Partial<CampaignTimings>
   frequency_cap_per_week?: number
   ai_enabled?: boolean
   ai_model?: string
   ai_model_recommendations?: string
+  ai_tone?: AiTone
+  newsletter_cron_enabled?: boolean
+  newsletter_cron_expression?: string
+  newsletter_default_theme?: string
 }
 
 // --- Process & Force Send ---
@@ -177,6 +191,8 @@ export type EmailTemplateType =
   | "welcome_2"
   | "welcome_3"
   | "browse_abandonment"
+  | "newsletter"
+  | "win_back"
 
 export interface EmailTemplateFields {
   subject: string
@@ -213,6 +229,8 @@ export type CampaignType =
   | "welcome_2"
   | "welcome_3"
   | "browse_abandonment"
+  | "newsletter"
+  | "win_back"
 
 export interface CampaignTypeStats {
   campaign_type: CampaignType
@@ -295,6 +313,8 @@ export interface CampaignTimings {
   abandoned_cart_email1_min_hours: number
   abandoned_cart_email1_max_hours: number
   abandoned_cart_email2_min_hours: number
+  winback_inactivity_days: number
+  winback_cooldown_days: number
 }
 
 export interface CampaignsEnabledMap {
@@ -303,6 +323,8 @@ export interface CampaignsEnabledMap {
   welcome_2: boolean
   welcome_3: boolean
   browse_abandonment: boolean
+  newsletter: boolean
+  win_back: boolean
 }
 
 export interface CampaignEffectiveGlobal {
@@ -312,9 +334,15 @@ export interface CampaignEffectiveGlobal {
   ai_enabled: boolean
   ai_model: string
   ai_model_recommendations: string
+  ai_tone: AiTone
   discount_enabled: boolean
   discount_percentage: number
   discount_type: DiscountType
+  discount_max_percentage: number | null
+  discount_max_fixed: number | null
+  newsletter_cron_enabled: boolean
+  newsletter_cron_expression: string
+  newsletter_default_theme: string
 }
 
 export interface CampaignConfigResponse {
@@ -336,7 +364,22 @@ export interface CampaignProcessResponse {
     w3: number
   }
   browse_abandonment: number
+  win_back: number
   elapsed_seconds: number
+}
+
+// --- Newsletter ---
+
+export interface NewsletterSendResult {
+  success: boolean
+  sent: number
+  errors: number
+}
+
+export interface NewsletterScheduleResult {
+  success: boolean
+  enabled: boolean
+  cron_expression: string
 }
 
 // --- Campaign Force Send ---
