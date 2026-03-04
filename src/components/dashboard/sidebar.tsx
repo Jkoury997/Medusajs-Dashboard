@@ -36,6 +36,7 @@ import {
   Rocket,
   BookUser,
   Filter,
+  Trophy,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -115,6 +116,7 @@ const navEntries: NavEntry[] = [
       { href: "/dashboard/resellers/config", label: "Configuración", icon: Settings },
     ],
   },
+  { href: "/dashboard/ranking", label: "Ranking Productos", icon: Trophy },
   { href: "/dashboard/analytics", label: "Analítica", icon: Satellite },
   { href: "/dashboard/ai", label: "IA Insights", icon: Bot },
 ]
