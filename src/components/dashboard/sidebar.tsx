@@ -84,6 +84,7 @@ const navEntries: NavEntry[] = [
     children: [
       { href: "/dashboard/carritos-abandonados", label: "Carritos Abandonados", icon: ShoppingCart },
       { href: "/dashboard/campaigns", label: "Campañas", icon: Megaphone },
+      { href: "/dashboard/email-marketing/campanas-ai", label: "Campañas AI", icon: Bot },
       { href: "/dashboard/contacts", label: "Contactos", icon: BookUser },
       { href: "/dashboard/segments", label: "Segmentos", icon: Filter },
       { href: "/dashboard/templates", label: "Plantillas", icon: Palette },
