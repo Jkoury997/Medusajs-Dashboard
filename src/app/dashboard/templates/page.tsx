@@ -11,7 +11,7 @@ import {
   useDeletePreset,
 } from "@/hooks/use-manual-campaigns"
 import { TemplateEditor } from "@/components/templates/template-editor"
-import { TemplateEditor as AutoTemplateEditor } from "@/components/email-marketing/template-editor"
+import { AutoTemplateCards } from "@/components/email-marketing/auto-template-cards"
 import type { ContentPreset, ManualCampaignContent, ManualCampaignDiscount } from "@/types/campaigns"
 
 export default function TemplatesPage() {
@@ -115,9 +115,9 @@ export default function TemplatesPage() {
           <Badge className="bg-purple-100 text-purple-700">AI</Badge>
         </div>
         <p className="text-sm text-gray-500">
-          Templates de emails automáticos: carritos abandonados, post-compra, bienvenida, browse abandonment, newsletter y win-back
+          Templates de emails automaticos: carritos abandonados, post-compra, bienvenida, browse abandonment, newsletter y win-back
         </p>
-        <AutoTemplateEditor />
+        <AutoTemplateCards />
       </div>
 
       {/* --- Divider --- */}
