@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -40,6 +40,10 @@ import {
   Trophy,
   ShieldCheck,
   CreditCard,
+  MapPin,
+  Store,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -122,6 +126,16 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/resellers/config", label: "Configuración", icon: Settings },
     ],
   },
+  {
+    label: "Revendedoras Físicas",
+    icon: Store,
+    children: [
+      { href: "/dashboard/resellers-fisicas", label: "Resumen", icon: BarChart3 },
+      { href: "/dashboard/resellers-fisicas/lista", label: "Lista", icon: Users },
+      { href: "/dashboard/resellers-fisicas/pedidos", label: "Pedidos", icon: Package },
+      { href: "/dashboard/resellers-fisicas/ventas", label: "Ventas", icon: ShoppingCart },
+    ],
+  },
   // ← Administración se inserta dinámicamente aquí
   { href: "/dashboard/ranking", label: "Ranking Productos", icon: Trophy },
   { href: "/dashboard/analytics", label: "Analítica", icon: Satellite },
@@ -148,6 +162,37 @@ function BadgePill({ count, size = "sm" }: { count: number; size?: "sm" | "xs" }
   )
 }
 
+/** Dot indicator for badges when sidebar is collapsed */
+function BadgeDot({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-mk-pink rounded-full border-2 border-white" />
+  )
+}
+
+// ============================================================
+// LOCAL STORAGE
+// ============================================================
+
+const COLLAPSED_KEY = "sidebar-collapsed"
+
+function readCollapsed(): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === "1"
+  } catch {
+    return false
+  }
+}
+
+function writeCollapsed(v: boolean) {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, v ? "1" : "0")
+  } catch {
+    /* SSR / incognito */
+  }
+}
+
 // ============================================================
 // SIDEBAR COMPONENT
 // ============================================================
@@ -155,8 +200,22 @@ function BadgePill({ count, size = "sm" }: { count: number; size?: "sm" | "xs" }
 export function Sidebar() {
   const pathname = usePathname()
   const { logout } = useAuth()
+  const [collapsed, setCollapsed] = useState(false)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const { data: adminCounts } = useAdminPendingCounts()
+
+  // Restore collapsed state from localStorage
+  useEffect(() => {
+    setCollapsed(readCollapsed())
+  }, [])
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev
+      writeCollapsed(next)
+      return next
+    })
+  }, [])
 
   // Build nav entries with dynamic Administración group
   const navEntries = useMemo(() => {
@@ -186,7 +245,7 @@ export function Sidebar() {
       ],
     }
 
-    // Insertar Administración después de Revendedoras (índice 7 en staticNavEntries)
+    // Insertar Administración después de Revendedoras
     const revendedorasIndex = staticNavEntries.findIndex(
       (e) => isNavGroup(e) && e.label === "Revendedoras"
     )
@@ -219,18 +278,69 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 h-screen sticky top-0 flex flex-col">
+    <aside
+      className={cn(
+        "bg-white border-r border-gray-200 h-screen sticky top-0 flex flex-col transition-all duration-300 ease-in-out shrink-0",
+        collapsed ? "w-[68px]" : "w-64"
+      )}
+    >
       {/* Brand header */}
-      <div className="p-6 border-b border-mk-pink-border shrink-0">
-        <h1 className="text-lg font-bold text-mk-pink">Marcela Koury</h1>
-        <p className="text-sm text-gray-500">Dashboard de Ventas</p>
+      <div
+        className={cn(
+          "border-b border-mk-pink-border shrink-0 flex items-center",
+          collapsed ? "px-3 py-4 justify-center" : "p-6 justify-between"
+        )}
+      >
+        <div className={cn("overflow-hidden", collapsed && "flex justify-center")}>
+          {collapsed ? (
+            <span className="text-lg font-bold text-mk-pink">MK</span>
+          ) : (
+            <>
+              <h1 className="text-lg font-bold text-mk-pink whitespace-nowrap">Marcela Koury</h1>
+              <p className="text-sm text-gray-500 whitespace-nowrap">Dashboard de Ventas</p>
+            </>
+          )}
+        </div>
+        {!collapsed && (
+          <button
+            onClick={toggleCollapsed}
+            className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            title="Minimizar sidebar"
+          >
+            <PanelLeftClose className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
+      {/* Expand button when collapsed */}
+      {collapsed && (
+        <div className="flex justify-center py-2 shrink-0">
+          <button
+            onClick={toggleCollapsed}
+            className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            title="Expandir sidebar"
+          >
+            <PanelLeftOpen className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+      <nav
+        className={cn(
+          "flex-1 space-y-1 overflow-y-auto overflow-x-hidden",
+          collapsed ? "px-2 py-2" : "p-4"
+        )}
+      >
         {navEntries.map((entry) => {
           if (isNavGroup(entry)) {
-            return (
+            return collapsed ? (
+              <CollapsedNavGroup
+                key={entry.label}
+                group={entry}
+                pathname={pathname}
+              />
+            ) : (
               <NavGroupItem
                 key={entry.label}
                 group={entry}
@@ -241,7 +351,13 @@ export function Sidebar() {
             )
           }
 
-          return (
+          return collapsed ? (
+            <CollapsedNavLink
+              key={entry.href}
+              item={entry}
+              pathname={pathname}
+            />
+          ) : (
             <NavLink
               key={entry.href}
               item={entry}
@@ -252,21 +368,35 @@ export function Sidebar() {
       </nav>
 
       {/* Logout */}
-      <div className="p-4 border-t border-gray-200">
-        <button
-          onClick={logout}
-          className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
-        >
-          <LogOut className="w-4 h-4" />
-          Cerrar sesión
-        </button>
+      <div className="p-2 border-t border-gray-200 shrink-0">
+        {collapsed ? (
+          <button
+            onClick={logout}
+            className="relative group flex items-center justify-center w-full p-2 rounded-md text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+            title="Cerrar sesión"
+          >
+            <LogOut className="w-4 h-4" />
+            {/* Tooltip */}
+            <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-gray-900 text-white text-xs rounded-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 pointer-events-none">
+              Cerrar sesión
+            </div>
+          </button>
+        ) : (
+          <button
+            onClick={logout}
+            className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Cerrar sesión
+          </button>
+        )}
       </div>
     </aside>
   )
 }
 
 // ============================================================
-// SUB-COMPONENTS
+// EXPANDED SUB-COMPONENTS
 // ============================================================
 
 function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
@@ -380,6 +510,116 @@ function NavGroupItem({
             )
           })}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================
+// COLLAPSED SUB-COMPONENTS (icon-only with flyout menus)
+// ============================================================
+
+function CollapsedNavLink({ item, pathname }: { item: NavItem; pathname: string }) {
+  const isActive =
+    item.href === "/dashboard"
+      ? pathname === "/dashboard"
+      : pathname.startsWith(item.href)
+
+  const Icon = item.icon
+
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        "relative group flex items-center justify-center w-full p-2 rounded-md transition-colors",
+        isActive
+          ? "bg-mk-pink-light text-mk-pink"
+          : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+      )}
+      title={item.label}
+    >
+      <Icon className="w-5 h-5" />
+      {item.badge != null && item.badge > 0 && <BadgeDot count={item.badge} />}
+
+      {/* Tooltip */}
+      <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-gray-900 text-white text-xs rounded-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 pointer-events-none">
+        {item.label}
+        {item.badge != null && item.badge > 0 && (
+          <span className="ml-1.5 bg-mk-pink text-white text-[10px] px-1 py-0.5 rounded-full">
+            {item.badge}
+          </span>
+        )}
+      </div>
+    </Link>
+  )
+}
+
+function CollapsedNavGroup({
+  group,
+  pathname,
+}: {
+  group: NavGroup
+  pathname: string
+}) {
+  const hasActiveChild = group.children.some((child) =>
+    child.href === "/dashboard"
+      ? pathname === "/dashboard"
+      : pathname.startsWith(child.href)
+  )
+
+  const Icon = group.icon
+
+  return (
+    <div className="relative group">
+      {/* Icon button */}
+      <button
+        className={cn(
+          "relative flex items-center justify-center w-full p-2 rounded-md transition-colors",
+          hasActiveChild
+            ? "bg-mk-pink-light text-mk-pink"
+            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+        )}
+      >
+        <Icon className="w-5 h-5" />
+        {group.badge != null && group.badge > 0 && <BadgeDot count={group.badge} />}
+      </button>
+
+      {/* Flyout menu on hover */}
+      <div className="absolute left-full top-0 ml-2 py-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
+        {/* Group header */}
+        <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100 mb-1 flex items-center gap-2">
+          {group.label}
+          {group.badge != null && group.badge > 0 && (
+            <BadgePill count={group.badge} size="xs" />
+          )}
+        </div>
+
+        {/* Children */}
+        {group.children.map((child) => {
+          const isActive = pathname.startsWith(child.href)
+          const ChildIcon = child.icon
+
+          return (
+            <Link
+              key={child.href}
+              href={child.href}
+              className={cn(
+                "flex items-center gap-2.5 px-3 py-2 text-sm transition-colors mx-1 rounded-md",
+                isActive
+                  ? "bg-mk-pink-light text-mk-pink-dark font-medium"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              )}
+            >
+              <ChildIcon className={cn("w-3.5 h-3.5 shrink-0", isActive && "text-mk-pink")} />
+              <span className="truncate">{child.label}</span>
+              {child.badge != null && child.badge > 0 && (
+                <span className="ml-auto">
+                  <BadgePill count={child.badge} size="xs" />
+                </span>
+              )}
+            </Link>
+          )
+        })}
       </div>
     </div>
   )
