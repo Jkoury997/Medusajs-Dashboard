@@ -58,6 +58,7 @@ type CaptureModal = {
 export default function PagosPendientesPage() {
   const [offset, setOffset] = useState(0)
   const [modal, setModal] = useState<CaptureModal>(null)
+  const [transferRef, setTransferRef] = useState("")
   const [actionError, setActionError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -106,10 +107,13 @@ export default function PagosPendientesPage() {
       // 2. Agregar nota de auditoría (best-effort)
       const adminEmail = adminUser?.email ?? "admin desconocido"
       const now = formatDateTime(new Date())
+      const refText = transferRef.trim()
+        ? ` — Ref. transferencia: ${transferRef.trim()}`
+        : ""
       try {
         await addNote.mutateAsync({
           orderId: modal.orderId,
-          value: `Pago capturado manualmente por ${adminEmail} el ${now}`,
+          value: `Pago capturado manualmente por ${adminEmail} el ${now}${refText}`,
         })
       } catch {
         // La nota es best-effort — el pago ya se capturó exitosamente
@@ -120,6 +124,7 @@ export default function PagosPendientesPage() {
         `Pago capturado exitosamente para orden #${modal.displayId}`
       )
       setModal(null)
+      setTransferRef("")
     } catch (e: unknown) {
       setActionError(
         e instanceof Error ? e.message : "Error al capturar el pago"
@@ -236,6 +241,21 @@ export default function PagosPendientesPage() {
                 </div>
               )}
 
+              {/* Campo opcional de referencia de transferencia */}
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">
+                  Nº de transferencia / referencia{" "}
+                  <span className="text-gray-400">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full border rounded-md p-2 text-sm"
+                  placeholder="Ej: TRF-123456789"
+                  value={transferRef}
+                  onChange={(e) => setTransferRef(e.target.value)}
+                />
+              </div>
+
               <p className="text-xs text-gray-400">
                 Esta acción capturará el pago y quedará registrado quién lo
                 realizó mediante una nota en la orden.
@@ -247,6 +267,7 @@ export default function PagosPendientesPage() {
                   onClick={() => {
                     setModal(null)
                     setActionError(null)
+                    setTransferRef("")
                   }}
                 >
                   Cancelar
