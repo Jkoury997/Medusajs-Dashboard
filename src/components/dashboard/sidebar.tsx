@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/providers/auth-provider"
+import { useAdminPendingCounts } from "@/hooks/use-admin-counts"
 import {
   LayoutDashboard,
   Package,
@@ -37,6 +38,8 @@ import {
   BookUser,
   Filter,
   Trophy,
+  ShieldCheck,
+  CreditCard,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -48,12 +51,14 @@ type NavItem = {
   href: string
   label: string
   icon: LucideIcon
+  badge?: number
 }
 
 type NavGroup = {
   label: string
   icon: LucideIcon
   children: NavItem[]
+  badge?: number
 }
 
 type NavEntry = NavItem | NavGroup
@@ -62,7 +67,7 @@ function isNavGroup(entry: NavEntry): entry is NavGroup {
   return "children" in entry
 }
 
-const navEntries: NavEntry[] = [
+const staticNavEntries: NavEntry[] = [
   { href: "/dashboard", label: "Resumen", icon: LayoutDashboard },
   { href: "/dashboard/orders", label: "Órdenes", icon: Package },
   {
@@ -117,10 +122,31 @@ const navEntries: NavEntry[] = [
       { href: "/dashboard/resellers/config", label: "Configuración", icon: Settings },
     ],
   },
+  // ← Administración se inserta dinámicamente aquí
   { href: "/dashboard/ranking", label: "Ranking Productos", icon: Trophy },
   { href: "/dashboard/analytics", label: "Analítica", icon: Satellite },
   { href: "/dashboard/ai", label: "IA Insights", icon: Bot },
 ]
+
+// ============================================================
+// BADGE PILL
+// ============================================================
+
+function BadgePill({ count, size = "sm" }: { count: number; size?: "sm" | "xs" }) {
+  if (count <= 0) return null
+  return (
+    <span
+      className={cn(
+        "bg-mk-pink text-white font-bold rounded-full text-center leading-none",
+        size === "sm"
+          ? "text-[10px] px-1.5 py-0.5 min-w-[18px]"
+          : "text-[9px] px-1 py-0.5 min-w-[16px]"
+      )}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  )
+}
 
 // ============================================================
 // SIDEBAR COMPONENT
@@ -130,6 +156,47 @@ export function Sidebar() {
   const pathname = usePathname()
   const { logout } = useAuth()
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  const { data: adminCounts } = useAdminPendingCounts()
+
+  // Build nav entries with dynamic Administración group
+  const navEntries = useMemo(() => {
+    const adminGroup: NavGroup = {
+      label: "Administración",
+      icon: ShieldCheck,
+      badge: adminCounts?.total || undefined,
+      children: [
+        {
+          href: "/dashboard/administracion/pagos",
+          label: "Pagos Pendientes",
+          icon: CreditCard,
+          badge: adminCounts?.authorizedOrders || undefined,
+        },
+        {
+          href: "/dashboard/administracion/documentos",
+          label: "Documentos",
+          icon: FileCheck,
+          badge: adminCounts?.pendingDocuments || undefined,
+        },
+        {
+          href: "/dashboard/administracion/retiros",
+          label: "Retiros",
+          icon: Wallet,
+          badge: adminCounts?.pendingWithdrawals || undefined,
+        },
+      ],
+    }
+
+    // Insertar Administración después de Revendedoras (índice 7 en staticNavEntries)
+    const revendedorasIndex = staticNavEntries.findIndex(
+      (e) => isNavGroup(e) && e.label === "Revendedoras"
+    )
+    const insertAt = revendedorasIndex >= 0 ? revendedorasIndex + 1 : staticNavEntries.length - 3
+    return [
+      ...staticNavEntries.slice(0, insertAt),
+      adminGroup,
+      ...staticNavEntries.slice(insertAt),
+    ]
+  }, [adminCounts])
 
   // Auto-expand groups whose children match the current route
   useEffect(() => {
@@ -145,7 +212,7 @@ export function Sidebar() {
         }
       }
     }
-  }, [pathname])
+  }, [pathname, navEntries])
 
   const toggleGroup = (label: string) => {
     setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }))
@@ -220,8 +287,13 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
           : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
       )}
     >
-      <Icon className={cn("w-4 h-4", isActive && "text-mk-pink")} />
-      {item.label}
+      <Icon className={cn("w-4 h-4 shrink-0", isActive && "text-mk-pink")} />
+      <span className="truncate">{item.label}</span>
+      {item.badge != null && item.badge > 0 && (
+        <span className="ml-auto">
+          <BadgePill count={item.badge} />
+        </span>
+      )}
     </Link>
   )
 }
@@ -261,12 +333,17 @@ function NavGroupItem({
           <Icon className={cn("w-4 h-4", hasActiveChild && "text-mk-pink")} />
           {group.label}
         </div>
-        <ChevronDown
-          className={cn(
-            "w-4 h-4 transition-transform duration-200",
-            isOpen && "rotate-180"
+        <div className="flex items-center gap-1.5">
+          {group.badge != null && group.badge > 0 && (
+            <BadgePill count={group.badge} />
           )}
-        />
+          <ChevronDown
+            className={cn(
+              "w-4 h-4 transition-transform duration-200",
+              isOpen && "rotate-180"
+            )}
+          />
+        </div>
       </button>
 
       {/* Children with smooth expand/collapse */}
@@ -292,8 +369,13 @@ function NavGroupItem({
                     : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                 )}
               >
-                <ChildIcon className={cn("w-3.5 h-3.5", isActive && "text-mk-pink")} />
-                {child.label}
+                <ChildIcon className={cn("w-3.5 h-3.5 shrink-0", isActive && "text-mk-pink")} />
+                <span className="truncate">{child.label}</span>
+                {child.badge != null && child.badge > 0 && (
+                  <span className="ml-auto">
+                    <BadgePill count={child.badge} size="xs" />
+                  </span>
+                )}
               </Link>
             )
           })}
