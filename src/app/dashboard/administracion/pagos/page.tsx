@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   useAuthorizedOrders,
   useOrderPaymentDetails,
@@ -61,10 +61,14 @@ export default function PagosPendientesPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-  const { data, isLoading, error } = useAuthorizedOrders({
-    limit: PAGE_SIZE,
-    offset,
-  })
+  const { data: allAuthorized, isLoading, error } = useAuthorizedOrders()
+
+  // Paginación client-side
+  const count = allAuthorized?.length ?? 0
+  const orders = useMemo(
+    () => allAuthorized?.slice(offset, offset + PAGE_SIZE) ?? [],
+    [allAuthorized, offset]
+  )
 
   const {
     data: orderDetails,
@@ -76,7 +80,6 @@ export default function PagosPendientesPage() {
   const capturePayment = useCapturePayment()
   const addNote = useAddOrderNote()
 
-  const count = data?.count ?? 0
   const isCapturing = capturePayment.isPending || addNote.isPending
 
   async function handleCapture() {
@@ -287,7 +290,7 @@ export default function PagosPendientesPage() {
                       ))}
                     </TableRow>
                   ))
-                ) : !data?.orders?.length ? (
+                ) : !orders.length ? (
                   <TableRow>
                     <TableCell
                       colSpan={6}
@@ -302,7 +305,7 @@ export default function PagosPendientesPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  data.orders.map((order: any) => {
+                  orders.map((order: any) => {
                     const addr = order.shipping_address
                     const location = [addr?.city, addr?.province]
                       .filter(Boolean)

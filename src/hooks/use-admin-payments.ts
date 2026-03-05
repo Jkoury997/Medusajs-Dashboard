@@ -3,12 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { sdk } from "@/lib/medusa-sdk"
 
-// ─── Types ───────────────────────────────────────────────────
-
-interface AuthorizedOrderFilters {
-  limit?: number
-  offset?: number
-}
+// ─── Fields ──────────────────────────────────────────────────
 
 // Campos livianos para la lista
 const AUTHORIZED_ORDER_FIELDS =
@@ -18,27 +13,37 @@ const AUTHORIZED_ORDER_FIELDS =
 
 /**
  * Órdenes con payment_status "authorized" (esperando transferencia bancaria).
- * Usa filtro server-side para eficiencia.
+ * Medusa v2 no soporta filtro server-side por payment_status,
+ * así que fetcheamos todas las órdenes y filtramos client-side.
  */
-export function useAuthorizedOrders(filters: AuthorizedOrderFilters = {}) {
+export function useAuthorizedOrders() {
   return useQuery({
-    queryKey: ["admin", "authorized-orders", filters],
+    queryKey: ["admin", "authorized-orders"],
     queryFn: async () => {
-      const response = await sdk.client.fetch("/admin/orders", {
-        query: {
-          payment_status: "authorized",
-          limit: filters.limit || 20,
-          offset: filters.offset || 0,
-          order: "-created_at",
-          fields: AUTHORIZED_ORDER_FIELDS,
-        },
-      })
-      return response as {
-        orders: any[]
-        count: number
-        offset: number
-        limit: number
+      const allOrders: any[] = []
+      let offset = 0
+      const limit = 100
+      let total = Infinity
+
+      while (offset < total) {
+        const response = (await sdk.client.fetch("/admin/orders", {
+          query: {
+            limit,
+            offset,
+            order: "-created_at",
+            fields: AUTHORIZED_ORDER_FIELDS,
+          },
+        })) as { orders: any[]; count: number }
+
+        allOrders.push(...response.orders)
+        total = response.count
+        offset += limit
       }
+
+      // Filtrar client-side por payment_status === "authorized"
+      return allOrders.filter(
+        (order: any) => order.payment_status === "authorized"
+      )
     },
   })
 }
