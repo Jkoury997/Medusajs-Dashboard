@@ -62,7 +62,9 @@ export function usePhysicalResellerDetail(id: string) {
     queryFn: async () => {
       const res = await fetch(`${BASE}/resellers/${id}`)
       if (!res.ok) throw new Error("Error al obtener revendedora")
-      return res.json() as Promise<PhysicalResellerWithStats>
+      const json = await res.json()
+      // API returns { reseller: {...}, stats: {...} } - merge into single object
+      return { ...json.reseller, stats: json.stats } as PhysicalResellerWithStats
     },
     enabled: !!id,
   })
