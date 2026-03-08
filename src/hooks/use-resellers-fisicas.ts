@@ -144,6 +144,22 @@ export function useMarkOrderShipped() {
   })
 }
 
+export function useConfirmOrderDelivery() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${BASE}/orders/${id}/confirm-delivery`, {
+        method: "POST",
+      })
+      if (!res.ok) throw new Error("Error al confirmar entrega")
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers-fisicas"] })
+    },
+  })
+}
+
 // ============================================================
 // SALES
 // ============================================================

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePhysicalResellerOrders, useMarkOrderShipped } from "@/hooks/use-resellers-fisicas"
+import { usePhysicalResellerOrders, useMarkOrderShipped, useConfirmOrderDelivery } from "@/hooks/use-resellers-fisicas"
 import type { ResellerOrderStatus } from "@/types/reseller-fisicas"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -43,6 +43,7 @@ export default function PedidosResellersFisicasPage() {
   })
 
   const markShipped = useMarkOrderShipped()
+  const confirmDelivery = useConfirmOrderDelivery()
   const count = data?.count ?? 0
 
   if (error) {
@@ -145,15 +146,26 @@ export default function PedidosResellersFisicasPage() {
                             : "-"}
                         </TableCell>
                         <TableCell>
-                          {order.status === "pagado" && (
-                            <button
-                              className="px-2 py-1 text-xs bg-blue-600 text-white rounded disabled:opacity-50"
-                              disabled={markShipped.isPending}
-                              onClick={() => markShipped.mutate(order._id)}
-                            >
-                              Marcar Enviado
-                            </button>
-                          )}
+                          <div className="flex gap-2">
+                            {order.status === "pagado" && (
+                              <button
+                                className="px-2 py-1 text-xs bg-blue-600 text-white rounded disabled:opacity-50"
+                                disabled={markShipped.isPending}
+                                onClick={() => markShipped.mutate(order._id)}
+                              >
+                                Marcar Enviado
+                              </button>
+                            )}
+                            {order.status === "enviado" && (
+                              <button
+                                className="px-2 py-1 text-xs bg-green-600 text-white rounded disabled:opacity-50"
+                                disabled={confirmDelivery.isPending}
+                                onClick={() => confirmDelivery.mutate(order._id)}
+                              >
+                                Confirmar Entrega
+                              </button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     )
