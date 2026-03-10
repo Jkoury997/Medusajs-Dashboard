@@ -18,7 +18,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { formatNumber } from "@/lib/format"
 import { exportToCSV } from "@/lib/export"
+import { ExternalLink } from "lucide-react"
 import { useProductsWithStock } from "@/hooks/use-inventory"
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || ""
 
 export default function SinStockPage() {
   const { data, isLoading } = useProductsWithStock()
@@ -123,13 +126,14 @@ export default function SinStockPage() {
                       <TableHead>ID Externo</TableHead>
                       <TableHead className="text-center">Variantes</TableHead>
                       <TableHead className="text-center">Stock</TableHead>
+                      {BACKEND_URL && <TableHead className="text-center">Backend</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {outOfStockProducts.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={5}
+                          colSpan={BACKEND_URL ? 6 : 5}
                           className="text-center py-8 text-gray-500"
                         >
                           No hay productos completamente sin stock
@@ -168,6 +172,19 @@ export default function SinStockPage() {
                               Sin stock
                             </Badge>
                           </TableCell>
+                          {BACKEND_URL && (
+                            <TableCell className="text-center">
+                              <a
+                                href={`${BACKEND_URL}/app/products/${product.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                Editar
+                              </a>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))
                     )}
