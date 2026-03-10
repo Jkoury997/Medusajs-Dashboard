@@ -71,6 +71,18 @@ function isNavGroup(entry: NavEntry): entry is NavGroup {
   return "children" in entry
 }
 
+/**
+ * Determina si un href está activo para el pathname actual.
+ * Usa exact match para "/dashboard" y boundary match (/ o fin) para el resto,
+ * evitando que "/dashboard/resellers" matchee con "/dashboard/resellers-fisicas".
+ */
+function isHrefActive(href: string, pathname: string): boolean {
+  if (href === "/dashboard") return pathname === "/dashboard"
+  if (pathname === href) return true
+  // Solo matchear si el pathname continúa con "/" después del href
+  return pathname.startsWith(href + "/")
+}
+
 const staticNavEntries: NavEntry[] = [
   { href: "/dashboard", label: "Resumen", icon: LayoutDashboard },
   { href: "/dashboard/orders", label: "Órdenes", icon: Package },
@@ -262,9 +274,7 @@ export function Sidebar() {
     for (const entry of navEntries) {
       if (isNavGroup(entry)) {
         const hasActiveChild = entry.children.some((child) =>
-          child.href === "/dashboard"
-            ? pathname === "/dashboard"
-            : pathname.startsWith(child.href)
+          isHrefActive(child.href, pathname)
         )
         if (hasActiveChild) {
           setOpenGroups((prev) => ({ ...prev, [entry.label]: true }))
@@ -400,10 +410,7 @@ export function Sidebar() {
 // ============================================================
 
 function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
-  const isActive =
-    item.href === "/dashboard"
-      ? pathname === "/dashboard"
-      : pathname.startsWith(item.href)
+  const isActive = isHrefActive(item.href, pathname)
 
   const Icon = item.icon
 
@@ -485,7 +492,7 @@ function NavGroupItem({
       >
         <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-gray-200 pl-3">
           {group.children.map((child) => {
-            const isActive = pathname.startsWith(child.href)
+            const active = isHrefActive(child.href, pathname)
             const ChildIcon = child.icon
 
             return (
@@ -494,12 +501,12 @@ function NavGroupItem({
                 href={child.href}
                 className={cn(
                   "flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm transition-colors",
-                  isActive
+                  active
                     ? "bg-mk-pink-light text-mk-pink-dark font-medium"
                     : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                 )}
               >
-                <ChildIcon className={cn("w-3.5 h-3.5 shrink-0", isActive && "text-mk-pink")} />
+                <ChildIcon className={cn("w-3.5 h-3.5 shrink-0", active && "text-mk-pink")} />
                 <span className="truncate">{child.label}</span>
                 {child.badge != null && child.badge > 0 && (
                   <span className="ml-auto">
@@ -520,10 +527,7 @@ function NavGroupItem({
 // ============================================================
 
 function CollapsedNavLink({ item, pathname }: { item: NavItem; pathname: string }) {
-  const isActive =
-    item.href === "/dashboard"
-      ? pathname === "/dashboard"
-      : pathname.startsWith(item.href)
+  const isActive = isHrefActive(item.href, pathname)
 
   const Icon = item.icon
 
@@ -596,7 +600,7 @@ function CollapsedNavGroup({
 
         {/* Children */}
         {group.children.map((child) => {
-          const isActive = pathname.startsWith(child.href)
+          const active = isHrefActive(child.href, pathname)
           const ChildIcon = child.icon
 
           return (
@@ -605,12 +609,12 @@ function CollapsedNavGroup({
               href={child.href}
               className={cn(
                 "flex items-center gap-2.5 px-3 py-2 text-sm transition-colors mx-1 rounded-md",
-                isActive
+                active
                   ? "bg-mk-pink-light text-mk-pink-dark font-medium"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               )}
             >
-              <ChildIcon className={cn("w-3.5 h-3.5 shrink-0", isActive && "text-mk-pink")} />
+              <ChildIcon className={cn("w-3.5 h-3.5 shrink-0", active && "text-mk-pink")} />
               <span className="truncate">{child.label}</span>
               {child.badge != null && child.badge > 0 && (
                 <span className="ml-auto">
