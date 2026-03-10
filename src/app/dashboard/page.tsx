@@ -84,7 +84,7 @@ export default function DashboardPage() {
 
   // ── Events Backend (MongoDB) ──
   const { data: eventStats } = useEventStats(dateRange.from, dateRange.to)
-  const { data: eventProducts } = useEventProducts(dateRange.from, dateRange.to)
+  const { data: eventProducts } = useEventProducts(dateRange.from, dateRange.to, 50)
   const { data: searchData } = useEventSearch(dateRange.from, dateRange.to)
 
   const fromStr = dateRange.from.toISOString().split("T")[0]

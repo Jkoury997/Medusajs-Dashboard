@@ -62,7 +62,7 @@ export function ProductConversionTable({ data }: ProductConversionTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.slice(0, 15).map((row, i) => {
+              {data.map((row, i) => {
                 const convRate = parseFloat(row.viewToSaleRate)
                 let badge = null
                 if (row.views > 10 && row.actualSold === 0) {
