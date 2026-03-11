@@ -71,7 +71,7 @@ export function CampaignStatsDialog({ open, onOpenChange, campaignId, campaignNa
               {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[80px]" />)}
             </div>
           ) : stats ? (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               <MetricCard
                 title="Enviados"
                 value={formatNumber(stats.sent)}
@@ -98,6 +98,12 @@ export function CampaignStatsDialog({ open, onOpenChange, campaignId, campaignNa
                 icon="🖱️"
               />
               <MetricCard
+                title="Fallidos"
+                value={formatNumber(stats.failed || 0)}
+                changeType={(stats.failed || 0) > 0 ? "negative" : "neutral"}
+                icon="❌"
+              />
+              <MetricCard
                 title="Rebotados"
                 value={formatNumber(stats.bounced)}
                 subtitle={stats.bounce_rate}
@@ -122,8 +128,7 @@ export function CampaignStatsDialog({ open, onOpenChange, campaignId, campaignNa
                       <TableRow>
                         <TableHead>Email</TableHead>
                         <TableHead>Nombre</TableHead>
-                        <TableHead>Grupo</TableHead>
-                        <TableHead>Enviado</TableHead>
+                        <TableHead>Estado</TableHead>
                         <TableHead>Entregado</TableHead>
                         <TableHead>Abierto</TableHead>
                         <TableHead>Click</TableHead>
@@ -136,12 +141,15 @@ export function CampaignStatsDialog({ open, onOpenChange, campaignId, campaignNa
                         <TableRow key={idx}>
                           <TableCell className="text-xs max-w-[200px] truncate">{r.email}</TableCell>
                           <TableCell className="text-xs">{r.name || "-"}</TableCell>
-                          <TableCell className="text-xs">{r.group || "-"}</TableCell>
                           <TableCell className="text-xs">
-                            {r.sent_at ? (
-                              <Badge className="bg-green-100 text-green-700 text-[10px]">Si</Badge>
+                            {r.send_error ? (
+                              <Badge className="bg-red-100 text-red-700 text-[10px]" title={r.send_error}>
+                                Error
+                              </Badge>
+                            ) : r.sent_at ? (
+                              <Badge className="bg-green-100 text-green-700 text-[10px]">Enviado</Badge>
                             ) : (
-                              <span className="text-gray-400">-</span>
+                              <Badge className="bg-gray-100 text-gray-500 text-[10px]">Pendiente</Badge>
                             )}
                           </TableCell>
                           <TableCell className="text-xs">

@@ -244,6 +244,7 @@ export interface ManualCampaignStats {
   opened: number
   clicked: number
   bounced: number
+  failed: number
   delivery_rate: string
   open_rate: string
   click_rate: string
@@ -262,6 +263,7 @@ export interface CampaignRecipient {
   clicked_at?: string | null
   bounced: boolean
   coupon_code?: string
+  send_error?: string | null
 }
 
 export interface CampaignRecipientsResponse {
