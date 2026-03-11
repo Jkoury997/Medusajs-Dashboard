@@ -118,7 +118,17 @@ export function CampaignStatsDialog({ open, onOpenChange, campaignId, campaignNa
 
           {/* Retry failed button */}
           {stats && (stats.failed || 0) > 0 && (
-            <div className="flex justify-end">
+            <div className="flex items-center justify-end gap-3">
+              {retryMutation.isSuccess && (
+                <span className="text-xs text-green-600">
+                  Listo: {retryMutation.data.succeeded} reenviados, {retryMutation.data.failed} siguen fallidos
+                </span>
+              )}
+              {retryMutation.isError && (
+                <span className="text-xs text-red-600">
+                  Error: {(retryMutation.error as Error).message}
+                </span>
+              )}
               <Button
                 size="sm"
                 variant="outline"
