@@ -249,6 +249,23 @@ export function useDuplicateCampaign() {
   })
 }
 
+export function useRetryCampaignFailed() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${BASE}/${id}/retry-failed`, { method: "POST" })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al reintentar emails fallidos")
+      }
+      return res.json() as Promise<{ success: boolean; retried: number; succeeded: number; failed: number }>
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["manual-campaigns"] })
+    },
+  })
+}
+
 export function useTestSendCampaign() {
   return useMutation({
     mutationFn: async ({ id, email }: { id: string; email: string }) => {

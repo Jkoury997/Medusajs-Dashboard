@@ -25,6 +25,7 @@ import {
   useManualCampaignDetail,
   useManualCampaignStats,
   useManualCampaignRecipients,
+  useRetryCampaignFailed,
 } from "@/hooks/use-manual-campaigns"
 import { formatNumber } from "@/lib/format"
 
@@ -46,6 +47,8 @@ export function CampaignStatsDialog({ open, onOpenChange, campaignId, campaignNa
     recipientPage,
     recipientLimit
   )
+
+  const retryMutation = useRetryCampaignFailed()
 
   const totalRecipientPages = recipients ? Math.ceil(recipients.total / recipientLimit) : 0
 
@@ -112,6 +115,23 @@ export function CampaignStatsDialog({ open, onOpenChange, campaignId, campaignNa
               />
             </div>
           ) : null}
+
+          {/* Retry failed button */}
+          {stats && (stats.failed || 0) > 0 && (
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs"
+                disabled={retryMutation.isPending}
+                onClick={() => retryMutation.mutate(campaignId)}
+              >
+                {retryMutation.isPending
+                  ? "Reintentando..."
+                  : `Reintentar fallidos (${stats.failed})`}
+              </Button>
+            </div>
+          )}
 
           {/* Recipients table */}
           <Card>
