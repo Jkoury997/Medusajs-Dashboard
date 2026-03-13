@@ -29,6 +29,37 @@ export function getPaymentStatusLabel(status: string): string {
   return PAYMENT_STATUS_LABELS[status] || status
 }
 
+const PAYMENT_PROVIDER_LABELS: Record<string, string> = {
+  "pp_stripe_stripe": "Stripe",
+  "pp_system_default": "Manual",
+  "pp_mercadopago_mercadopago": "Mercado Pago",
+  "stripe": "Stripe",
+  "mercadopago": "Mercado Pago",
+  "manual": "Manual",
+  "system": "Manual",
+}
+
+export function getPaymentProviderLabel(providerId: string): string {
+  return PAYMENT_PROVIDER_LABELS[providerId] || providerId
+}
+
+export function getOrderPaymentProvider(order: any): string {
+  const collections = order.payment_collections
+  if (!collections || collections.length === 0) return "—"
+  for (const col of collections) {
+    const sessions = col.payment_sessions
+    if (sessions && sessions.length > 0) {
+      return sessions[0].provider_id || "—"
+    }
+    const payments = col.payments
+    if (payments && payments.length > 0) {
+      return payments[0].provider_id || "—"
+    }
+    if (col.provider_id) return col.provider_id
+  }
+  return "—"
+}
+
 export function getFulfillmentStatusLabel(status: string): string {
   return FULFILLMENT_STATUS_LABELS[status] || status
 }

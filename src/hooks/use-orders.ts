@@ -13,7 +13,7 @@ interface OrderFilters {
 
 // Campos que necesitamos de las órdenes para el dashboard
 const ORDER_FIELDS =
-  "id,customer_id,email,total,subtotal,currency_code,status,payment_status,fulfillment_status,created_at,display_id,*items,*shipping_address"
+  "id,customer_id,email,total,subtotal,currency_code,status,payment_status,fulfillment_status,created_at,display_id,*items,*shipping_address,*payment_collections"
 
 export function useOrders(filters: OrderFilters = {}) {
   return useQuery({
