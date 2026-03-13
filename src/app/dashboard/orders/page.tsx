@@ -28,14 +28,18 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/format"
-import { getPaymentStatusLabel, getFulfillmentStatusLabel } from "@/lib/aggregations"
+import { getPaymentStatusLabel, getFulfillmentStatusLabel, getOrderPaymentProvider, getPaymentProviderLabel } from "@/lib/aggregations"
 import { exportToCSV, formatDateCSV, formatCurrencyCSV } from "@/lib/export"
+import { ExternalLink } from "lucide-react"
 import { AIInsightWidget } from "@/components/dashboard/ai-insight-widget"
+
+const MEDUSA_BACKEND_ADMIN_URL = "https://backend.marcelakoury.com/app"
 
 export default function OrdersPage() {
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange())
   const [paymentStatus, setPaymentStatus] = useState("all")
   const [fulfillmentStatus, setFulfillmentStatus] = useState("all")
+  const [paymentMethod, setPaymentMethod] = useState("all")
   const [page, setPage] = useState(0)
   const limit = 20
 
@@ -44,7 +48,18 @@ export default function OrdersPage() {
     to: dateRange.to,
   })
 
-  // Filtrado client-side por payment_status y fulfillment_status
+  // Extraer medios de pago únicos para el filtro
+  const paymentMethods = useMemo(() => {
+    if (!allOrders) return []
+    const methods = new Set<string>()
+    for (const order of allOrders as any[]) {
+      const provider = getOrderPaymentProvider(order)
+      if (provider !== "—") methods.add(provider)
+    }
+    return Array.from(methods).sort()
+  }, [allOrders])
+
+  // Filtrado client-side por payment_status, fulfillment_status y medio de pago
   const filteredOrders = useMemo(() => {
     if (!allOrders) return []
     let result = allOrders
@@ -57,8 +72,12 @@ export default function OrdersPage() {
       result = result.filter((o: any) => o.fulfillment_status === fulfillmentStatus)
     }
 
+    if (paymentMethod !== "all") {
+      result = result.filter((o: any) => getOrderPaymentProvider(o) === paymentMethod)
+    }
+
     return result
-  }, [allOrders, paymentStatus, fulfillmentStatus])
+  }, [allOrders, paymentStatus, fulfillmentStatus, paymentMethod])
 
   // Paginación client-side
   const totalCount = filteredOrders.length
@@ -68,6 +87,7 @@ export default function OrdersPage() {
   const resetFilters = () => {
     setPaymentStatus("all")
     setFulfillmentStatus("all")
+    setPaymentMethod("all")
     setPage(0)
   }
 
@@ -92,6 +112,7 @@ export default function OrdersPage() {
       { header: "Email", accessor: (o: any) => o.email },
       { header: "Estado Pago", accessor: (o: any) => getPaymentStatusLabel(o.payment_status || o.status) },
       { header: "Estado Envio", accessor: (o: any) => getFulfillmentStatusLabel(o.fulfillment_status || "unknown") },
+      { header: "Medio de Pago", accessor: (o: any) => { const p = getOrderPaymentProvider(o); return p !== "—" ? getPaymentProviderLabel(p) : "—" } },
       { header: "Items", accessor: (o: any) => o.items?.length || 0 },
       { header: "Total", accessor: (o: any) => formatCurrencyCSV(o.total || 0) },
     ], `ordenes_${new Date().toISOString().slice(0, 10)}`)
@@ -152,7 +173,21 @@ export default function OrdersPage() {
             </SelectContent>
           </Select>
 
-          {(paymentStatus !== "all" || fulfillmentStatus !== "all") && (
+          <Select value={paymentMethod} onValueChange={(v) => { setPaymentMethod(v); setPage(0) }}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Medio de pago" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los medios</SelectItem>
+              {paymentMethods.map((method) => (
+                <SelectItem key={method} value={method}>
+                  {getPaymentProviderLabel(method)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {(paymentStatus !== "all" || fulfillmentStatus !== "all" || paymentMethod !== "all") && (
             <Button variant="ghost" size="sm" onClick={resetFilters}>
               Limpiar filtros
             </Button>
@@ -180,8 +215,10 @@ export default function OrdersPage() {
                   <TableHead>Cliente</TableHead>
                   <TableHead>Pago</TableHead>
                   <TableHead>Envío</TableHead>
+                  <TableHead>Medio de Pago</TableHead>
                   <TableHead>Items</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -206,9 +243,34 @@ export default function OrdersPage() {
                         {getFulfillmentStatusLabel(order.fulfillment_status || "unknown")}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const provider = getOrderPaymentProvider(order)
+                        return provider !== "—" ? (
+                          <Badge variant="secondary">{getPaymentProviderLabel(provider)}</Badge>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )
+                      })()}
+                    </TableCell>
                     <TableCell>{order.items?.length || 0}</TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(order.total || 0)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        asChild
+                      >
+                        <a
+                          href={`${MEDUSA_BACKEND_ADMIN_URL}/orders/${order.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
