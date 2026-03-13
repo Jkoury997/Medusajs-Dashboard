@@ -30,13 +30,9 @@ export function getPaymentStatusLabel(status: string): string {
 }
 
 const PAYMENT_PROVIDER_LABELS: Record<string, string> = {
-  "pp_stripe_stripe": "Stripe",
-  "pp_system_default": "Manual",
+  "pp_system_default": "Transferencia Bancaria",
+  "pp_cash_cash": "Efectivo",
   "pp_mercadopago_mercadopago": "Mercado Pago",
-  "stripe": "Stripe",
-  "mercadopago": "Mercado Pago",
-  "manual": "Manual",
-  "system": "Manual",
 }
 
 export function getPaymentProviderLabel(providerId: string): string {
