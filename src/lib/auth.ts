@@ -33,3 +33,31 @@ export function isLoggedIn(): boolean {
   if (typeof window === "undefined") return false
   return !!window.localStorage.getItem(SDK_JWT_KEY)
 }
+
+/**
+ * Decodifica el payload de un JWT sin verificar la firma.
+ * Devuelve null si el token es inválido o no se puede parsear.
+ */
+function decodeJwtPayload(token: string): { exp?: number } | null {
+  try {
+    const parts = token.split(".")
+    if (parts.length !== 3) return null
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")))
+    return payload
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Verifica si el token JWT almacenado está expirado.
+ * Devuelve true si el token no existe, es inválido, o está expirado.
+ */
+export function isTokenExpired(): boolean {
+  if (typeof window === "undefined") return false
+  const token = window.localStorage.getItem(SDK_JWT_KEY)
+  if (!token) return true
+  const payload = decodeJwtPayload(token)
+  if (!payload?.exp) return false // Sin expiración → asumir válido
+  return Date.now() >= payload.exp * 1000
+}

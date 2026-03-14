@@ -95,6 +95,7 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/products/facturacion", label: "Facturación", icon: DollarSign },
       { href: "/dashboard/products/unidades", label: "Unidades Compradas", icon: ShoppingCart },
       { href: "/dashboard/products/promedio", label: "Promedio por Compra", icon: BarChart3 },
+      { href: "/dashboard/products/ranking", label: "Ranking", icon: Trophy },
     ],
   },
   { href: "/dashboard/customers", label: "Clientes", icon: Users },
@@ -149,7 +150,6 @@ const staticNavEntries: NavEntry[] = [
     ],
   },
   // ← Administración se inserta dinámicamente aquí
-  { href: "/dashboard/ranking", label: "Ranking Productos", icon: Trophy },
   { href: "/dashboard/analytics", label: "Analítica", icon: Satellite },
   { href: "/dashboard/ai", label: "IA Insights", icon: Bot },
 ]
