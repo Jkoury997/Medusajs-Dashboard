@@ -6,10 +6,10 @@ import { AICacheProvider } from "@/providers/ai-cache-provider"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <QueryProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <QueryProvider>
         <AICacheProvider>{children}</AICacheProvider>
-      </AuthProvider>
-    </QueryProvider>
+      </QueryProvider>
+    </AuthProvider>
   )
 }
