@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import { Header } from "@/components/dashboard/header"
 import { useAllOrders } from "@/hooks/use-orders"
 import { useProductsWithStock } from "@/hooks/use-inventory"
+import { useEventProducts } from "@/hooks/use-events"
 import {
   DateRangePicker,
   getDefaultDateRange,
@@ -34,8 +35,8 @@ import { filterPaidOrders } from "@/lib/aggregations"
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { exportToCSV, formatCurrencyCSV } from "@/lib/export"
 import { AIInsightWidget } from "@/components/dashboard/ai-insight-widget"
+import type { ProductStatsItem } from "@/types/events"
 import {
-  TrendingUp,
   TrendingDown,
   Percent,
   PackageCheck,
@@ -46,8 +47,9 @@ import {
   Search,
   BarChart3,
   Package,
-  ShoppingCart,
   Eye,
+  ShoppingCart,
+  MousePointerClick,
 } from "lucide-react"
 
 // ============================================================
@@ -67,13 +69,19 @@ interface ProductDecision {
   avgPerOrder: number
   velocityPerDay: number
   daysOfStock: number
+  // Analytics data
+  views: number
+  clicks: number
+  addedToCart: number
+  conversionRate: number // views → purchased %
+  // Decision
   decision: Decision
   priority: number // 1-5, higher = more urgent
   reason: string
 }
 
 // ============================================================
-// DECISION LOGIC
+// DECISION CONFIG
 // ============================================================
 
 const DECISION_CONFIG = {
@@ -103,10 +111,26 @@ const DECISION_CONFIG = {
   },
 }
 
+// ============================================================
+// DECISION LOGIC
+// ============================================================
+
+/**
+ * Umbrales:
+ * - "Sin acción" solo si stock <= 45 días
+ * - > 45 días ya requiere acción (descuento o reducir)
+ *
+ * Señales de analítica:
+ * - Muchas vistas + pocas ventas → problema de precio → descuento
+ * - Muchos cart adds + pocas compras → fricción o precio → descuento
+ * - Sin vistas ni ventas + stock alto → producto invisible → reducir/descuento
+ * - Vistas altas + sin stock → demanda real → urgente reabastecer
+ */
 function analyzeProducts(
   orders: any[],
   productsWithStock: { id: string; title: string; thumbnail: string | null; totalStock: number; variants: any[] }[],
-  periodDays: number
+  periodDays: number,
+  eventProducts: ProductStatsItem[]
 ): ProductDecision[] {
   const paidOrders = filterPaidOrders(orders)
 
@@ -133,10 +157,18 @@ function analyzeProducts(
     }
   }
 
+  // Index event analytics by product_id
+  const eventsByProduct = new Map<string, ProductStatsItem>()
+  for (const ep of eventProducts) {
+    eventsByProduct.set(ep.product_id, ep)
+  }
+
   const decisions: ProductDecision[] = []
 
   for (const product of productsWithStock) {
     const sales = salesByProduct.get(product.id)
+    const events = eventsByProduct.get(product.id)
+
     const unitsSold = sales?.units || 0
     const revenue = sales?.revenue || 0
     const orderCount = sales?.orders.size || 0
@@ -146,67 +178,129 @@ function analyzeProducts(
     const daysOfStock =
       velocityPerDay > 0 ? Math.round(stock / velocityPerDay) : stock > 0 ? 999 : 0
 
-    // Decision logic
+    // Analytics signals
+    const views = events?.views || 0
+    const clicks = events?.clicks || 0
+    const addedToCart = events?.added_to_cart || 0
+    const purchased = events?.purchased || 0
+    const conversionRate = views > 0 ? (purchased / views) * 100 : 0
+
+    // Derived signals
+    const hasHighViews = views >= 20
+    const hasCartAdds = addedToCart >= 3
+    const hasLowConversion = views > 10 && conversionRate < 2
+    const isInvisible = views === 0 && clicks === 0
+
+    // Decision logic — thresholds adjusted: sin accion only up to 45 days
     let decision: Decision = "sin_accion"
     let priority = 1
     let reason = ""
 
+    // ── AUMENTAR STOCK ──────────────────────────────────────────
     if (stock === 0 && unitsSold > 0) {
-      // Sin stock pero vende -> urgente reabastecer
       decision = "aumentar_stock"
       priority = 5
-      reason = `Sin stock. Vendió ${unitsSold} unidades en el período. Perdiendo ventas.`
+      reason = `Sin stock. Vendió ${unitsSold} u. en el período.`
+      if (hasHighViews) {
+        reason += ` ${views} vistas confirman demanda activa.`
+      }
+    } else if (stock === 0 && hasHighViews) {
+      // Sin stock pero la gente lo busca/ve
+      decision = "aumentar_stock"
+      priority = 5
+      reason = `Sin stock con ${views} vistas y ${addedToCart} intentos de carrito. Demanda real.`
     } else if (stock > 0 && velocityPerDay > 0 && daysOfStock <= 7) {
-      // Stock para menos de 7 días -> reabastecer
       decision = "aumentar_stock"
       priority = 4
-      reason = `Solo ${daysOfStock} días de stock. Velocidad: ${velocityPerDay.toFixed(1)} u/día.`
+      reason = `Solo ${daysOfStock} días de stock. Vel: ${velocityPerDay.toFixed(1)} u/día.`
     } else if (stock > 0 && velocityPerDay > 0 && daysOfStock <= 15) {
-      // Stock para menos de 15 días -> reabastecer pronto
       decision = "aumentar_stock"
       priority = 3
-      reason = `${daysOfStock} días de stock restante. Velocidad: ${velocityPerDay.toFixed(1)} u/día.`
-    } else if (stock > 50 && unitsSold === 0) {
-      // Mucho stock y sin ventas -> descuento agresivo
+      reason = `${daysOfStock} días de stock. Vel: ${velocityPerDay.toFixed(1)} u/día.`
+      if (hasHighViews) reason += ` ${views} vistas respaldan demanda.`
+    }
+    // ── DESCUENTO ────────────────────────────────────────────────
+    else if (stock > 50 && unitsSold === 0 && !hasHighViews) {
+      // Mucho stock, sin ventas, nadie lo ve → descuento agresivo
       decision = "descuento"
       priority = 5
-      reason = `${stock} unidades sin ninguna venta. Capital inmovilizado.`
-    } else if (stock > 20 && daysOfStock > 180) {
-      // Stock para más de 6 meses -> descuento
+      reason = `${stock} u. sin ventas ni visibilidad. Capital inmovilizado.`
+    } else if (stock > 50 && unitsSold === 0 && hasHighViews) {
+      // Lo ven pero no compran → precio es el problema
+      decision = "descuento"
+      priority = 5
+      reason = `${stock} u. sin ventas pero ${views} vistas. El precio frena la compra.`
+    } else if (hasHighViews && hasLowConversion && stock > 0 && daysOfStock > 45) {
+      // Muchas vistas, baja conversión, stock alto → descuento para convertir
+      decision = "descuento"
+      priority = 4
+      reason = `${views} vistas, ${conversionRate.toFixed(1)}% conversión. Descuento para mejorar conversión.`
+    } else if (hasCartAdds && purchased === 0 && stock > 0) {
+      // Agregan al carrito pero no compran → precio
+      decision = "descuento"
+      priority = 4
+      reason = `${addedToCart} agregados al carrito sin compra. Barrera de precio.`
+    } else if (stock > 20 && daysOfStock > 90) {
       decision = "descuento"
       priority = 4
       reason = `Stock para ${daysOfStock > 365 ? "+1 año" : daysOfStock + " días"}. Baja rotación.`
-    } else if (stock > 10 && daysOfStock > 90) {
-      // Stock para más de 3 meses -> considerar descuento
+      if (isInvisible) reason += " Sin vistas en el período."
+    } else if (stock > 0 && daysOfStock > 45 && daysOfStock <= 90) {
+      // Más de 45 días de stock → ya necesita acción
       decision = "descuento"
       priority = 3
-      reason = `Stock para ${daysOfStock} días. Rotación lenta.`
-    } else if (stock > 100 && velocityPerDay < 0.5 && unitsSold > 0) {
-      // Stock alto con venta muy baja -> no reabastecer
-      decision = "reducir_stock"
-      priority = 3
-      reason = `${stock} unidades, solo ${velocityPerDay.toFixed(1)} u/día. No reabastecer.`
+      reason = `Stock para ${daysOfStock} días (supera los 45d). Rotación lenta.`
+      if (hasHighViews && hasLowConversion) {
+        reason += ` ${views} vistas con baja conversión (${conversionRate.toFixed(1)}%).`
+      }
     } else if (stock > 0 && unitsSold === 0 && stock <= 50) {
-      // Stock bajo-medio sin ventas -> descuento leve
       decision = "descuento"
       priority = 2
-      reason = `${stock} unidades sin ventas en el período.`
-    } else if (stock > 0 && daysOfStock >= 15 && daysOfStock <= 90) {
-      // Stock razonable
+      reason = `${stock} u. sin ventas en el período.`
+      if (hasHighViews) reason += ` Tiene ${views} vistas, descuento puede destrabar.`
+    }
+    // ── REDUCIR STOCK ────────────────────────────────────────────
+    else if (stock > 100 && velocityPerDay < 0.5 && unitsSold > 0 && isInvisible) {
+      // Stock altísimo, venta mínima, nadie lo ve → no reabastecer
+      decision = "reducir_stock"
+      priority = 4
+      reason = `${stock} u., ${velocityPerDay.toFixed(1)} u/día, sin vistas. No reabastecer.`
+    } else if (stock > 100 && velocityPerDay < 0.5 && unitsSold > 0) {
+      decision = "reducir_stock"
+      priority = 3
+      reason = `${stock} u., solo ${velocityPerDay.toFixed(1)} u/día. No reabastecer.`
+    }
+    // ── SIN ACCIÓN ───────────────────────────────────────────────
+    else if (stock > 0 && daysOfStock >= 15 && daysOfStock <= 45) {
+      // Solo "sin acción" si stock es para 15-45 días
       decision = "sin_accion"
       priority = 1
       reason = `Equilibrio OK. Stock para ${daysOfStock} días.`
+      if (views > 0) reason += ` ${views} vistas, ${conversionRate.toFixed(1)}% conversión.`
     } else if (stock === 0 && unitsSold === 0) {
-      // Sin stock y sin ventas -> evaluar si discontinuar
       decision = "sin_accion"
       priority = 1
-      reason = "Sin stock ni ventas. Evaluar si continuar el producto."
+      reason = "Sin stock ni ventas."
+      if (hasHighViews) {
+        // Sin stock pero con vistas → reabastecer
+        decision = "aumentar_stock"
+        priority = 3
+        reason = `Sin stock ni ventas pero ${views} vistas. Hay interés, evaluar reposición.`
+      } else {
+        reason += " Evaluar si discontinuar."
+      }
     } else {
       decision = "sin_accion"
       priority = 1
       reason = daysOfStock > 0
         ? `Stock para ${daysOfStock === 999 ? "mucho tiempo" : daysOfStock + " días"}.`
         : "Sin datos suficientes."
+      // Catch-all: si tiene más de 45 días de stock, marcar descuento
+      if (daysOfStock > 45 && stock > 0) {
+        decision = "descuento"
+        priority = 2
+        reason = `Stock para ${daysOfStock === 999 ? "mucho tiempo" : daysOfStock + " días"}. Supera 45 días.`
+      }
     }
 
     decisions.push({
@@ -220,6 +314,10 @@ function analyzeProducts(
       avgPerOrder: Math.round(avgPerOrder * 10) / 10,
       velocityPerDay: Math.round(velocityPerDay * 100) / 100,
       daysOfStock: daysOfStock === 999 ? Infinity : daysOfStock,
+      views,
+      clicks,
+      addedToCart,
+      conversionRate: Math.round(conversionRate * 10) / 10,
       decision,
       priority,
       reason,
@@ -253,6 +351,12 @@ export default function DecisionesInventarioPage() {
 
   const { data: stockData, isLoading: loadingStock } = useProductsWithStock()
 
+  const { data: eventProductsData, isLoading: loadingEvents } = useEventProducts(
+    dateRange.from,
+    dateRange.to,
+    500 // traer todos los productos con analytics
+  )
+
   const isLoading = loadingOrders || loadingStock
 
   // Calculate period days
@@ -264,8 +368,13 @@ export default function DecisionesInventarioPage() {
   // Generate decisions
   const allDecisions = useMemo(() => {
     if (!orders || !stockData) return []
-    return analyzeProducts(orders, stockData.products, periodDays)
-  }, [orders, stockData, periodDays])
+    return analyzeProducts(
+      orders,
+      stockData.products,
+      periodDays,
+      eventProductsData?.products || []
+    )
+  }, [orders, stockData, periodDays, eventProductsData])
 
   // Summary metrics
   const summary = useMemo(() => {
@@ -273,22 +382,25 @@ export default function DecisionesInventarioPage() {
     let urgentCount = 0
     let revenueAtRisk = 0
     let stuckCapital = 0
+    let totalViews = 0
+    let totalCartAdds = 0
 
     for (const d of allDecisions) {
       counts[d.decision]++
       if (d.priority >= 4) urgentCount++
+      totalViews += d.views
+      totalCartAdds += d.addedToCart
       if (d.decision === "aumentar_stock" && d.stock === 0) {
         revenueAtRisk += d.revenue
       }
       if (d.decision === "descuento" || d.decision === "reducir_stock") {
-        // Estimate stuck capital: stock * avg unit price
         if (d.unitsSold > 0) {
           stuckCapital += d.stock * (d.revenue / d.unitsSold)
         }
       }
     }
 
-    return { counts, urgentCount, revenueAtRisk, stuckCapital }
+    return { counts, urgentCount, revenueAtRisk, stuckCapital, totalViews, totalCartAdds }
   }, [allDecisions])
 
   // Filtered + searched decisions
@@ -312,7 +424,6 @@ export default function DecisionesInventarioPage() {
 
   const totalPages = Math.ceil(filteredDecisions.length / PAGE_SIZE)
 
-  // Reset page when filters change
   const handleFilterChange = (v: Decision | "all") => {
     setFilter(v)
     setPage(0)
@@ -326,11 +437,11 @@ export default function DecisionesInventarioPage() {
     <div>
       <Header
         title="Reporte de Decisiones de Inventario"
-        description="Análisis inteligente para decidir qué productos reabastecer, descontar o reducir"
+        description="Análisis cruzado de ventas, stock y comportamiento del usuario para tomar decisiones"
       />
 
       <div className="p-6 space-y-6">
-        {/* Date range */}
+        {/* Date range + export */}
         <div className="flex flex-wrap gap-4 items-center justify-between">
           <DateRangePicker value={dateRange} onChange={setDateRange} />
           {filteredDecisions.length > 0 && (
@@ -349,6 +460,10 @@ export default function DecisionesInventarioPage() {
                     { header: "Ingresos", accessor: (d) => formatCurrencyCSV(d.revenue) },
                     { header: "Velocidad (u/día)", accessor: (d) => d.velocityPerDay.toFixed(2) },
                     { header: "Días de Stock", accessor: (d) => d.daysOfStock === Infinity ? "∞" : String(d.daysOfStock) },
+                    { header: "Vistas", accessor: (d) => d.views },
+                    { header: "Clicks", accessor: (d) => d.clicks },
+                    { header: "Agregados Carrito", accessor: (d) => d.addedToCart },
+                    { header: "Conversión %", accessor: (d) => d.conversionRate.toFixed(1) + "%" },
                     { header: "Motivo", accessor: (d) => d.reason },
                   ],
                   `decisiones_inventario_${new Date().toISOString().slice(0, 10)}`
@@ -358,6 +473,22 @@ export default function DecisionesInventarioPage() {
               Exportar CSV
             </Button>
           )}
+        </div>
+
+        {/* Data sources indicator */}
+        <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+          <span className="flex items-center gap-1">
+            <span className={`w-2 h-2 rounded-full ${loadingOrders ? "bg-yellow-400 animate-pulse" : orders ? "bg-green-500" : "bg-gray-300"}`} />
+            Ventas (Medusa)
+          </span>
+          <span className="flex items-center gap-1">
+            <span className={`w-2 h-2 rounded-full ${loadingStock ? "bg-yellow-400 animate-pulse" : stockData ? "bg-green-500" : "bg-gray-300"}`} />
+            Inventario
+          </span>
+          <span className="flex items-center gap-1">
+            <span className={`w-2 h-2 rounded-full ${loadingEvents ? "bg-yellow-400 animate-pulse" : eventProductsData ? "bg-green-500" : "bg-gray-300"}`} />
+            Analítica (Eventos)
+          </span>
         </div>
 
         {isLoading ? (
@@ -383,7 +514,7 @@ export default function DecisionesInventarioPage() {
                 title="Aplicar Descuento"
                 value={String(summary.counts.descuento)}
                 icon={<Percent className="w-5 h-5 text-purple-600" />}
-                subtitle="Productos con baja rotación"
+                subtitle="Stock > 45 días o baja conversión"
               />
               <MetricCard
                 title="Reducir Stock"
@@ -408,13 +539,13 @@ export default function DecisionesInventarioPage() {
                       <TrendingDown className="w-8 h-8 text-red-500 shrink-0" />
                       <div>
                         <p className="text-sm font-medium text-red-800">
-                          Ingresos en Riesgo (productos sin stock que vendían)
+                          Ingresos en Riesgo (sin stock que vendían)
                         </p>
                         <p className="text-xl font-bold text-red-700">
                           {formatCurrency(summary.revenueAtRisk)}
                         </p>
                         <p className="text-xs text-red-600">
-                          Facturación del período de productos que ahora están sin stock
+                          Facturación del período de productos ahora sin stock
                         </p>
                       </div>
                     </CardContent>
@@ -438,6 +569,41 @@ export default function DecisionesInventarioPage() {
                     </CardContent>
                   </Card>
                 )}
+              </div>
+            )}
+
+            {/* Analytics signal summary */}
+            {(summary.totalViews > 0 || summary.totalCartAdds > 0) && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <Eye className="w-6 h-6 text-blue-500 shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-500">Vistas Totales</p>
+                      <p className="text-lg font-bold">{formatNumber(summary.totalViews)}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <ShoppingCart className="w-6 h-6 text-purple-500 shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-500">Agregados al Carrito</p>
+                      <p className="text-lg font-bold">{formatNumber(summary.totalCartAdds)}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <MousePointerClick className="w-6 h-6 text-green-500 shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-500">Productos con Datos de Analítica</p>
+                      <p className="text-lg font-bold">
+                        {allDecisions.filter((d) => d.views > 0).length} de {allDecisions.length}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
 
@@ -542,26 +708,37 @@ export default function DecisionesInventarioPage() {
             </div>
 
             {/* Products table */}
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[50px]">#</TableHead>
+                    <TableHead className="w-[40px]">#</TableHead>
                     <TableHead>Producto</TableHead>
                     <TableHead className="text-center">Decisión</TableHead>
-                    <TableHead className="text-center">Prioridad</TableHead>
+                    <TableHead className="text-center">Prior.</TableHead>
                     <TableHead className="text-right">Stock</TableHead>
                     <TableHead className="text-right">Vendidas</TableHead>
                     <TableHead className="text-right">Ingresos</TableHead>
-                    <TableHead className="text-right">Vel. (u/día)</TableHead>
-                    <TableHead className="text-right">Días Stock</TableHead>
-                    <TableHead className="min-w-[200px]">Motivo</TableHead>
+                    <TableHead className="text-right">Vel.</TableHead>
+                    <TableHead className="text-right">Días</TableHead>
+                    <TableHead className="text-right">
+                      <span className="flex items-center justify-end gap-1">
+                        <Eye className="w-3 h-3" /> Vistas
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <span className="flex items-center justify-end gap-1">
+                        <ShoppingCart className="w-3 h-3" /> Carrito
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-right">Conv.</TableHead>
+                    <TableHead className="min-w-[180px]">Motivo</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedDecisions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center text-gray-500 py-8">
+                      <TableCell colSpan={13} className="text-center text-gray-500 py-8">
                         No se encontraron productos con los filtros seleccionados.
                       </TableCell>
                     </TableRow>
@@ -571,7 +748,7 @@ export default function DecisionesInventarioPage() {
                       const Icon = config.icon
                       return (
                         <TableRow key={d.product_id}>
-                          <TableCell className="text-gray-400 text-sm">
+                          <TableCell className="text-gray-400 text-xs">
                             {page * PAGE_SIZE + i + 1}
                           </TableCell>
                           <TableCell>
@@ -620,11 +797,11 @@ export default function DecisionesInventarioPage() {
                             {formatCurrency(d.revenue)}
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
-                            {d.velocityPerDay.toFixed(2)}
+                            {d.velocityPerDay.toFixed(1)}
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
                             {d.daysOfStock === Infinity ? (
-                              <span className="text-gray-400">∞</span>
+                              <span className="text-red-600 font-bold">∞</span>
                             ) : d.daysOfStock === 0 ? (
                               <span className="text-red-600 font-bold">0</span>
                             ) : (
@@ -634,11 +811,44 @@ export default function DecisionesInventarioPage() {
                                     ? "text-red-600 font-bold"
                                     : d.daysOfStock <= 15
                                       ? "text-orange-600"
-                                      : ""
+                                      : d.daysOfStock > 45
+                                        ? "text-purple-600 font-semibold"
+                                        : ""
                                 }
                               >
                                 {d.daysOfStock}
                               </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {d.views > 0 ? (
+                              formatNumber(d.views)
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {d.addedToCart > 0 ? (
+                              formatNumber(d.addedToCart)
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {d.views > 0 ? (
+                              <span
+                                className={
+                                  d.conversionRate < 2
+                                    ? "text-red-600"
+                                    : d.conversionRate >= 5
+                                      ? "text-green-600"
+                                      : ""
+                                }
+                              >
+                                {d.conversionRate.toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="text-gray-300">—</span>
                             )}
                           </TableCell>
                           <TableCell className="text-xs text-gray-600">
@@ -703,6 +913,8 @@ export default function DecisionesInventarioPage() {
                       vendidas: d.unitsSold,
                       velocidad: d.velocityPerDay,
                       diasStock: d.daysOfStock,
+                      vistas: d.views,
+                      carrito: d.addedToCart,
                       motivo: d.reason,
                     })),
                   topDescuento: allDecisions
@@ -713,6 +925,9 @@ export default function DecisionesInventarioPage() {
                       stock: d.stock,
                       vendidas: d.unitsSold,
                       ingresos: d.revenue,
+                      vistas: d.views,
+                      conversion: d.conversionRate + "%",
+                      carrito: d.addedToCart,
                       motivo: d.reason,
                     })),
                   topReducir: allDecisions
@@ -722,9 +937,15 @@ export default function DecisionesInventarioPage() {
                       nombre: d.name,
                       stock: d.stock,
                       vendidas: d.unitsSold,
+                      vistas: d.views,
                       motivo: d.reason,
                     })),
                   periodoAnalizado: `${periodDays} días`,
+                  datosAnalitica: {
+                    productosConVistas: allDecisions.filter((d) => d.views > 0).length,
+                    totalVistas: summary.totalViews,
+                    totalCarrito: summary.totalCartAdds,
+                  },
                 }
               }}
               isDataLoading={isLoading}
