@@ -5,7 +5,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/providers/auth-provider"
+import { usePermissions } from "@/providers/permissions-provider"
 import { useAdminPendingCounts } from "@/hooks/use-admin-counts"
+import { PERMISSIONS } from "@/lib/permissions"
 import {
   LayoutDashboard,
   Package,
@@ -214,6 +216,7 @@ function writeCollapsed(v: boolean) {
 export function Sidebar() {
   const pathname = usePathname()
   const { logout } = useAuth()
+  const { canViewSection, hasPermission } = usePermissions()
   const [collapsed, setCollapsed] = useState(false)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const { data: adminCounts } = useAdminPendingCounts()
@@ -259,17 +262,30 @@ export function Sidebar() {
       ],
     }
 
-    // Insertar Administración después de Revendedoras
-    const revendedorasIndex = staticNavEntries.findIndex(
-      (e) => isNavGroup(e) && e.label === "Revendedoras"
+    // Insertar Administración después de Revendedoras Físicas
+    const revendedorasFisicasIndex = staticNavEntries.findIndex(
+      (e) => isNavGroup(e) && e.label === "Revendedoras Físicas"
     )
-    const insertAt = revendedorasIndex >= 0 ? revendedorasIndex + 1 : staticNavEntries.length - 3
-    return [
+    const insertAt = revendedorasFisicasIndex >= 0 ? revendedorasFisicasIndex + 1 : staticNavEntries.length - 2
+
+    const allEntries: NavEntry[] = [
       ...staticNavEntries.slice(0, insertAt),
       adminGroup,
       ...staticNavEntries.slice(insertAt),
     ]
-  }, [adminCounts])
+
+    // Agregar link a gestión de roles si tiene permiso
+    if (hasPermission(PERMISSIONS.ROLES_MANAGE)) {
+      allEntries.push({
+        href: "/dashboard/roles",
+        label: "Gestión de Roles",
+        icon: KeyRound,
+      })
+    }
+
+    // Filtrar por permisos del usuario
+    return allEntries.filter((entry) => canViewSection(isNavGroup(entry) ? entry.label : entry.label))
+  }, [adminCounts, canViewSection, hasPermission])
 
   // Auto-expand groups whose children match the current route
   useEffect(() => {

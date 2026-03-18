@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/providers/auth-provider"
 import { Sidebar } from "@/components/dashboard/sidebar"
+import { RoutePermissionGate } from "@/components/dashboard/permission-gate"
 
 export default function DashboardLayout({
   children,
@@ -34,7 +35,9 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-auto">
+        <RoutePermissionGate>{children}</RoutePermissionGate>
+      </main>
     </div>
   )
 }
