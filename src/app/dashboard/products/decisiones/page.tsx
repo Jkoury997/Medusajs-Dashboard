@@ -933,8 +933,8 @@ export default function DecisionesInventarioPage() {
                       <span className="flex items-center justify-end gap-1"><ShoppingCart className="w-3 h-3" />Cart</span>
                     </TableHead>
                     <TableHead className="text-right">Conv.</TableHead>
-                    <TableHead>Motivo</TableHead>
-                    <TableHead className="text-center">Acción</TableHead>
+                    <TableHead className="min-w-[200px]">Motivo</TableHead>
+                    <TableHead className="text-center min-w-[110px]">Acción</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1048,11 +1048,11 @@ export default function DecisionesInventarioPage() {
                               ) : <span className="text-gray-300">—</span>}
                             </TableCell>
                             {/* Reason */}
-                            <TableCell className="text-xs text-gray-600 max-w-[200px]">
-                              {d.reason}
+                            <TableCell className="text-xs text-gray-600 min-w-[200px] max-w-[300px]">
+                              <span className="block whitespace-normal break-words">{d.reason}</span>
                             </TableCell>
                             {/* Action button */}
-                            <TableCell className="text-center">
+                            <TableCell className="text-center whitespace-nowrap min-w-[110px]">
                               {hasPendingAction ? (
                                 <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200 gap-1 text-[10px] cursor-pointer" onClick={() => toggleRow(d.product_id)}>
                                   <ClipboardList className="w-3 h-3" />
