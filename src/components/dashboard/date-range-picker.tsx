@@ -50,6 +50,6 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
 export function getDefaultDateRange(): DateRange {
   const to = new Date()
   const from = new Date()
-  from.setDate(from.getDate() - 30)
-  return { from, to, label: "30 días" }
+  from.setDate(from.getDate() - 90)
+  return { from, to, label: "90 días" }
 }

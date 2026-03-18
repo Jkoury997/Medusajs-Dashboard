@@ -297,21 +297,21 @@ export default function CustomersPage() {
               <KPICard
                 title="En Riesgo"
                 value={formatNumber(summaryMetrics.atRisk)}
-                subtitle={`+60 días sin comprar`}
+                subtitle="Clientes que compraron pero llevan +60 días sin volver"
                 icon={AlertTriangle}
                 color="red"
               />
               <KPICard
                 title="LTV Promedio"
                 value={formatCurrency(summaryMetrics.avgLtv)}
-                subtitle={`Revenue: ${formatCurrency(summaryMetrics.totalRevenue)}`}
+                subtitle={`Revenue total: ${formatCurrency(summaryMetrics.totalRevenue)}`}
                 icon={Gem}
                 color="purple"
               />
               <KPICard
                 title="Clientes VIP"
                 value={formatNumber(summaryMetrics.vipCount)}
-                subtitle={`Top 10% (>${formatCurrency(summaryMetrics.vipThreshold)})`}
+                subtitle={`Top 10% que más gastaron (>${formatCurrency(summaryMetrics.vipThreshold)})`}
                 icon={Crown}
                 color="amber"
               />
