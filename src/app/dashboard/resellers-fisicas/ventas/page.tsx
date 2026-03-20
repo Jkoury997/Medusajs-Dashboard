@@ -147,7 +147,7 @@ export default function VentasResellersFisicasPage() {
                 ) : (
                   data.sales.map((sale) => {
                     const reseller = typeof sale.reseller_id === "object" ? sale.reseller_id : null
-                    const statusCfg = STATUS_CONFIG[sale.status]
+                    const statusCfg = STATUS_CONFIG[sale.status] ?? { label: sale.status, className: "bg-gray-100 text-gray-500" }
 
                     return (
                       <TableRow key={sale._id}>

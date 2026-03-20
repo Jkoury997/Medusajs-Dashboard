@@ -189,6 +189,93 @@ export function usePhysicalResellerSales(filters: ResellerSaleFilters = {}) {
   })
 }
 
+export function useSyncOrders() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (days: number = 10) => {
+      const res = await fetch(`${BASE}/orders/sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ days: String(days) }),
+      })
+      if (!res.ok) throw new Error("Error al sincronizar pedidos")
+      return res.json() as Promise<{
+        message: string
+        imported: number
+        skipped: number
+        errors: number
+        resellers_checked: number
+        days: number
+        details: Array<{ order_id: string; display_id: string; reseller: string }>
+      }>
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers-fisicas", "orders"] })
+      qc.invalidateQueries({ queryKey: ["resellers-fisicas", "stats"] })
+    },
+  })
+}
+
+export function useImportOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      const res = await fetch(`${BASE}/orders/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: orderId }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.message || "Error al importar pedido")
+      }
+      return res.json() as Promise<{
+        message: string
+        order: ResellerOrder
+        reseller: { id: string; business_name: string; email: string }
+      }>
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers-fisicas", "orders"] })
+      qc.invalidateQueries({ queryKey: ["resellers-fisicas", "stats"] })
+    },
+  })
+}
+
+// ============================================================
+// MAP
+// ============================================================
+
+export interface ResellerMapItem {
+  id: string
+  business_name: string
+  email: string
+  whatsapp: string
+  type: string
+  address: string | null
+  location: { type: "Point"; coordinates: [number, number] } | null
+  approximate_zone: string
+  social_media: { instagram?: string; facebook?: string; tiktok?: string }
+  status: string
+  active: boolean
+  product_count: number
+  total_stock: number
+  created_at: string
+}
+
+export function usePhysicalResellersMap(status?: string) {
+  return useQuery({
+    queryKey: ["resellers-fisicas", "map", status],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (status) params.set("status", status)
+      const res = await fetch(`${BASE}/resellers/map?${params}`)
+      if (!res.ok) throw new Error("Error al obtener datos de mapa")
+      return res.json() as Promise<{ resellers: ResellerMapItem[]; count: number }>
+    },
+  })
+}
+
 // ============================================================
 // INVENTORY
 // ============================================================

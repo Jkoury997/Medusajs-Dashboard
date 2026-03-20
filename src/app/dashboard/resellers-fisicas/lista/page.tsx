@@ -178,7 +178,7 @@ export default function ResellersFisicasListaPage() {
                   </TableRow>
                 ) : (
                   filtered.map((r) => {
-                    const statusCfg = STATUS_CONFIG[r.status]
+                    const statusCfg = STATUS_CONFIG[r.status] ?? { label: r.status, className: "bg-gray-100 text-gray-500" }
                     return (
                       <TableRow key={r._id}>
                         <TableCell className="font-medium">
