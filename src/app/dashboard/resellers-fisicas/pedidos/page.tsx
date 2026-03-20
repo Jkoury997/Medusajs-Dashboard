@@ -16,11 +16,15 @@ import {
 
 const PAGE_SIZE = 20
 
-const STATUS_CONFIG: Record<ResellerOrderStatus, { label: string; className: string }> = {
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  pendiente: { label: "Pendiente", className: "bg-gray-100 text-gray-700" },
   pagado: { label: "Pagado", className: "bg-blue-100 text-blue-700" },
   enviado: { label: "Enviado", className: "bg-yellow-100 text-yellow-700" },
   entregado: { label: "Entregado", className: "bg-green-100 text-green-700" },
+  cancelado: { label: "Cancelado", className: "bg-red-100 text-red-700" },
 }
+
+const DEFAULT_STATUS_CONFIG = { label: "Desconocido", className: "bg-gray-100 text-gray-500" }
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("es-AR", {
@@ -73,9 +77,11 @@ export default function PedidosResellersFisicasPage() {
           }}
         >
           <option value="">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
           <option value="pagado">Pagado</option>
           <option value="enviado">Enviado</option>
           <option value="entregado">Entregado</option>
+          <option value="cancelado">Cancelado</option>
         </select>
       </div>
 
@@ -114,7 +120,7 @@ export default function PedidosResellersFisicasPage() {
                 ) : (
                   data.orders.map((order) => {
                     const reseller = typeof order.reseller_id === "object" ? order.reseller_id : null
-                    const statusCfg = STATUS_CONFIG[order.status]
+                    const statusCfg = STATUS_CONFIG[order.status] ?? DEFAULT_STATUS_CONFIG
 
                     return (
                       <TableRow key={order._id}>
