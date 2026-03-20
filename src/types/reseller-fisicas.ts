@@ -90,6 +90,12 @@ export interface ResellerOrder {
   items: ResellerOrderItem[]
   created_at: string
   updated_at: string
+  // Medusa enrichment fields (optional, returned by admin endpoint)
+  display_id?: string | null
+  payment_status?: string | null
+  fulfillment_status?: string | null
+  total?: number | null
+  currency_code?: string | null
 }
 
 export interface ResellerOrderFilters {

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePhysicalResellerOrders, useMarkOrderShipped, useConfirmOrderDelivery } from "@/hooks/use-resellers-fisicas"
+import { usePhysicalResellerOrders, useMarkOrderShipped, useConfirmOrderDelivery, useSyncOrders, useImportOrder } from "@/hooks/use-resellers-fisicas"
 import type { ResellerOrderStatus } from "@/types/reseller-fisicas"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -26,6 +26,29 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 
 const DEFAULT_STATUS_CONFIG = { label: "Desconocido", className: "bg-gray-100 text-gray-500" }
 
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  not_paid: "No pagado",
+  awaiting: "Esperando",
+  captured: "Capturado",
+  refunded: "Reembolsado",
+  partially_refunded: "Parcialmente reembolsado",
+  canceled: "Cancelado",
+  requires_action: "Requiere acción",
+}
+
+const FULFILLMENT_STATUS_LABELS: Record<string, string> = {
+  not_fulfilled: "No despachado",
+  fulfilled: "Despachado",
+  partially_fulfilled: "Parcialmente despachado",
+  shipped: "Enviado",
+  partially_shipped: "Parcialmente enviado",
+  delivered: "Entregado",
+  returned: "Devuelto",
+  partially_returned: "Parcialmente devuelto",
+  canceled: "Cancelado",
+  requires_action: "Requiere acción",
+}
+
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("es-AR", {
     day: "2-digit",
@@ -39,6 +62,10 @@ function formatDate(dateStr: string): string {
 export default function PedidosResellersFisicasPage() {
   const [statusFilter, setStatusFilter] = useState<ResellerOrderStatus | "">("")
   const [offset, setOffset] = useState(0)
+  const [syncDays, setSyncDays] = useState(10)
+  const [importOrderId, setImportOrderId] = useState("")
+  const [showSyncResult, setShowSyncResult] = useState<string | null>(null)
+  const [showImportResult, setShowImportResult] = useState<string | null>(null)
 
   const { data, isLoading, error } = usePhysicalResellerOrders({
     status: statusFilter || undefined,
@@ -48,7 +75,35 @@ export default function PedidosResellersFisicasPage() {
 
   const markShipped = useMarkOrderShipped()
   const confirmDelivery = useConfirmOrderDelivery()
+  const syncOrders = useSyncOrders()
+  const importOrder = useImportOrder()
   const count = data?.count ?? 0
+
+  const handleSync = () => {
+    setShowSyncResult(null)
+    syncOrders.mutate(syncDays, {
+      onSuccess: (result) => {
+        setShowSyncResult(result.message)
+      },
+      onError: (err) => {
+        setShowSyncResult(`Error: ${err.message}`)
+      },
+    })
+  }
+
+  const handleImport = () => {
+    if (!importOrderId.trim()) return
+    setShowImportResult(null)
+    importOrder.mutate(importOrderId.trim(), {
+      onSuccess: (result) => {
+        setShowImportResult(`${result.message} — Revendedora: ${result.reseller.business_name}`)
+        setImportOrderId("")
+      },
+      onError: (err) => {
+        setShowImportResult(`Error: ${err.message}`)
+      },
+    })
+  }
 
   if (error) {
     return (
@@ -67,6 +122,67 @@ export default function PedidosResellersFisicasPage() {
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">Pedidos de Revendedoras Físicas</h1>
 
+      {/* Sync & Import Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700">Sincronizar desde Medusa</h3>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-500">Últimos</label>
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={syncDays}
+                onChange={(e) => setSyncDays(Number(e.target.value))}
+                className="border rounded px-2 py-1 text-sm w-16"
+              />
+              <label className="text-sm text-gray-500">días</label>
+              <button
+                className="px-3 py-1 text-sm bg-indigo-600 text-white rounded disabled:opacity-50"
+                disabled={syncOrders.isPending}
+                onClick={handleSync}
+              >
+                {syncOrders.isPending ? "Sincronizando..." : "Sincronizar"}
+              </button>
+            </div>
+            {showSyncResult && (
+              <p className={`text-xs ${showSyncResult.startsWith("Error") ? "text-red-500" : "text-green-600"}`}>
+                {showSyncResult}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700">Importar orden individual</h3>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="ID de orden de Medusa (order_xxx)"
+                value={importOrderId}
+                onChange={(e) => setImportOrderId(e.target.value)}
+                className="border rounded px-2 py-1 text-sm flex-1"
+                onKeyDown={(e) => e.key === "Enter" && handleImport()}
+              />
+              <button
+                className="px-3 py-1 text-sm bg-blue-600 text-white rounded disabled:opacity-50"
+                disabled={importOrder.isPending || !importOrderId.trim()}
+                onClick={handleImport}
+              >
+                {importOrder.isPending ? "Importando..." : "Importar"}
+              </button>
+            </div>
+            {showImportResult && (
+              <p className={`text-xs ${showImportResult.startsWith("Error") ? "text-red-500" : "text-green-600"}`}>
+                {showImportResult}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
       <div className="flex gap-3">
         <select
           className="border rounded-md px-3 py-2 text-sm bg-white"
@@ -85,6 +201,7 @@ export default function PedidosResellersFisicasPage() {
         </select>
       </div>
 
+      {/* Orders Table */}
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -95,6 +212,8 @@ export default function PedidosResellersFisicasPage() {
                   <TableHead>Orden Medusa</TableHead>
                   <TableHead>Productos</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Pago</TableHead>
+                  <TableHead>Despacho</TableHead>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Entrega</TableHead>
                   <TableHead>Acciones</TableHead>
@@ -104,7 +223,7 @@ export default function PedidosResellersFisicasPage() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 7 }).map((_, j) => (
+                      {Array.from({ length: 9 }).map((_, j) => (
                         <TableCell key={j}>
                           <div className="h-4 bg-gray-200 rounded animate-pulse w-20" />
                         </TableCell>
@@ -113,7 +232,7 @@ export default function PedidosResellersFisicasPage() {
                   ))
                 ) : !data?.orders?.length ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                       No hay pedidos
                     </TableCell>
                   </TableRow>
@@ -136,7 +255,9 @@ export default function PedidosResellersFisicasPage() {
                             <span className="text-gray-400">-</span>
                           )}
                         </TableCell>
-                        <TableCell className="font-mono text-sm">{order.medusa_order_id}</TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {order.display_id ? `#${order.display_id}` : order.medusa_order_id}
+                        </TableCell>
                         <TableCell className="text-sm max-w-xs truncate">
                           {order.items.map((i) => `${i.quantity}x ${i.product_title}`).join(", ")}
                         </TableCell>
@@ -144,6 +265,16 @@ export default function PedidosResellersFisicasPage() {
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusCfg.className}`}>
                             {statusCfg.label}
                           </span>
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-500">
+                          {order.payment_status
+                            ? PAYMENT_STATUS_LABELS[order.payment_status] ?? order.payment_status
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-500">
+                          {order.fulfillment_status
+                            ? FULFILLMENT_STATUS_LABELS[order.fulfillment_status] ?? order.fulfillment_status
+                            : "-"}
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">{formatDate(order.created_at)}</TableCell>
                         <TableCell className="text-sm text-gray-500">
