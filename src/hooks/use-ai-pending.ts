@@ -118,3 +118,32 @@ export function useRegenerateDescription() {
     },
   })
 }
+
+// ============================================================
+// GENERATE ALL
+// ============================================================
+
+export interface GenerateAllResult {
+  queued: number
+  products: string[]
+}
+
+export function useGenerateAll() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<GenerateAllResult> => {
+      const res = await fetch(`${BACKEND_URL}/admin/ai/generate-all`, {
+        method: "POST",
+        headers: authHeaders(),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.message || "Error al generar descripciones")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ai", "pending"] })
+    },
+  })
+}
