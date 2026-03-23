@@ -11,6 +11,7 @@ import {
   useAiPendingProducts,
   useApproveDescription,
   useRegenerateDescription,
+  useGenerateAll,
   type AiPendingProduct,
 } from "@/hooks/use-ai-pending"
 import {
@@ -23,6 +24,7 @@ import {
   XCircle,
   ChevronDown,
   ChevronUp,
+  Sparkles,
 } from "lucide-react"
 
 // ============================================================
@@ -231,6 +233,7 @@ function PendingProductCard({ product }: { product: AiPendingProduct }) {
 
 export default function AiPendingPage() {
   const { data: products, isLoading, isError, refetch } = useAiPendingProducts()
+  const generateAll = useGenerateAll()
   const [search, setSearch] = useState("")
 
   const filtered = (products ?? []).filter((p) => {
@@ -264,12 +267,42 @@ export default function AiPendingPage() {
                 {filtered.length} {filtered.length === 1 ? "producto" : "productos"}
               </Badge>
             )}
+            <Button
+              size="sm"
+              onClick={() => generateAll.mutate()}
+              disabled={generateAll.isPending}
+              className="bg-mk-pink hover:bg-mk-pink-dark text-white"
+            >
+              {generateAll.isPending ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4 mr-1" />
+              )}
+              Generar Todos
+            </Button>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="w-4 h-4 mr-1" />
               Actualizar
             </Button>
           </div>
         </div>
+
+        {/* Generate all feedback */}
+        {generateAll.isSuccess && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+            <p className="text-sm text-green-700">
+              Se encolaron <strong>{generateAll.data.queued}</strong> productos para generación de descripciones IA.
+              Aparecerán en esta lista a medida que se procesen.
+            </p>
+          </div>
+        )}
+        {generateAll.isError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
+            <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+            <p className="text-sm text-red-700">{generateAll.error?.message}</p>
+          </div>
+        )}
 
         {/* Loading */}
         {isLoading && (
