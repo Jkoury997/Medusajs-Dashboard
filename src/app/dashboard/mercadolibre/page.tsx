@@ -210,24 +210,24 @@ MERCADOLIBRE_REDIRECT_URI=http://localhost:3000/api/mercadolibre/callback`}
                 <MetricCard
                   title="Ingresos ML"
                   value={formatARS(overview.total_revenue)}
-                  icon={DollarSign}
+                  icon={<DollarSign className="h-5 w-5" />}
                   subtitle={`${overview.paid_orders} ordenes pagadas`}
                 />
                 <MetricCard
                   title="Ordenes Totales"
-                  value={overview.total_orders}
-                  icon={ShoppingCart}
+                  value={String(overview.total_orders)}
+                  icon={<ShoppingCart className="h-5 w-5" />}
                   subtitle={`${overview.pending_orders} pendientes · ${overview.cancelled_orders} canceladas`}
                 />
                 <MetricCard
                   title="Ticket Promedio"
                   value={formatARS(overview.avg_ticket)}
-                  icon={TrendingUp}
+                  icon={<TrendingUp className="h-5 w-5" />}
                 />
                 <MetricCard
                   title="Compradores Unicos"
-                  value={overview.unique_buyers}
-                  icon={Users}
+                  value={String(overview.unique_buyers)}
+                  icon={<Users className="h-5 w-5" />}
                 />
               </div>
 
@@ -235,20 +235,19 @@ MERCADOLIBRE_REDIRECT_URI=http://localhost:3000/api/mercadolibre/callback`}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <MetricCard
                   title="Publicaciones Activas"
-                  value={listings?.total_active ?? "-"}
-                  icon={Package}
+                  value={String(listings?.total_active ?? "-")}
+                  icon={<Package className="h-5 w-5" />}
                 />
                 <MetricCard
                   title="Preguntas Sin Responder"
-                  value={questions?.unanswered ?? "-"}
-                  icon={MessageCircleQuestion}
-                  className={questions && questions.unanswered > 0 ? "border-orange-200" : ""}
+                  value={String(questions?.unanswered ?? "-")}
+                  icon={<MessageCircleQuestion className="h-5 w-5" />}
                 />
                 {reputation && (
                   <MetricCard
                     title="Reputacion"
                     value={LEVEL_LABELS[reputation.level_id] || reputation.level_id}
-                    icon={Star}
+                    icon={<Star className="h-5 w-5" />}
                     subtitle={
                       reputation.power_seller_status
                         ? `MercadoLider ${reputation.power_seller_status}`
