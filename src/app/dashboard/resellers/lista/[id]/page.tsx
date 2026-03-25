@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import {
@@ -12,6 +12,7 @@ import {
   useReactivateReseller,
   useUpdateReseller,
 } from "@/hooks/use-resellers"
+import { useReferralVisits } from "@/hooks/use-referral-visits"
 import type { ResellerStatus } from "@/types/reseller"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -22,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { FileDown } from "lucide-react"
+import { FileDown, Eye, Users, TrendingUp, MousePointerClick } from "lucide-react"
 
 const BASE = "/api/reseller-proxy"
 
@@ -60,6 +61,20 @@ export default function ResellerDetailPage() {
   const { data: customers, isLoading: loadingCustomers } = useResellerCustomers(id)
   const { data: commissions, isLoading: loadingCommissions } = useResellerCommissions(id)
 
+  // Rango de fechas para visitas: últimos 30 días
+  const dateRange = useMemo(() => {
+    const to = new Date()
+    const from = new Date()
+    from.setDate(from.getDate() - 30)
+    return { from, to }
+  }, [])
+
+  const { data: visitStats, isLoading: loadingVisits } = useReferralVisits(
+    reseller?.referral_code,
+    dateRange.from,
+    dateRange.to
+  )
+
   const [tab, setTab] = useState<Tab>("info")
   const [actionError, setActionError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
@@ -76,6 +91,13 @@ export default function ResellerDetailPage() {
   const update = useUpdateReseller()
 
   const isActioning = approve.isPending || suspend.isPending || reactivate.isPending || update.isPending
+
+  // Tasa de conversión: clientes / sesiones únicas
+  const conversionRate = useMemo(() => {
+    if (!visitStats || !reseller) return null
+    if (visitStats.unique_sessions === 0) return 0
+    return ((reseller.total_customers / visitStats.unique_sessions) * 100)
+  }, [visitStats, reseller])
 
   async function handleDownloadContract() {
     if (!reseller) return
@@ -363,6 +385,97 @@ export default function ResellerDetailPage() {
             </CardContent>
           </Card>
 
+          {/* Referral traffic card */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <MousePointerClick className="w-4 h-4" />
+                Tráfico por Referido
+                <span className="text-xs font-normal text-gray-400 ml-1">(últimos 30 días)</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingVisits ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="h-16 bg-gray-100 animate-pulse rounded" />
+                  ))}
+                </div>
+              ) : !visitStats || visitStats.total_visits === 0 ? (
+                <p className="text-sm text-gray-500 py-4 text-center">
+                  No se registraron visitas con este código de referido en los últimos 30 días.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {/* Métricas principales */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <MetricBox
+                      icon={<Eye className="w-4 h-4 text-blue-500" />}
+                      label="Visitas totales"
+                      value={visitStats.total_visits.toLocaleString("es-AR")}
+                    />
+                    <MetricBox
+                      icon={<Users className="w-4 h-4 text-purple-500" />}
+                      label="Sesiones únicas"
+                      value={visitStats.unique_sessions.toLocaleString("es-AR")}
+                    />
+                    <MetricBox
+                      icon={<TrendingUp className="w-4 h-4 text-green-500" />}
+                      label="Tasa de conversión"
+                      value={conversionRate != null ? `${conversionRate.toFixed(1)}%` : "-"}
+                    />
+                    <MetricBox
+                      icon={<MousePointerClick className="w-4 h-4 text-orange-500" />}
+                      label="Clientes convertidos"
+                      value={String(reseller.total_customers)}
+                    />
+                  </div>
+
+                  {/* Top landing pages */}
+                  {visitStats.top_landing_pages.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Páginas de aterrizaje más visitadas</h4>
+                      <div className="space-y-1">
+                        {visitStats.top_landing_pages.map((lp) => (
+                          <div key={lp.page} className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600 truncate max-w-[70%]" title={lp.page}>
+                              {lp.page}
+                            </span>
+                            <span className="font-mono text-gray-900">{lp.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Visitas por día - mini sparkline textual */}
+                  {visitStats.visits_by_day.length > 1 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Visitas por día</h4>
+                      <div className="flex items-end gap-px h-12">
+                        {(() => {
+                          const maxCount = Math.max(...visitStats.visits_by_day.map((d) => d.count))
+                          return visitStats.visits_by_day.map((d) => (
+                            <div
+                              key={d.date}
+                              className="flex-1 bg-blue-400 rounded-t hover:bg-blue-600 transition-colors"
+                              style={{ height: `${Math.max((d.count / maxCount) * 100, 4)}%` }}
+                              title={`${fmtDate(d.date + "T00:00:00")}: ${d.count} visitas`}
+                            />
+                          ))
+                        })()}
+                      </div>
+                      <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                        <span>{fmtDate(visitStats.visits_by_day[0].date + "T00:00:00")}</span>
+                        <span>{fmtDate(visitStats.visits_by_day[visitStats.visits_by_day.length - 1].date + "T00:00:00")}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Commission settings */}
           <Card className="md:col-span-2">
             <CardHeader><CardTitle className="text-base">Comisiones Personalizadas</CardTitle></CardHeader>
@@ -576,6 +689,18 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
     <div className="flex justify-between">
       <span className="text-gray-500">{label}</span>
       <span className={mono ? "font-mono" : "font-medium"}>{value}</span>
+    </div>
+  )
+}
+
+function MetricBox({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="bg-gray-50 rounded-lg p-3">
+      <div className="flex items-center gap-1.5 mb-1">
+        {icon}
+        <span className="text-xs text-gray-500">{label}</span>
+      </div>
+      <span className="text-xl font-bold text-gray-900">{value}</span>
     </div>
   )
 }
