@@ -112,6 +112,7 @@ export default function DashboardPage() {
   const { data: mlConnection } = useMLConnection()
   const mlConnected = mlConnection?.connected === true
   const { data: mlOverview } = useMLOverview(dateRange.from, dateRange.to, mlConnected)
+  const { data: mlPrevOverview } = useMLOverview(previousFrom, dateRange.from, mlConnected)
 
   // ══════════════════════════════════════
   // COMPUTACIONES
@@ -403,6 +404,20 @@ export default function DashboardPage() {
               const mlRevenue = mlOverview?.total_revenue || 0
               const mlOrders = mlOverview?.paid_orders || 0
               const mlBuyers = mlOverview?.unique_buyers || 0
+              const mlAvgTicket = mlOverview?.avg_ticket || 0
+              const mlPrevRevenue = mlPrevOverview?.total_revenue || 0
+              const mlPrevOrders = mlPrevOverview?.paid_orders || 0
+              const mlPrevBuyers = mlPrevOverview?.unique_buyers || 0
+              const mlPrevAvgTicket = mlPrevOverview?.avg_ticket || 0
+
+              const pctChange = (curr: number, prev: number) =>
+                prev > 0 ? ((curr - prev) / prev) * 100 : curr > 0 ? 100 : 0
+
+              const mlRevenueChange = pctChange(mlRevenue, mlPrevRevenue)
+              const mlOrdersChange = pctChange(mlOrders, mlPrevOrders)
+              const mlBuyersChange = pctChange(mlBuyers, mlPrevBuyers)
+              const mlTicketChange = pctChange(mlAvgTicket, mlPrevAvgTicket)
+
               const medusaRevenue = metrics.totalRevenue
               const medusaOrders = metrics.paidOrders
               const medusaBuyers = metrics.uniqueCustomers
@@ -410,6 +425,11 @@ export default function DashboardPage() {
               const totalOrders = medusaOrders + mlOrders
               const totalBuyers = medusaBuyers + mlBuyers
               const totalAov = totalOrders > 0 ? totalRevenue / totalOrders : 0
+
+              const prevTotalRevenue = (previousOrders ? calculateMetrics(previousOrders, [])?.totalRevenue || 0 : 0) + mlPrevRevenue
+              const totalRevenueChange = pctChange(totalRevenue, prevTotalRevenue)
+              const prevTotalOrders = (previousOrders ? calculateMetrics(previousOrders, [])?.paidOrders || 0 : 0) + mlPrevOrders
+              const totalOrdersChange = pctChange(totalOrders, prevTotalOrders)
 
               return (
                 <>
@@ -420,15 +440,15 @@ export default function DashboardPage() {
                       <MetricCard
                         title="Ingresos Totales"
                         value={formatCurrency(totalRevenue)}
-                        change={formatPercent(metrics.revenueChange)}
-                        changeType={metrics.revenueChange >= 0 ? "positive" : "negative"}
+                        change={formatPercent(totalRevenueChange)}
+                        changeType={totalRevenueChange >= 0 ? "positive" : "negative"}
                         icon="💰"
                       />
                       <MetricCard
                         title="Ventas Totales"
                         value={formatNumber(totalOrders)}
-                        change={formatPercent(metrics.paidOrdersChange)}
-                        changeType={metrics.paidOrdersChange >= 0 ? "positive" : "negative"}
+                        change={formatPercent(totalOrdersChange)}
+                        changeType={totalOrdersChange >= 0 ? "positive" : "negative"}
                         icon="✅"
                       />
                       <MetricCard
@@ -495,22 +515,30 @@ export default function DashboardPage() {
                       <MetricCard
                         title="Ingresos ML"
                         value={mlConnected ? formatCurrency(mlRevenue) : "—"}
+                        change={mlConnected && mlPrevOverview ? formatPercent(mlRevenueChange) : undefined}
+                        changeType={mlRevenueChange >= 0 ? "positive" : "negative"}
                         icon="🟡"
                       />
                       <MetricCard
                         title="Ventas ML"
                         value={mlConnected ? formatNumber(mlOrders) : "—"}
+                        change={mlConnected && mlPrevOverview ? formatPercent(mlOrdersChange) : undefined}
+                        changeType={mlOrdersChange >= 0 ? "positive" : "negative"}
                         subtitle={mlOverview ? `${mlOverview.pending_orders} pendientes · ${mlOverview.cancelled_orders} canceladas` : undefined}
                         icon="📦"
                       />
                       <MetricCard
                         title="Ticket Promedio ML"
-                        value={mlConnected && mlOverview ? formatCurrency(mlOverview.avg_ticket) : "—"}
+                        value={mlConnected && mlOverview ? formatCurrency(mlAvgTicket) : "—"}
+                        change={mlConnected && mlPrevOverview ? formatPercent(mlTicketChange) : undefined}
+                        changeType={mlTicketChange >= 0 ? "positive" : "negative"}
                         icon="🧾"
                       />
                       <MetricCard
                         title="Compradores ML"
                         value={mlConnected ? formatNumber(mlBuyers) : "—"}
+                        change={mlConnected && mlPrevOverview ? formatPercent(mlBuyersChange) : undefined}
+                        changeType={mlBuyersChange >= 0 ? "positive" : "negative"}
                         icon="👥"
                       />
                     </div>
