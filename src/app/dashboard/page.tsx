@@ -547,56 +547,67 @@ export default function DashboardPage() {
               )
             })()}
 
-            {/* Fila 2: Tráfico y Marketing */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <MetricCard
-                title="Sesiones GA4"
-                value={ga4Overview?.sessions ? formatNumber(ga4Overview.sessions) : "—"}
-                icon="🌐"
-              />
-              <MetricCard
-                title="Tasa de Rebote"
-                value={ga4Overview?.bounceRate != null ? `${(ga4Overview.bounceRate * 100).toFixed(1)}%` : "—"}
-                icon="↩️"
-              />
-              <MetricCard
-                title="Gasto Meta Ads"
-                value={metaOverview?.spend ? formatCurrency(metaOverview.spend) : "—"}
-                icon="📢"
-              />
-              <MetricCard
-                title="Costo por Venta"
-                value={crossMetrics.costPerSale > 0 ? formatCurrency(crossMetrics.costPerSale) : "—"}
-                changeType={crossMetrics.costPerSale > 0 && metrics.aov > 0 && crossMetrics.costPerSale < metrics.aov ? "positive" : crossMetrics.costPerSale > 0 ? "negative" : "neutral"}
-                icon="💸"
-              />
-            </div>
+            {/* ── Medusa: Tráfico y Comportamiento ── */}
+            <Card className="border-l-4 border-l-pink-400">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  🛍️ Tienda Online — Tráfico y Comportamiento
+                </CardTitle>
+                <p className="text-xs text-gray-400">Datos de GA4, Meta Ads y eventos de la tienda Medusa</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Tráfico y Marketing */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard
+                    title="Sesiones GA4"
+                    value={ga4Overview?.sessions ? formatNumber(ga4Overview.sessions) : "—"}
+                    icon="🌐"
+                  />
+                  <MetricCard
+                    title="Tasa de Rebote"
+                    value={ga4Overview?.bounceRate != null ? `${(ga4Overview.bounceRate * 100).toFixed(1)}%` : "—"}
+                    icon="↩️"
+                  />
+                  <MetricCard
+                    title="Gasto Meta Ads"
+                    value={metaOverview?.spend ? formatCurrency(metaOverview.spend) : "—"}
+                    icon="📢"
+                  />
+                  <MetricCard
+                    title="Costo por Venta"
+                    value={crossMetrics.costPerSale > 0 ? formatCurrency(crossMetrics.costPerSale) : "—"}
+                    changeType={crossMetrics.costPerSale > 0 && metrics.aov > 0 && crossMetrics.costPerSale < metrics.aov ? "positive" : crossMetrics.costPerSale > 0 ? "negative" : "neutral"}
+                    icon="💸"
+                  />
+                </div>
 
-            {/* Fila 3: Comportamiento */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <MetricCard
-                title="Productos Vistos"
-                value={formatNumber(crossMetrics.uniqueProductsViewed)}
-                icon="👀"
-              />
-              <MetricCard
-                title="Checkouts Iniciados"
-                value={formatNumber(crossMetrics.checkoutsStarted)}
-                icon="🛒"
-              />
-              <MetricCard
-                title="Tasa Abandono"
-                value={`${crossMetrics.abandonRate}%`}
-                changeType={parseFloat(crossMetrics.abandonRate) > 30 ? "negative" : parseFloat(crossMetrics.abandonRate) > 0 ? "positive" : "neutral"}
-                icon="🚪"
-              />
-              <MetricCard
-                title="Conv. Vista→Compra"
-                value={`${crossMetrics.viewToSaleRate}%`}
-                changeType={parseFloat(crossMetrics.viewToSaleRate) > 1 ? "positive" : "negative"}
-                icon="🔄"
-              />
-            </div>
+                {/* Comportamiento */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard
+                    title="Productos Vistos"
+                    value={formatNumber(crossMetrics.uniqueProductsViewed)}
+                    icon="👀"
+                  />
+                  <MetricCard
+                    title="Checkouts Iniciados"
+                    value={formatNumber(crossMetrics.checkoutsStarted)}
+                    icon="🛒"
+                  />
+                  <MetricCard
+                    title="Tasa Abandono"
+                    value={`${crossMetrics.abandonRate}%`}
+                    changeType={parseFloat(crossMetrics.abandonRate) > 30 ? "negative" : parseFloat(crossMetrics.abandonRate) > 0 ? "positive" : "neutral"}
+                    icon="🚪"
+                  />
+                  <MetricCard
+                    title="Conv. Vista→Compra"
+                    value={`${crossMetrics.viewToSaleRate}%`}
+                    changeType={parseFloat(crossMetrics.viewToSaleRate) > 1 ? "positive" : "negative"}
+                    icon="🔄"
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
             {/* ── SECCIÓN 2: Viaje del Cliente ── */}
             {journeySteps.length >= 3 && (
