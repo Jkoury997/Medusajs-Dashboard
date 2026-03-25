@@ -112,6 +112,7 @@ export default function DashboardPage() {
   const { data: mlConnection } = useMLConnection()
   const mlConnected = mlConnection?.connected === true
   const { data: mlOverview } = useMLOverview(dateRange.from, dateRange.to, mlConnected)
+  const { data: mlPrevOverview } = useMLOverview(previousFrom, dateRange.from, mlConnected)
 
   // ══════════════════════════════════════
   // COMPUTACIONES
@@ -403,6 +404,20 @@ export default function DashboardPage() {
               const mlRevenue = mlOverview?.total_revenue || 0
               const mlOrders = mlOverview?.paid_orders || 0
               const mlBuyers = mlOverview?.unique_buyers || 0
+              const mlAvgTicket = mlOverview?.avg_ticket || 0
+              const mlPrevRevenue = mlPrevOverview?.total_revenue || 0
+              const mlPrevOrders = mlPrevOverview?.paid_orders || 0
+              const mlPrevBuyers = mlPrevOverview?.unique_buyers || 0
+              const mlPrevAvgTicket = mlPrevOverview?.avg_ticket || 0
+
+              const pctChange = (curr: number, prev: number) =>
+                prev > 0 ? ((curr - prev) / prev) * 100 : curr > 0 ? 100 : 0
+
+              const mlRevenueChange = pctChange(mlRevenue, mlPrevRevenue)
+              const mlOrdersChange = pctChange(mlOrders, mlPrevOrders)
+              const mlBuyersChange = pctChange(mlBuyers, mlPrevBuyers)
+              const mlTicketChange = pctChange(mlAvgTicket, mlPrevAvgTicket)
+
               const medusaRevenue = metrics.totalRevenue
               const medusaOrders = metrics.paidOrders
               const medusaBuyers = metrics.uniqueCustomers
@@ -410,6 +425,11 @@ export default function DashboardPage() {
               const totalOrders = medusaOrders + mlOrders
               const totalBuyers = medusaBuyers + mlBuyers
               const totalAov = totalOrders > 0 ? totalRevenue / totalOrders : 0
+
+              const prevTotalRevenue = (previousOrders ? calculateMetrics(previousOrders, [])?.totalRevenue || 0 : 0) + mlPrevRevenue
+              const totalRevenueChange = pctChange(totalRevenue, prevTotalRevenue)
+              const prevTotalOrders = (previousOrders ? calculateMetrics(previousOrders, [])?.paidOrders || 0 : 0) + mlPrevOrders
+              const totalOrdersChange = pctChange(totalOrders, prevTotalOrders)
 
               return (
                 <>
@@ -420,15 +440,15 @@ export default function DashboardPage() {
                       <MetricCard
                         title="Ingresos Totales"
                         value={formatCurrency(totalRevenue)}
-                        change={formatPercent(metrics.revenueChange)}
-                        changeType={metrics.revenueChange >= 0 ? "positive" : "negative"}
+                        change={formatPercent(totalRevenueChange)}
+                        changeType={totalRevenueChange >= 0 ? "positive" : "negative"}
                         icon="💰"
                       />
                       <MetricCard
                         title="Ventas Totales"
                         value={formatNumber(totalOrders)}
-                        change={formatPercent(metrics.paidOrdersChange)}
-                        changeType={metrics.paidOrdersChange >= 0 ? "positive" : "negative"}
+                        change={formatPercent(totalOrdersChange)}
+                        changeType={totalOrdersChange >= 0 ? "positive" : "negative"}
                         icon="✅"
                       />
                       <MetricCard
@@ -495,22 +515,30 @@ export default function DashboardPage() {
                       <MetricCard
                         title="Ingresos ML"
                         value={mlConnected ? formatCurrency(mlRevenue) : "—"}
+                        change={mlConnected && mlPrevOverview ? formatPercent(mlRevenueChange) : undefined}
+                        changeType={mlRevenueChange >= 0 ? "positive" : "negative"}
                         icon="🟡"
                       />
                       <MetricCard
                         title="Ventas ML"
                         value={mlConnected ? formatNumber(mlOrders) : "—"}
+                        change={mlConnected && mlPrevOverview ? formatPercent(mlOrdersChange) : undefined}
+                        changeType={mlOrdersChange >= 0 ? "positive" : "negative"}
                         subtitle={mlOverview ? `${mlOverview.pending_orders} pendientes · ${mlOverview.cancelled_orders} canceladas` : undefined}
                         icon="📦"
                       />
                       <MetricCard
                         title="Ticket Promedio ML"
-                        value={mlConnected && mlOverview ? formatCurrency(mlOverview.avg_ticket) : "—"}
+                        value={mlConnected && mlOverview ? formatCurrency(mlAvgTicket) : "—"}
+                        change={mlConnected && mlPrevOverview ? formatPercent(mlTicketChange) : undefined}
+                        changeType={mlTicketChange >= 0 ? "positive" : "negative"}
                         icon="🧾"
                       />
                       <MetricCard
                         title="Compradores ML"
                         value={mlConnected ? formatNumber(mlBuyers) : "—"}
+                        change={mlConnected && mlPrevOverview ? formatPercent(mlBuyersChange) : undefined}
+                        changeType={mlBuyersChange >= 0 ? "positive" : "negative"}
                         icon="👥"
                       />
                     </div>
@@ -519,56 +547,67 @@ export default function DashboardPage() {
               )
             })()}
 
-            {/* Fila 2: Tráfico y Marketing */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <MetricCard
-                title="Sesiones GA4"
-                value={ga4Overview?.sessions ? formatNumber(ga4Overview.sessions) : "—"}
-                icon="🌐"
-              />
-              <MetricCard
-                title="Tasa de Rebote"
-                value={ga4Overview?.bounceRate != null ? `${(ga4Overview.bounceRate * 100).toFixed(1)}%` : "—"}
-                icon="↩️"
-              />
-              <MetricCard
-                title="Gasto Meta Ads"
-                value={metaOverview?.spend ? formatCurrency(metaOverview.spend) : "—"}
-                icon="📢"
-              />
-              <MetricCard
-                title="Costo por Venta"
-                value={crossMetrics.costPerSale > 0 ? formatCurrency(crossMetrics.costPerSale) : "—"}
-                changeType={crossMetrics.costPerSale > 0 && metrics.aov > 0 && crossMetrics.costPerSale < metrics.aov ? "positive" : crossMetrics.costPerSale > 0 ? "negative" : "neutral"}
-                icon="💸"
-              />
-            </div>
+            {/* ── Medusa: Tráfico y Comportamiento ── */}
+            <Card className="border-l-4 border-l-pink-400">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  🛍️ Tienda Online — Tráfico y Comportamiento
+                </CardTitle>
+                <p className="text-xs text-gray-400">Datos de GA4, Meta Ads y eventos de la tienda Medusa</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Tráfico y Marketing */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard
+                    title="Sesiones GA4"
+                    value={ga4Overview?.sessions ? formatNumber(ga4Overview.sessions) : "—"}
+                    icon="🌐"
+                  />
+                  <MetricCard
+                    title="Tasa de Rebote"
+                    value={ga4Overview?.bounceRate != null ? `${(ga4Overview.bounceRate * 100).toFixed(1)}%` : "—"}
+                    icon="↩️"
+                  />
+                  <MetricCard
+                    title="Gasto Meta Ads"
+                    value={metaOverview?.spend ? formatCurrency(metaOverview.spend) : "—"}
+                    icon="📢"
+                  />
+                  <MetricCard
+                    title="Costo por Venta"
+                    value={crossMetrics.costPerSale > 0 ? formatCurrency(crossMetrics.costPerSale) : "—"}
+                    changeType={crossMetrics.costPerSale > 0 && metrics.aov > 0 && crossMetrics.costPerSale < metrics.aov ? "positive" : crossMetrics.costPerSale > 0 ? "negative" : "neutral"}
+                    icon="💸"
+                  />
+                </div>
 
-            {/* Fila 3: Comportamiento */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <MetricCard
-                title="Productos Vistos"
-                value={formatNumber(crossMetrics.uniqueProductsViewed)}
-                icon="👀"
-              />
-              <MetricCard
-                title="Checkouts Iniciados"
-                value={formatNumber(crossMetrics.checkoutsStarted)}
-                icon="🛒"
-              />
-              <MetricCard
-                title="Tasa Abandono"
-                value={`${crossMetrics.abandonRate}%`}
-                changeType={parseFloat(crossMetrics.abandonRate) > 30 ? "negative" : parseFloat(crossMetrics.abandonRate) > 0 ? "positive" : "neutral"}
-                icon="🚪"
-              />
-              <MetricCard
-                title="Conv. Vista→Compra"
-                value={`${crossMetrics.viewToSaleRate}%`}
-                changeType={parseFloat(crossMetrics.viewToSaleRate) > 1 ? "positive" : "negative"}
-                icon="🔄"
-              />
-            </div>
+                {/* Comportamiento */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard
+                    title="Productos Vistos"
+                    value={formatNumber(crossMetrics.uniqueProductsViewed)}
+                    icon="👀"
+                  />
+                  <MetricCard
+                    title="Checkouts Iniciados"
+                    value={formatNumber(crossMetrics.checkoutsStarted)}
+                    icon="🛒"
+                  />
+                  <MetricCard
+                    title="Tasa Abandono"
+                    value={`${crossMetrics.abandonRate}%`}
+                    changeType={parseFloat(crossMetrics.abandonRate) > 30 ? "negative" : parseFloat(crossMetrics.abandonRate) > 0 ? "positive" : "neutral"}
+                    icon="🚪"
+                  />
+                  <MetricCard
+                    title="Conv. Vista→Compra"
+                    value={`${crossMetrics.viewToSaleRate}%`}
+                    changeType={parseFloat(crossMetrics.viewToSaleRate) > 1 ? "positive" : "negative"}
+                    icon="🔄"
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
             {/* ── SECCIÓN 2: Viaje del Cliente ── */}
             {journeySteps.length >= 3 && (
