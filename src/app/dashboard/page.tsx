@@ -16,6 +16,7 @@ import {
 } from "@/hooks/use-events"
 import { useGA4Overview, useGA4Devices } from "@/hooks/use-ga4"
 import { useMetaOverview } from "@/hooks/use-meta"
+import { useMLConnection, useMLOverview } from "@/hooks/use-mercadolibre"
 import { Header } from "@/components/dashboard/header"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import {
@@ -106,6 +107,11 @@ export default function DashboardPage() {
 
   // ── Meta Ads ──
   const { data: metaOverview } = useMetaOverview(dateRange.from, dateRange.to)
+
+  // ── MercadoLibre ──
+  const { data: mlConnection } = useMLConnection()
+  const mlConnected = mlConnection?.connected === true
+  const { data: mlOverview } = useMLOverview(dateRange.from, dateRange.to, mlConnected)
 
   // ══════════════════════════════════════
   // COMPUTACIONES
@@ -392,44 +398,126 @@ export default function DashboardPage() {
             {/* ── SECCIÓN 0: Alertas ── */}
             <AlertsPanel alerts={alerts} />
 
-            {/* ── SECCIÓN 1: KPIs Ejecutivos ── */}
-            {/* Fila 1: Ventas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              <MetricCard
-                title="Ingresos (Pagados)"
-                value={formatCurrency(metrics.totalRevenue)}
-                change={formatPercent(metrics.revenueChange)}
-                changeType={metrics.revenueChange >= 0 ? "positive" : "negative"}
-                icon="💰"
-              />
-              <MetricCard
-                title="Ventas Concretadas"
-                value={formatNumber(metrics.paidOrders)}
-                change={formatPercent(metrics.paidOrdersChange)}
-                changeType={metrics.paidOrdersChange >= 0 ? "positive" : "negative"}
-                icon="✅"
-              />
-              <MetricCard
-                title="Ticket Promedio"
-                value={formatCurrency(metrics.aov)}
-                change={formatPercent(metrics.aovChange)}
-                changeType={metrics.aovChange >= 0 ? "positive" : "negative"}
-                icon="🧾"
-              />
-              <MetricCard
-                title="Clientes Únicos"
-                value={formatNumber(metrics.uniqueCustomers)}
-                change={formatPercent(metrics.customersChange)}
-                changeType={metrics.customersChange >= 0 ? "positive" : "negative"}
-                icon="👥"
-              />
-              <MetricCard
-                title="ROAS Real"
-                value={crossMetrics.realRoas > 0 ? `${crossMetrics.realRoas.toFixed(2)}x` : "—"}
-                changeType={crossMetrics.realRoas >= 1 ? "positive" : crossMetrics.realRoas > 0 ? "negative" : "neutral"}
-                icon="🎯"
-              />
-            </div>
+            {/* ── SECCIÓN 1: KPIs Ejecutivos — Ventas Totales ── */}
+            {(() => {
+              const mlRevenue = mlOverview?.total_revenue || 0
+              const mlOrders = mlOverview?.paid_orders || 0
+              const mlBuyers = mlOverview?.unique_buyers || 0
+              const medusaRevenue = metrics.totalRevenue
+              const medusaOrders = metrics.paidOrders
+              const medusaBuyers = metrics.uniqueCustomers
+              const totalRevenue = medusaRevenue + mlRevenue
+              const totalOrders = medusaOrders + mlOrders
+              const totalBuyers = medusaBuyers + mlBuyers
+              const totalAov = totalOrders > 0 ? totalRevenue / totalOrders : 0
+
+              return (
+                <>
+                  {/* Fila Total */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Total (Medusa + MercadoLibre)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                      <MetricCard
+                        title="Ingresos Totales"
+                        value={formatCurrency(totalRevenue)}
+                        change={formatPercent(metrics.revenueChange)}
+                        changeType={metrics.revenueChange >= 0 ? "positive" : "negative"}
+                        icon="💰"
+                      />
+                      <MetricCard
+                        title="Ventas Totales"
+                        value={formatNumber(totalOrders)}
+                        change={formatPercent(metrics.paidOrdersChange)}
+                        changeType={metrics.paidOrdersChange >= 0 ? "positive" : "negative"}
+                        icon="✅"
+                      />
+                      <MetricCard
+                        title="Ticket Promedio"
+                        value={formatCurrency(totalAov)}
+                        icon="🧾"
+                      />
+                      <MetricCard
+                        title="Compradores Totales"
+                        value={formatNumber(totalBuyers)}
+                        icon="👥"
+                      />
+                      <MetricCard
+                        title="ROAS Real"
+                        value={crossMetrics.realRoas > 0 ? `${crossMetrics.realRoas.toFixed(2)}x` : "—"}
+                        changeType={crossMetrics.realRoas >= 1 ? "positive" : crossMetrics.realRoas > 0 ? "negative" : "neutral"}
+                        icon="🎯"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Fila Medusa */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Medusa (Tienda Online)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <MetricCard
+                        title="Ingresos Medusa"
+                        value={formatCurrency(medusaRevenue)}
+                        change={formatPercent(metrics.revenueChange)}
+                        changeType={metrics.revenueChange >= 0 ? "positive" : "negative"}
+                        icon="🛍️"
+                      />
+                      <MetricCard
+                        title="Ventas Medusa"
+                        value={formatNumber(medusaOrders)}
+                        change={formatPercent(metrics.paidOrdersChange)}
+                        changeType={metrics.paidOrdersChange >= 0 ? "positive" : "negative"}
+                        icon="✅"
+                      />
+                      <MetricCard
+                        title="Ticket Promedio"
+                        value={formatCurrency(metrics.aov)}
+                        change={formatPercent(metrics.aovChange)}
+                        changeType={metrics.aovChange >= 0 ? "positive" : "negative"}
+                        icon="🧾"
+                      />
+                      <MetricCard
+                        title="Clientes Únicos"
+                        value={formatNumber(medusaBuyers)}
+                        change={formatPercent(metrics.customersChange)}
+                        changeType={metrics.customersChange >= 0 ? "positive" : "negative"}
+                        icon="👥"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Fila MercadoLibre */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                      MercadoLibre
+                      {!mlConnected && <span className="text-xs font-normal text-gray-400 ml-2">(no conectado)</span>}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <MetricCard
+                        title="Ingresos ML"
+                        value={mlConnected ? formatCurrency(mlRevenue) : "—"}
+                        icon="🟡"
+                      />
+                      <MetricCard
+                        title="Ventas ML"
+                        value={mlConnected ? formatNumber(mlOrders) : "—"}
+                        subtitle={mlOverview ? `${mlOverview.pending_orders} pendientes · ${mlOverview.cancelled_orders} canceladas` : undefined}
+                        icon="📦"
+                      />
+                      <MetricCard
+                        title="Ticket Promedio ML"
+                        value={mlConnected && mlOverview ? formatCurrency(mlOverview.avg_ticket) : "—"}
+                        icon="🧾"
+                      />
+                      <MetricCard
+                        title="Compradores ML"
+                        value={mlConnected ? formatNumber(mlBuyers) : "—"}
+                        icon="👥"
+                      />
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
 
             {/* Fila 2: Tráfico y Marketing */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
