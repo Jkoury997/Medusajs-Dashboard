@@ -25,14 +25,26 @@ function authHeaders(): HeadersInit {
 // TYPES
 // ============================================================
 
+export interface AiFaq {
+  pregunta: string
+  respuesta: string
+}
+
 export interface AiDescription {
   meta_title: string
   meta_description: string
+  og_title: string
+  og_description: string
   corta: string
   media: string
   larga: string
-  keywords: string[]
+  keywords_primary: string[]
+  keywords_secondary: string[]
+  keywords_long_tail: string[]
   schema_description: string
+  alt_text: string
+  url_slug: string
+  faq: AiFaq[]
 }
 
 export interface AiPendingProduct {
@@ -41,6 +53,13 @@ export interface AiPendingProduct {
   thumbnail: string | null
   ai_generated_at: string
   ai_description: AiDescription
+}
+
+export interface AiStats {
+  total: number
+  approved: number
+  pending: number
+  without_ai: number
 }
 
 // ============================================================
@@ -59,6 +78,21 @@ export function useAiPendingProducts() {
       return data.products ?? []
     },
     refetchInterval: 15_000,
+  })
+}
+
+export function useAiStats() {
+  return useQuery({
+    queryKey: ["ai", "stats"],
+    queryFn: async (): Promise<AiStats> => {
+      const res = await fetch(`${BACKEND_URL}/admin/ai/stats`, {
+        headers: authHeaders(),
+      })
+      if (!res.ok) throw new Error("Error al obtener estadísticas IA")
+      const data = await res.json()
+      return data.stats
+    },
+    refetchInterval: 30_000,
   })
 }
 
@@ -92,6 +126,7 @@ export function useApproveDescription() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ai", "pending"] })
+      qc.invalidateQueries({ queryKey: ["ai", "stats"] })
     },
   })
 }
@@ -115,12 +150,13 @@ export function useRegenerateDescription() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ai", "pending"] })
+      qc.invalidateQueries({ queryKey: ["ai", "stats"] })
     },
   })
 }
 
 // ============================================================
-// GENERATE ALL
+// GENERATE ALL (solo productos sin IA)
 // ============================================================
 
 export interface GenerateAllResult {
@@ -144,6 +180,71 @@ export function useGenerateAll() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ai", "pending"] })
+      qc.invalidateQueries({ queryKey: ["ai", "stats"] })
+    },
+  })
+}
+
+// ============================================================
+// REGENERATE ALL (productos que YA tienen IA)
+// ============================================================
+
+export interface RegenerateAllResult {
+  ok: boolean
+  message: string
+  total: number
+  productos: { id: string; title: string }[]
+}
+
+export function useRegenerateAll() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<RegenerateAllResult> => {
+      const res = await fetch(`${BACKEND_URL}/admin/ai/regenerate-all`, {
+        method: "POST",
+        headers: authHeaders(),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.message || "Error al regenerar todas las descripciones")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ai", "pending"] })
+      qc.invalidateQueries({ queryKey: ["ai", "stats"] })
+    },
+  })
+}
+
+// ============================================================
+// BACKFILL ORIGINAL (restaurar descripciones originales de MkERP)
+// ============================================================
+
+export interface BackfillResult {
+  ok: boolean
+  message: string
+  total_needed: number
+  updated: number
+  skipped: number
+}
+
+export function useBackfillOriginal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<BackfillResult> => {
+      const res = await fetch(`${BACKEND_URL}/admin/ai/backfill-original`, {
+        method: "POST",
+        headers: authHeaders(),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.message || "Error al restaurar descripciones originales")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ai", "stats"] })
     },
   })
 }
