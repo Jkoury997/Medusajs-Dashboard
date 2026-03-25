@@ -270,7 +270,6 @@ export default function InfluencersPage() {
               value={`${stats.global_roi}%`}
               icon={<TrendingUp className="h-5 w-5" />}
               subtitle={stats.global_roi > 0 ? "Rentable" : "No rentable aun"}
-              className={stats.global_roi > 0 ? "border-green-200" : "border-red-200"}
             />
           </div>
 
