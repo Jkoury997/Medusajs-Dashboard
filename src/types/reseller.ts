@@ -45,6 +45,7 @@ export interface ResellerType {
   is_active: boolean
   priority: number
   customer_group_id: string | null
+  tracking_only?: boolean
 }
 
 // ============================================================
@@ -369,4 +370,101 @@ export interface ProductBoostFilters {
   reason?: ProductBoostReason
   page?: number
   limit?: number
+}
+
+// ============================================================
+// INFLUENCERS
+// ============================================================
+
+export type InfluencerPlatform = "instagram" | "tiktok" | "youtube" | "twitter" | "facebook" | "other"
+export type InfluencerContentType = "reel" | "story" | "post" | "video" | "live" | "multiple" | "other"
+
+export interface InfluencerStat {
+  id: string
+  name: string
+  email: string
+  instagram: string | null
+  tiktok: string | null
+  status: ResellerStatus
+  referral_code: string
+  platform: InfluencerPlatform | null
+  campaign: string | null
+  content_type: InfluencerContentType | null
+  followers: number | null
+  fee: number
+  total_sales: number
+  total_orders: number
+  total_customers: number
+  roi: number
+  cost_per_order: number
+  cost_per_customer: number
+  start_date: string | null
+  end_date: string | null
+  is_profitable: boolean
+  created_at: string
+}
+
+export interface InfluencerStatsResponse {
+  stats: {
+    total_influencers: number
+    active_influencers: number
+    total_investment: number
+    total_attributed_sales: number
+    total_attributed_orders: number
+    total_attributed_customers: number
+    global_roi: number
+    by_platform: Record<string, { count: number; investment: number; sales: number; orders: number }>
+    by_campaign: Record<string, { count: number; investment: number; sales: number; orders: number; roi: number }>
+    influencers: InfluencerStat[]
+    currency_code: string
+  }
+}
+
+export interface InfluencerDetailResponse {
+  influencer: {
+    id: string
+    name: string
+    email: string
+    instagram: string | null
+    tiktok: string | null
+    phone: string | null
+    status: ResellerStatus
+    referral_code: string
+    platform: InfluencerPlatform | null
+    campaign: string | null
+    content_type: InfluencerContentType | null
+    followers: number | null
+    notes: string | null
+    start_date: string | null
+    end_date: string | null
+    created_at: string
+  }
+  metrics: {
+    fee: number
+    total_sales: number
+    total_orders: number
+    total_customers: number
+    roi: number
+    cost_per_order: number
+    cost_per_customer: number
+    avg_order_value: number
+    is_profitable: boolean
+  }
+  monthly_breakdown: Record<string, { orders: number; sales: number }>
+  recent_orders: {
+    id: string
+    order_id: string
+    customer_email: string
+    customer_name: string | null
+    order_total: number
+    currency_code: string
+    created_at: string
+  }[]
+  customers: {
+    id: string
+    customer_email: string
+    customer_id: string | null
+    link_source: string
+    linked_at: string
+  }[]
 }

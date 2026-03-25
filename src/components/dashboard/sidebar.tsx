@@ -139,6 +139,7 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/resellers/alertas", label: "Alertas de Fraude", icon: ShieldAlert },
       { href: "/dashboard/resellers/vouchers", label: "Vouchers", icon: Ticket },
       { href: "/dashboard/resellers/documentos", label: "Documentos", icon: FileCheck },
+      { href: "/dashboard/resellers/influencers", label: "Influencers", icon: Megaphone },
       { href: "/dashboard/resellers/invitaciones", label: "Invitaciones", icon: KeyRound },
       { href: "/dashboard/product-boosts", label: "Boosts", icon: Rocket },
       { href: "/dashboard/resellers/config", label: "Configuración", icon: Settings },
