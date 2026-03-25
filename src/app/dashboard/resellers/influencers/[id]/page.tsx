@@ -185,27 +185,25 @@ export default function InfluencerDetailPage({ params }: { params: Promise<{ id:
 
       {/* KPI Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Fee Pagado" value={formatCentavos(metrics.fee)} icon={DollarSign} subtitle="Costo del influencer" />
-        <MetricCard title="Ventas Atribuidas" value={formatCentavos(metrics.total_sales)} icon={ShoppingCart} subtitle={`${metrics.total_orders} ordenes`} />
+        <MetricCard title="Fee Pagado" value={formatCentavos(metrics.fee)} icon={<DollarSign className="h-5 w-5" />} subtitle="Costo del influencer" />
+        <MetricCard title="Ventas Atribuidas" value={formatCentavos(metrics.total_sales)} icon={<ShoppingCart className="h-5 w-5" />} subtitle={`${metrics.total_orders} ordenes`} />
         <MetricCard
           title="ROI"
           value={`${metrics.roi > 0 ? "+" : ""}${metrics.roi}%`}
-          icon={TrendingUp}
+          icon={<TrendingUp className="h-5 w-5" />}
           subtitle={metrics.is_profitable ? "Rentable" : "No rentable"}
-          className={metrics.is_profitable ? "border-green-200" : "border-red-200"}
         />
-        <MetricCard title="Clientes" value={metrics.total_customers} icon={Users} subtitle={`${formatCentavos(metrics.cost_per_customer)} / cliente`} />
+        <MetricCard title="Clientes" value={String(metrics.total_customers)} icon={<Users className="h-5 w-5" />} subtitle={`${formatCentavos(metrics.cost_per_customer)} / cliente`} />
       </div>
 
       {/* Secondary metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MetricCard title="Costo por Orden" value={formatCentavos(metrics.cost_per_order)} icon={Receipt} />
-        <MetricCard title="Ticket Promedio" value={formatCentavos(metrics.avg_order_value)} icon={Target} />
+        <MetricCard title="Costo por Orden" value={formatCentavos(metrics.cost_per_order)} icon={<Receipt className="h-5 w-5" />} />
+        <MetricCard title="Ticket Promedio" value={formatCentavos(metrics.avg_order_value)} icon={<Target className="h-5 w-5" />} />
         <MetricCard
           title="Ganancia Neta"
           value={formatCentavos(metrics.total_sales - metrics.fee)}
-          icon={BarChart3}
-          className={(metrics.total_sales - metrics.fee) >= 0 ? "border-green-200" : "border-red-200"}
+          icon={<BarChart3 className="h-5 w-5" />}
         />
       </div>
 
