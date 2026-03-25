@@ -249,26 +249,26 @@ export default function InfluencersPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Total Influencers"
-              value={stats.total_influencers}
-              icon={Users}
+              value={String(stats.total_influencers)}
+              icon={<Users className="h-5 w-5" />}
               subtitle={`${stats.active_influencers} activos`}
             />
             <MetricCard
               title="Inversion Total"
               value={formatCentavos(stats.total_investment)}
-              icon={DollarSign}
+              icon={<DollarSign className="h-5 w-5" />}
               subtitle="Fee pagado a influencers"
             />
             <MetricCard
               title="Ventas Atribuidas"
               value={formatCentavos(stats.total_attributed_sales)}
-              icon={ShoppingCart}
+              icon={<ShoppingCart className="h-5 w-5" />}
               subtitle={`${stats.total_attributed_orders} ordenes`}
             />
             <MetricCard
               title="ROI Global"
               value={`${stats.global_roi}%`}
-              icon={TrendingUp}
+              icon={<TrendingUp className="h-5 w-5" />}
               subtitle={stats.global_roi > 0 ? "Rentable" : "No rentable aun"}
               className={stats.global_roi > 0 ? "border-green-200" : "border-red-200"}
             />
