@@ -157,6 +157,7 @@ const staticNavEntries: NavEntry[] = [
     ],
   },
   // ← Administración se inserta dinámicamente aquí
+  { href: "/dashboard/mercadolibre", label: "Mercado Libre", icon: ShoppingCart },
   { href: "/dashboard/analytics", label: "Analítica", icon: Satellite },
   { href: "/dashboard/ai", label: "IA Insights", icon: Bot },
 ]
