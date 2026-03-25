@@ -171,6 +171,9 @@ export const ROUTE_PERMISSIONS: { prefix: string; permission: Permission }[] = [
   // Revendedoras físicas
   { prefix: "/dashboard/resellers-fisicas", permission: PERMISSIONS.RESELLERS_FISICAS_VIEW },
 
+  // MercadoLibre
+  { prefix: "/dashboard/mercadolibre", permission: PERMISSIONS.ANALYTICS_VIEW },
+
   // Analítica
   { prefix: "/dashboard/analytics", permission: PERMISSIONS.ANALYTICS_VIEW },
 
