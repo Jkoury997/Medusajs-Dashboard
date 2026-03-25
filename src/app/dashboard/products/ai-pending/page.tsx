@@ -9,9 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   useAiPendingProducts,
+  useAiStats,
   useApproveDescription,
   useRegenerateDescription,
   useGenerateAll,
+  useRegenerateAll,
+  useBackfillOriginal,
   type AiPendingProduct,
 } from "@/hooks/use-ai-pending"
 import {
@@ -25,6 +28,13 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  RotateCcw,
+  Database,
+  Globe,
+  Tag,
+  Link2,
+  Image,
+  HelpCircle,
 } from "lucide-react"
 
 // ============================================================
@@ -60,6 +70,12 @@ function PendingProductCard({ product }: { product: AiPendingProduct }) {
   const handleRegenerate = () => {
     regenerateMutation.mutate(product.id)
   }
+
+  const allKeywords = [
+    ...(desc.keywords_primary ?? []),
+    ...(desc.keywords_secondary ?? []),
+    ...(desc.keywords_long_tail ?? []),
+  ]
 
   return (
     <Card className="overflow-hidden">
@@ -101,28 +117,106 @@ function PendingProductCard({ product }: { product: AiPendingProduct }) {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Meta info */}
-        {desc.meta_title && (
-          <div className="bg-gray-50 rounded-lg p-3 space-y-1">
-            <p className="text-xs font-medium text-gray-500">Meta Title</p>
-            <p className="text-sm text-gray-800">{desc.meta_title}</p>
-            {desc.meta_description && (
-              <>
-                <p className="text-xs font-medium text-gray-500 mt-2">Meta Description</p>
-                <p className="text-sm text-gray-600">{desc.meta_description}</p>
-              </>
+        {/* SEO Meta */}
+        <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+            <Globe className="w-3 h-3" />
+            SEO & Open Graph
+          </div>
+          {desc.meta_title && (
+            <div>
+              <p className="text-xs text-gray-400">Meta Title</p>
+              <p className="text-sm text-gray-800">{desc.meta_title}</p>
+            </div>
+          )}
+          {desc.meta_description && (
+            <div>
+              <p className="text-xs text-gray-400">Meta Description</p>
+              <p className="text-sm text-gray-600">{desc.meta_description}</p>
+            </div>
+          )}
+          {expanded && (
+            <>
+              {desc.og_title && (
+                <div>
+                  <p className="text-xs text-gray-400">OG Title</p>
+                  <p className="text-sm text-gray-800">{desc.og_title}</p>
+                </div>
+              )}
+              {desc.og_description && (
+                <div>
+                  <p className="text-xs text-gray-400">OG Description</p>
+                  <p className="text-sm text-gray-600">{desc.og_description}</p>
+                </div>
+              )}
+              {desc.schema_description && (
+                <div>
+                  <p className="text-xs text-gray-400">Schema Description</p>
+                  <p className="text-sm text-gray-600">{desc.schema_description}</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* URL Slug & Alt Text (expanded) */}
+        {expanded && (desc.url_slug || desc.alt_text) && (
+          <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+            {desc.url_slug && (
+              <div className="flex items-start gap-2">
+                <Link2 className="w-3 h-3 text-gray-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-400">URL Slug</p>
+                  <p className="text-sm font-mono text-gray-700">{desc.url_slug}</p>
+                </div>
+              </div>
+            )}
+            {desc.alt_text && (
+              <div className="flex items-start gap-2">
+                <Image className="w-3 h-3 text-gray-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-400">Alt Text</p>
+                  <p className="text-sm text-gray-600">{desc.alt_text}</p>
+                </div>
+              </div>
             )}
           </div>
         )}
 
         {/* Keywords */}
-        {desc.keywords?.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {desc.keywords.map((kw) => (
-              <Badge key={kw} variant="secondary" className="text-xs">
-                {kw}
-              </Badge>
-            ))}
+        {allKeywords.length > 0 && (
+          <div>
+            <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1.5">
+              <Tag className="w-3 h-3" />
+              Keywords
+            </div>
+            {desc.keywords_primary?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-1">
+                {desc.keywords_primary.map((kw) => (
+                  <Badge key={kw} className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+                    {kw}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {expanded && desc.keywords_secondary?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-1">
+                {desc.keywords_secondary.map((kw) => (
+                  <Badge key={kw} variant="secondary" className="text-xs">
+                    {kw}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {expanded && desc.keywords_long_tail?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {desc.keywords_long_tail.map((kw) => (
+                  <Badge key={kw} variant="outline" className="text-xs text-gray-500">
+                    {kw}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -168,13 +262,29 @@ function PendingProductCard({ product }: { product: AiPendingProduct }) {
                     Aprobar
                   </Button>
                 </div>
-                <p className={`text-sm text-gray-700 ${expanded ? "" : "line-clamp-3"}`}>
+                <p className={`text-sm text-gray-700 whitespace-pre-line ${expanded ? "" : "line-clamp-3"}`}>
                   {text}
                 </p>
               </div>
             )
           })}
         </div>
+
+        {/* FAQ (expanded) */}
+        {expanded && desc.faq?.length > 0 && (
+          <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+              <HelpCircle className="w-3 h-3" />
+              FAQ ({desc.faq.length})
+            </div>
+            {desc.faq.map((item, i) => (
+              <div key={i} className="space-y-0.5">
+                <p className="text-sm font-medium text-gray-800">{item.pregunta}</p>
+                <p className="text-sm text-gray-600">{item.respuesta}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Regenerate button */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
@@ -233,8 +343,12 @@ function PendingProductCard({ product }: { product: AiPendingProduct }) {
 
 export default function AiPendingPage() {
   const { data: products, isLoading, isError, refetch } = useAiPendingProducts()
+  const { data: stats } = useAiStats()
   const generateAll = useGenerateAll()
+  const regenerateAll = useRegenerateAll()
+  const backfill = useBackfillOriginal()
   const [search, setSearch] = useState("")
+  const [showConfirmRegenAll, setShowConfirmRegenAll] = useState(false)
 
   const filtered = (products ?? []).filter((p) => {
     if (!search) return true
@@ -250,9 +364,39 @@ export default function AiPendingPage() {
       />
 
       <div className="p-6 space-y-6">
-        {/* Search & count bar */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="relative max-w-sm flex-1">
+        {/* Stats bar */}
+        {stats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                <p className="text-xs text-gray-500">Total productos</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
+                <p className="text-xs text-gray-500">IA aprobada</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+                <p className="text-xs text-gray-500">Pendientes revisión</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-gray-400">{stats.without_ai}</p>
+                <p className="text-xs text-gray-500">Sin IA</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Search & actions bar */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="relative max-w-sm flex-1 w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               placeholder="Buscar por nombre o ID..."
@@ -261,7 +405,7 @@ export default function AiPendingPage() {
               className="pl-9"
             />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             {!isLoading && (
               <Badge variant="outline" className="text-sm">
                 {filtered.length} {filtered.length === 1 ? "producto" : "productos"}
@@ -278,7 +422,34 @@ export default function AiPendingPage() {
               ) : (
                 <Sparkles className="w-4 h-4 mr-1" />
               )}
-              Generar Todos
+              Generar Sin IA
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowConfirmRegenAll(true)}
+              disabled={regenerateAll.isPending}
+              className="text-orange-600 border-orange-200 hover:bg-orange-50"
+            >
+              {regenerateAll.isPending ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <RotateCcw className="w-4 h-4 mr-1" />
+              )}
+              Regenerar Todos
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => backfill.mutate()}
+              disabled={backfill.isPending}
+            >
+              {backfill.isPending ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Database className="w-4 h-4 mr-1" />
+              )}
+              Backfill Original
             </Button>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="w-4 h-4 mr-1" />
@@ -286,6 +457,48 @@ export default function AiPendingPage() {
             </Button>
           </div>
         </div>
+
+        {/* Confirm regenerate all modal */}
+        {showConfirmRegenAll && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
+              <h3 className="font-semibold text-lg mb-2">Regenerar Todas las Descripciones</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Esto va a regenerar las descripciones IA de <strong>todos los productos que ya tienen IA</strong> (aprobados + pendientes).
+                Las nuevas descripciones quedarán pendientes de revisión.
+                Las descripciones originales de MkERP se preservan.
+              </p>
+              <p className="text-sm text-orange-600 mb-4">
+                Se procesan de a 1 por segundo. Puede tomar varios minutos.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowConfirmRegenAll(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  disabled={regenerateAll.isPending}
+                  onClick={() => {
+                    regenerateAll.mutate()
+                    setShowConfirmRegenAll(false)
+                  }}
+                >
+                  {regenerateAll.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <RotateCcw className="w-4 h-4 mr-1" />
+                  )}
+                  Sí, Regenerar Todos
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Generate all feedback */}
         {generateAll.isSuccess && (
@@ -301,6 +514,39 @@ export default function AiPendingPage() {
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
             <XCircle className="w-4 h-4 text-red-600 shrink-0" />
             <p className="text-sm text-red-700">{generateAll.error?.message}</p>
+          </div>
+        )}
+
+        {/* Regenerate all feedback */}
+        {regenerateAll.isSuccess && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-2">
+            <RotateCcw className="w-4 h-4 text-orange-600 shrink-0" />
+            <p className="text-sm text-orange-700">
+              Se encolaron <strong>{regenerateAll.data.total}</strong> productos para regeneración (1 por segundo).
+              Aparecerán en esta lista a medida que se procesen.
+            </p>
+          </div>
+        )}
+        {regenerateAll.isError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
+            <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+            <p className="text-sm text-red-700">{regenerateAll.error?.message}</p>
+          </div>
+        )}
+
+        {/* Backfill feedback */}
+        {backfill.isSuccess && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+            <Database className="w-4 h-4 text-blue-600 shrink-0" />
+            <p className="text-sm text-blue-700">
+              Backfill completado: <strong>{backfill.data.updated}</strong> actualizados, {backfill.data.skipped} omitidos.
+            </p>
+          </div>
+        )}
+        {backfill.isError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
+            <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+            <p className="text-sm text-red-700">{backfill.error?.message}</p>
           </div>
         )}
 
