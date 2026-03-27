@@ -1,0 +1,127 @@
+"use client"
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import type {
+  ComboConfig,
+  StoreCombosResponse,
+  ComboDataResponse,
+  ComboStatsResponse,
+} from "@/types/combos"
+
+const BACKEND_URL =
+  typeof window !== "undefined"
+    ? `${window.location.origin}/medusa`
+    : process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL!
+
+const SDK_JWT_KEY = "medusa_auth_token"
+
+function getToken(): string {
+  if (typeof window === "undefined") return ""
+  return window.localStorage.getItem(SDK_JWT_KEY) || ""
+}
+
+function authHeaders(): HeadersInit {
+  return {
+    Authorization: `Bearer ${getToken()}`,
+    "Content-Type": "application/json",
+  }
+}
+
+function formatDateParam(date: Date): string {
+  return date.toISOString().split("T")[0]
+}
+
+function formatToParam(date: Date): string {
+  const next = new Date(date)
+  next.setDate(next.getDate() + 1)
+  return next.toISOString().split("T")[0]
+}
+
+// ============================================================
+// ADMIN - Combo Config
+// ============================================================
+
+export function useComboConfig() {
+  return useQuery({
+    queryKey: ["combos", "config"],
+    queryFn: async (): Promise<ComboConfig> => {
+      const res = await fetch(`${BACKEND_URL}/admin/combos/config`, {
+        headers: authHeaders(),
+      })
+      if (!res.ok) throw new Error("Error al obtener configuración de combos")
+      return res.json()
+    },
+  })
+}
+
+export function useUpdateComboConfig() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (config: Partial<ComboConfig>) => {
+      const res = await fetch(`${BACKEND_URL}/admin/combos/config`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(config),
+      })
+      if (!res.ok) throw new Error("Error al actualizar configuración de combos")
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["combos", "config"] })
+    },
+  })
+}
+
+// ============================================================
+// STORE - Generated Combos
+// ============================================================
+
+export function useStoreCombos() {
+  return useQuery({
+    queryKey: ["combos", "store"],
+    queryFn: async (): Promise<StoreCombosResponse> => {
+      const res = await fetch(`${BACKEND_URL}/store/combos`, {
+        headers: authHeaders(),
+      })
+      if (!res.ok) throw new Error("Error al obtener combos")
+      return res.json()
+    },
+    staleTime: 60 * 60 * 1000, // 1 hour (matches backend cache)
+  })
+}
+
+// ============================================================
+// EVENTS SERVICE - Combo Analytics
+// ============================================================
+
+export function useComboData(from: Date, to: Date, limit: number = 100) {
+  return useQuery({
+    queryKey: ["combos", "data", from.toISOString(), to.toISOString(), limit],
+    queryFn: async (): Promise<ComboDataResponse> => {
+      const params = new URLSearchParams({
+        from: formatDateParam(from),
+        to: formatToParam(to),
+        limit: String(limit),
+      })
+      const res = await fetch(`/api/events-proxy/stats/combo-data?${params.toString()}`)
+      if (!res.ok) throw new Error("Error al obtener datos de scoring de combos")
+      return res.json()
+    },
+  })
+}
+
+export function useComboStats(from: Date, to: Date, comboId?: string) {
+  return useQuery({
+    queryKey: ["combos", "stats", from.toISOString(), to.toISOString(), comboId || ""],
+    queryFn: async (): Promise<ComboStatsResponse> => {
+      const params = new URLSearchParams({
+        from: formatDateParam(from),
+        to: formatToParam(to),
+      })
+      if (comboId) params.set("combo_id", comboId)
+      const res = await fetch(`/api/events-proxy/stats/combos?${params.toString()}`)
+      if (!res.ok) throw new Error("Error al obtener estadísticas de combos")
+      return res.json()
+    },
+  })
+}
