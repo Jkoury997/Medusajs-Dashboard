@@ -99,6 +99,7 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/products/unidades", label: "Unidades Compradas", icon: ShoppingCart },
       { href: "/dashboard/products/promedio", label: "Promedio por Compra", icon: BarChart3 },
       { href: "/dashboard/products/ranking", label: "Ranking", icon: Trophy },
+      { href: "/dashboard/products/combos", label: "Combos", icon: Boxes },
       { href: "/dashboard/products/decisiones", label: "Decisiones Inventario", icon: ClipboardCheck },
       { href: "/dashboard/products/ai-pending", label: "Descripciones IA", icon: Bot },
     ],
