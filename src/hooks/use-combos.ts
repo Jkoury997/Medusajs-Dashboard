@@ -37,6 +37,13 @@ function formatToParam(date: Date): string {
   return next.toISOString().split("T")[0]
 }
 
+// Don't retry on 4xx errors (endpoint not implemented yet, auth issues, etc.)
+function shouldRetry(failureCount: number, error: unknown): boolean {
+  if (failureCount >= 2) return false
+  if (error instanceof Error && /4\d{2}|not found|bad request/i.test(error.message)) return false
+  return true
+}
+
 // ============================================================
 // ADMIN - Combo Config
 // ============================================================
@@ -48,9 +55,10 @@ export function useComboConfig() {
       const res = await fetch(`${BACKEND_URL}/admin/combos/config`, {
         headers: authHeaders(),
       })
-      if (!res.ok) throw new Error("Error al obtener configuración de combos")
+      if (!res.ok) throw new Error(`${res.status} - Error al obtener configuración de combos`)
       return res.json()
     },
+    retry: shouldRetry,
   })
 }
 
@@ -83,10 +91,11 @@ export function useStoreCombos() {
       const res = await fetch(`${BACKEND_URL}/store/combos`, {
         headers: authHeaders(),
       })
-      if (!res.ok) throw new Error("Error al obtener combos")
+      if (!res.ok) throw new Error(`${res.status} - Error al obtener combos`)
       return res.json()
     },
     staleTime: 60 * 60 * 1000, // 1 hour (matches backend cache)
+    retry: shouldRetry,
   })
 }
 
@@ -104,9 +113,10 @@ export function useComboData(from: Date, to: Date, limit: number = 100) {
         limit: String(limit),
       })
       const res = await fetch(`/api/events-proxy/stats/combo-data?${params.toString()}`)
-      if (!res.ok) throw new Error("Error al obtener datos de scoring de combos")
+      if (!res.ok) throw new Error(`${res.status} - Error al obtener datos de scoring de combos`)
       return res.json()
     },
+    retry: shouldRetry,
   })
 }
 
@@ -120,8 +130,9 @@ export function useComboStats(from: Date, to: Date, comboId?: string) {
       })
       if (comboId) params.set("combo_id", comboId)
       const res = await fetch(`/api/events-proxy/stats/combos?${params.toString()}`)
-      if (!res.ok) throw new Error("Error al obtener estadísticas de combos")
+      if (!res.ok) throw new Error(`${res.status} - Error al obtener estadísticas de combos`)
       return res.json()
     },
+    retry: shouldRetry,
   })
 }
