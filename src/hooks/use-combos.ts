@@ -56,7 +56,9 @@ export function useComboConfig() {
         headers: authHeaders(),
       })
       if (!res.ok) throw new Error(`${res.status} - Error al obtener configuración de combos`)
-      return res.json()
+      const json = await res.json()
+      // Backend wraps response in { config: {...} }
+      return json.config ?? json
     },
     retry: shouldRetry,
   })
@@ -92,7 +94,30 @@ export function useStoreCombos() {
         headers: authHeaders(),
       })
       if (!res.ok) throw new Error(`${res.status} - Error al obtener combos`)
-      return res.json()
+      const json = await res.json()
+      // Transform backend response to match dashboard types
+      return {
+        combos: (json.combos ?? []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          description: c.description,
+          generation_method: c.generation_method,
+          total_price: c.original_price ?? c.total_price,
+          combo_price: c.combo_price,
+          discount_percentage: c.discount_percentage,
+          products: (c.products ?? []).map((p: any) => ({
+            product_id: p.product_id,
+            variant_id: p.variant_id,
+            title: p.product_title ?? p.title,
+            thumbnail: p.thumbnail,
+            size: p.size,
+            color: p.color,
+            original_price: p.unit_price ?? p.original_price,
+            category_handle: p.category_handle ?? "",
+          })),
+        })),
+        config: json.config,
+      }
     },
     staleTime: 60 * 60 * 1000, // 1 hour (matches backend cache)
     retry: shouldRetry,
