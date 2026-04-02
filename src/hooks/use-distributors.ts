@@ -163,3 +163,36 @@ export function useDistributorGlobalMetrics() {
     },
   })
 }
+
+// ============================================================
+// DESPACHOS (external delivery verification)
+// ============================================================
+
+export interface DespachoResumen {
+  codCliente: string
+  nombre: string
+  ultimaEntrega: string
+  cantidadDespachos: number
+}
+
+export interface DistributorDespachos {
+  distributor_id: string
+  business_name: string
+  cuit: string
+  dias_consultados: number
+  tiene_despachos: boolean
+  clientes_unicos: number
+  despachos: DespachoResumen[]
+}
+
+export function useDistributorDespachos(id: string, dias: number = 30) {
+  return useQuery({
+    queryKey: ["distributors", "despachos", id, dias],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/distributors/${id}/despachos?dias=${dias}`)
+      if (!res.ok) throw new Error("Error al obtener despachos")
+      return res.json() as Promise<DistributorDespachos>
+    },
+    enabled: !!id,
+  })
+}

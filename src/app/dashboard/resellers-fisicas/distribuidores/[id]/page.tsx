@@ -8,6 +8,7 @@ import {
   useApproveDistributor,
   useRejectDistributor,
   useMarkBranchReception,
+  useDistributorDespachos,
 } from "@/hooks/use-distributors"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -29,9 +30,10 @@ import {
   CheckCircle,
   XCircle,
   Package,
+  Truck,
 } from "lucide-react"
 
-type TabId = "info" | "sucursales" | "metricas"
+type TabId = "info" | "sucursales" | "metricas" | "despachos"
 
 const STATUS_COLORS: Record<string, string> = {
   aprobada: "bg-green-100 text-green-700",
@@ -55,6 +57,7 @@ export default function DistributorDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null)
 
   const { data, isLoading, error } = useDistributorDetail(id)
+  const despachos = useDistributorDespachos(id)
   const approve = useApproveDistributor()
   const reject = useRejectDistributor()
   const markReception = useMarkBranchReception()
@@ -112,6 +115,7 @@ export default function DistributorDetailPage() {
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: "info", label: "Info", icon: <Store className="w-4 h-4" /> },
     { id: "sucursales", label: `Sucursales (${branches.length})`, icon: <Building2 className="w-4 h-4" /> },
+    { id: "despachos", label: "Despachos", icon: <Truck className="w-4 h-4" /> },
     { id: "metricas", label: "Métricas", icon: <Eye className="w-4 h-4" /> },
   ]
 
@@ -350,6 +354,98 @@ export default function DistributorDetailPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {tab === "despachos" && (
+        <div className="space-y-4">
+          {/* Despachos summary */}
+          {despachos.isLoading ? (
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="h-4 bg-gray-200 rounded animate-pulse" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : despachos.error ? (
+            <Card>
+              <CardContent className="p-6 text-center text-red-500">
+                Error al cargar despachos. Verificá que la API de despachos esté configurada.
+              </CardContent>
+            </Card>
+          ) : despachos.data ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="bg-white border rounded-lg p-3 text-center">
+                  <p className="text-xs text-gray-500">Estado en Mapa</p>
+                  <p className={`text-lg font-bold ${despachos.data.tiene_despachos ? "text-green-600" : "text-red-600"}`}>
+                    {despachos.data.tiene_despachos ? "Visible" : "No Visible"}
+                  </p>
+                </div>
+                <div className="bg-white border rounded-lg p-3 text-center">
+                  <p className="text-xs text-gray-500">Clientes Únicos</p>
+                  <p className="text-lg font-bold">{despachos.data.clientes_unicos}</p>
+                </div>
+                <div className="bg-white border rounded-lg p-3 text-center">
+                  <p className="text-xs text-gray-500">Período Consultado</p>
+                  <p className="text-lg font-bold">{despachos.data.dias_consultados} días</p>
+                </div>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Entregas Recientes (últimos 30 días)</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Cód. Cliente</TableHead>
+                          <TableHead>Nombre</TableHead>
+                          <TableHead>Última Entrega</TableHead>
+                          <TableHead className="text-center">Cant. Despachos</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {despachos.data.despachos.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                              Sin despachos en el período consultado
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          despachos.data.despachos
+                            .sort((a, b) => new Date(b.ultimaEntrega).getTime() - new Date(a.ultimaEntrega).getTime())
+                            .map((d) => (
+                              <TableRow key={d.codCliente}>
+                                <TableCell className="font-mono text-sm">{d.codCliente}</TableCell>
+                                <TableCell className="font-medium">{d.nombre}</TableCell>
+                                <TableCell className="text-sm">
+                                  {new Date(d.ultimaEntrega).toLocaleDateString("es-AR", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                  })}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                                    {d.cantidadDespachos}
+                                  </span>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : null}
+        </div>
       )}
 
       {tab === "metricas" && (
