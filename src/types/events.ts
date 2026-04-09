@@ -164,3 +164,64 @@ export interface InspireStats {
   session_metrics: InspireSessionMetrics
   position_metrics: InspirePositionMetric[]
 }
+
+// Checkout funnel — dropoff por paso
+
+export interface CheckoutFunnelStep {
+  step: string
+  count: number
+  drop_rate: string
+}
+
+export interface CheckoutFunnelStats {
+  steps: CheckoutFunnelStep[]
+  total_started: number
+  total_completed: number
+  overall_conversion: string
+}
+
+// Cart abandonment
+
+export interface CartAbandonmentStats {
+  total_started: number
+  total_abandoned: number
+  abandonment_rate: string
+  estimated_lost_value: number
+  by_step: Array<{ step: string; count: number }>
+}
+
+// Search quality
+
+export interface SearchQueryMetric {
+  query: string
+  searches: number
+  clicks: number
+  ctr: string
+  no_results_count: number
+}
+
+export interface SearchQualityStats {
+  queries: SearchQueryMetric[]
+  overall_ctr: string
+  total_searches: number
+  total_clicks: number
+  zero_result_rate: string
+}
+
+// Customer cohorts
+
+export interface CustomerCohort {
+  period: string
+  new_customers: number
+  repeat_customers: number
+  total_orders: number
+  total_revenue: number
+  avg_order_value: number
+}
+
+export interface CustomerCohortsStats {
+  cohorts: CustomerCohort[]
+  overall_repeat_rate: string
+  total_customers: number
+  total_repeat_customers: number
+}

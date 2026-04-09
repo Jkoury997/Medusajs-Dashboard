@@ -120,10 +120,10 @@ export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange())
 
   // Stats hooks
-  const { data: stats, isLoading: statsLoading } = useEventStats(dateRange.from, dateRange.to)
-  const { data: funnel, isLoading: funnelLoading } = useEventFunnel(dateRange.from, dateRange.to)
-  const { data: products, isLoading: productsLoading } = useEventProducts(dateRange.from, dateRange.to)
-  const { data: search, isLoading: searchLoading } = useEventSearch(dateRange.from, dateRange.to)
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useEventStats(dateRange.from, dateRange.to)
+  const { data: funnel, isLoading: funnelLoading, isError: funnelError } = useEventFunnel(dateRange.from, dateRange.to)
+  const { data: products, isLoading: productsLoading, isError: productsError } = useEventProducts(dateRange.from, dateRange.to)
+  const { data: search, isLoading: searchLoading, isError: searchError } = useEventSearch(dateRange.from, dateRange.to)
 
   // Behavior analytics (per-page)
   const [selectedPageUrl, setSelectedPageUrl] = useState("")
@@ -238,6 +238,13 @@ export default function AnalyticsPage() {
 
           {/* TAB: Resumen */}
           <TabsContent value="resumen" className="space-y-6 mt-4">
+            {statsError && (
+              <Card>
+                <CardContent className="p-6 text-center text-red-500">
+                  Error al cargar estadisticas. Verifica que el servicio de analytics este funcionando.
+                </CardContent>
+              </Card>
+            )}
             {statsLoading ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -332,6 +339,26 @@ export default function AnalyticsPage() {
                 ) : funnel ? (
                   <ConversionFunnel data={funnel} />
                 ) : null}
+
+                {/* Eventos por día */}
+                {stats.by_day && stats.by_day.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Eventos por dia</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={stats.by_day}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                          <YAxis />
+                          <RechartsTooltip />
+                          <Bar dataKey="count" fill="#ec4899" name="Eventos" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                )}
               </>
             ) : (
               <Card>
@@ -393,6 +420,8 @@ export default function AnalyticsPage() {
                         <TableRow>
                           <TableHead>Producto</TableHead>
                           <TableHead className="text-right">Vistas</TableHead>
+                          <TableHead className="text-right">Clicks</TableHead>
+                          <TableHead className="text-right">CTR</TableHead>
                           <TableHead className="text-right">Al Carrito</TableHead>
                           <TableHead className="text-right">Comprados</TableHead>
                           <TableHead className="text-right">Conversión</TableHead>
@@ -406,6 +435,10 @@ export default function AnalyticsPage() {
                               {p.title || p.product_id}
                             </TableCell>
                             <TableCell className="text-right">{formatNumber(p.views)}</TableCell>
+                            <TableCell className="text-right">{formatNumber(p.clicks)}</TableCell>
+                            <TableCell className="text-right">
+                              {p.views > 0 ? `${((p.clicks / p.views) * 100).toFixed(1)}%` : "0%"}
+                            </TableCell>
                             <TableCell className="text-right">{formatNumber(p.added_to_cart)}</TableCell>
                             <TableCell className="text-right">{formatNumber(p.purchased)}</TableCell>
                             <TableCell className="text-right">

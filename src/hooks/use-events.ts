@@ -12,6 +12,10 @@ import type {
   ScrollDepthStats,
   ProductVisibilityStats,
   InspireStats,
+  CheckoutFunnelStats,
+  CartAbandonmentStats,
+  SearchQualityStats,
+  CustomerCohortsStats,
 } from "@/types/events"
 
 function formatDateParam(date: Date): string {
@@ -194,6 +198,67 @@ export function useInspireStats(from: Date, to: Date, limit: number = 30) {
       const res = await fetch(`/api/events-proxy/stats/inspire?${params.toString()}`)
       if (!res.ok) throw new Error("Error al obtener estadísticas de Inspirate")
       return res.json() as Promise<InspireStats>
+    },
+  })
+}
+
+export function useCheckoutFunnel(from: Date, to: Date) {
+  return useQuery({
+    queryKey: ["events", "checkout-funnel", from.toISOString(), to.toISOString()],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        from: formatDateParam(from),
+        to: formatToParam(to),
+      })
+      const res = await fetch(`/api/events-proxy/stats/checkout-funnel?${params.toString()}`)
+      if (!res.ok) throw new Error("Error al obtener funnel de checkout")
+      return res.json() as Promise<CheckoutFunnelStats>
+    },
+  })
+}
+
+export function useCartAbandonment(from: Date, to: Date) {
+  return useQuery({
+    queryKey: ["events", "cart-abandonment", from.toISOString(), to.toISOString()],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        from: formatDateParam(from),
+        to: formatToParam(to),
+      })
+      const res = await fetch(`/api/events-proxy/stats/cart-abandonment?${params.toString()}`)
+      if (!res.ok) throw new Error("Error al obtener estadísticas de abandono")
+      return res.json() as Promise<CartAbandonmentStats>
+    },
+  })
+}
+
+export function useSearchQuality(from: Date, to: Date, limit: number = 30) {
+  return useQuery({
+    queryKey: ["events", "search-quality", from.toISOString(), to.toISOString(), limit],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        from: formatDateParam(from),
+        to: formatToParam(to),
+        limit: String(limit),
+      })
+      const res = await fetch(`/api/events-proxy/stats/search-quality?${params.toString()}`)
+      if (!res.ok) throw new Error("Error al obtener calidad de búsqueda")
+      return res.json() as Promise<SearchQualityStats>
+    },
+  })
+}
+
+export function useCustomerCohorts(from: Date, to: Date) {
+  return useQuery({
+    queryKey: ["events", "customer-cohorts", from.toISOString(), to.toISOString()],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        from: formatDateParam(from),
+        to: formatToParam(to),
+      })
+      const res = await fetch(`/api/events-proxy/stats/customer-cohorts?${params.toString()}`)
+      if (!res.ok) throw new Error("Error al obtener cohortes de clientes")
+      return res.json() as Promise<CustomerCohortsStats>
     },
   })
 }

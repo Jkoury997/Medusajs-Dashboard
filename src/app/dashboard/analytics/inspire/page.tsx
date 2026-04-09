@@ -55,7 +55,7 @@ export default function InspireAnalyticsPage() {
   const [sortField, setSortField] = useState<SortField>("views")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
 
-  const { data, isLoading } = useInspireStats(dateRange.from, dateRange.to)
+  const { data, isLoading, isError } = useInspireStats(dateRange.from, dateRange.to)
 
   const sortedProducts = useMemo(() => {
     if (!data?.products) return []
@@ -134,6 +134,14 @@ export default function InspireAnalyticsPage() {
       <div className="p-6 space-y-6 flex-1 overflow-y-auto">
         {/* Date range */}
         <DateRangePicker value={dateRange} onChange={setDateRange} />
+
+        {isError && (
+          <Card>
+            <CardContent className="p-6 text-center text-red-500">
+              Error al cargar datos de Inspirate. Verifica que el servicio de analytics este funcionando.
+            </CardContent>
+          </Card>
+        )}
 
         {/* Session metric cards */}
         {isLoading ? (

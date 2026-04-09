@@ -145,7 +145,8 @@ export function HeatmapChart({ data, heatmapUrl }: HeatmapChartProps) {
             src={heatmapUrl}
             title="Mapa de calor visual"
             className="w-full rounded border"
-            style={{ height: 700, border: "none" }}
+            className="w-full rounded border h-[50vh] min-h-[400px] md:h-[700px]"
+            style={{ border: "none" }}
           />
         </CardContent>
       </Card>
