@@ -379,7 +379,7 @@ export default function AnalyticsPage() {
             ) : (
               <Card>
                 <CardContent className="py-8 text-center text-gray-500">
-                  No hay datos de funnel disponibles para el período seleccionado
+                  No hay datos de funnel en este periodo. Los datos aparecen cuando los usuarios navegan la tienda.
                 </CardContent>
               </Card>
             )}
@@ -455,7 +455,7 @@ export default function AnalyticsPage() {
             ) : (
               <Card>
                 <CardContent className="py-8 text-center text-gray-500">
-                  No hay datos de productos para el período seleccionado
+                  No hay datos de productos en este periodo. Los eventos comenzaran a aparecer cuando los usuarios naveguen la tienda.
                 </CardContent>
               </Card>
             )}
@@ -495,7 +495,7 @@ export default function AnalyticsPage() {
                         </TableBody>
                       </Table>
                     ) : (
-                      <p className="text-center text-gray-500 py-4">Sin datos de búsquedas</p>
+                      <p className="text-center text-gray-500 py-4">No hay datos de busqueda en este periodo.</p>
                     )}
                   </CardContent>
                 </Card>
@@ -538,7 +538,7 @@ export default function AnalyticsPage() {
             ) : (
               <Card>
                 <CardContent className="py-8 text-center text-gray-500">
-                  No hay datos de búsquedas para el período seleccionado
+                  No hay datos de busqueda en este periodo. Los eventos aparecen cuando los usuarios usan el buscador.
                 </CardContent>
               </Card>
             )}
@@ -898,6 +898,8 @@ export default function AnalyticsPage() {
                               <TableRow>
                                 <TableHead>Producto</TableHead>
                                 <TableHead className="text-right">Vistas</TableHead>
+                                <TableHead className="text-right">Clicks</TableHead>
+                                <TableHead className="text-right">CTR</TableHead>
                                 <TableHead className="text-right">Al Carrito</TableHead>
                                 <TableHead className="text-right">Comprados</TableHead>
                                 <TableHead className="text-right">Conversión</TableHead>
@@ -911,6 +913,10 @@ export default function AnalyticsPage() {
                                     {p.title || p.product_id}
                                   </TableCell>
                                   <TableCell className="text-right">{formatNumber(p.views)}</TableCell>
+                                  <TableCell className="text-right">{formatNumber(p.clicks)}</TableCell>
+                                  <TableCell className="text-right">
+                                    {p.views > 0 ? `${((p.clicks / p.views) * 100).toFixed(1)}%` : "0%"}
+                                  </TableCell>
                                   <TableCell className="text-right">{formatNumber(p.added_to_cart)}</TableCell>
                                   <TableCell className="text-right">{formatNumber(p.purchased)}</TableCell>
                                   <TableCell className="text-right">
