@@ -144,7 +144,6 @@ export function HeatmapChart({ data, heatmapUrl }: HeatmapChartProps) {
           <iframe
             src={heatmapUrl}
             title="Mapa de calor visual"
-            className="w-full rounded border"
             className="w-full rounded border h-[50vh] min-h-[400px] md:h-[700px]"
             style={{ border: "none" }}
           />
