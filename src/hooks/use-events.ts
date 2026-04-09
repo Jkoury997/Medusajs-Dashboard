@@ -11,6 +11,7 @@ import type {
   HeatmapStats,
   ScrollDepthStats,
   ProductVisibilityStats,
+  InspireStats,
 } from "@/types/events"
 
 function formatDateParam(date: Date): string {
@@ -179,4 +180,20 @@ export function buildHeatmapHtmlUrl(pageUrl: string, from: Date, to: Date): stri
     to: formatToParam(to),
   })
   return `/api/events-proxy/stats/heatmap-image?${params.toString()}`
+}
+
+export function useInspireStats(from: Date, to: Date, limit: number = 30) {
+  return useQuery({
+    queryKey: ["events", "inspire", from.toISOString(), to.toISOString(), limit],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        from: formatDateParam(from),
+        to: formatToParam(to),
+        limit: String(limit),
+      })
+      const res = await fetch(`/api/events-proxy/stats/inspire?${params.toString()}`)
+      if (!res.ok) throw new Error("Error al obtener estadísticas de Inspirate")
+      return res.json() as Promise<InspireStats>
+    },
+  })
 }
