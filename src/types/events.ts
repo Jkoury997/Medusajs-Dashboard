@@ -140,6 +140,7 @@ export interface InspireProductMetric {
   skip_rate: string
   detail_clicks: number
   avg_images_viewed: number
+  engagement_score: number
 }
 
 export interface InspireSessionMetrics {
@@ -149,6 +150,10 @@ export interface InspireSessionMetrics {
   avg_likes_per_session: number
   avg_carts_per_session: number
   avg_dwell_time_ms: number
+  total_likes: number
+  total_carts: number
+  total_detail_clicks: number
+  like_to_cart_rate: string
 }
 
 export interface InspirePositionMetric {
@@ -159,10 +164,19 @@ export interface InspirePositionMetric {
   avg_dwell_time_ms: number
 }
 
+export interface InspireDailyMetric {
+  date: string
+  sessions: number
+  views: number
+  likes: number
+  carts: number
+}
+
 export interface InspireStats {
   products: InspireProductMetric[]
   session_metrics: InspireSessionMetrics
   position_metrics: InspirePositionMetric[]
+  daily_metrics: InspireDailyMetric[]
 }
 
 // Checkout funnel — dropoff por paso
