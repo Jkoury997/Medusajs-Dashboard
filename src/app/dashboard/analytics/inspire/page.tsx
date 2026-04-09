@@ -194,9 +194,10 @@ export default function InspireAnalyticsPage() {
                     <XAxis dataKey="position" label={{ value: "Posicion", position: "insideBottom", offset: -5 }} />
                     <YAxis label={{ value: "%", angle: -90, position: "insideLeft" }} />
                     <RechartsTooltip
-                      formatter={(value: number, name: string) => {
-                        if (name === "dwell_s") return [`${value.toFixed(1)}s`, "Dwell time"]
-                        return [`${value.toFixed(1)}%`, name === "like_rate" ? "Like rate" : "Cart rate"]
+                      formatter={(value, name) => {
+                        const v = Number(value) || 0
+                        if (name === "dwell_s") return [`${v.toFixed(1)}s`, "Dwell time"]
+                        return [`${v.toFixed(1)}%`, name === "like_rate" ? "Like rate" : "Cart rate"]
                       }}
                     />
                     <Legend />
@@ -224,7 +225,7 @@ export default function InspireAnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" unit="%" />
                     <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11 }} />
-                    <RechartsTooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                    <RechartsTooltip formatter={(value) => `${(Number(value) || 0).toFixed(1)}%`} />
                     <Legend />
                     <Bar dataKey="like_rate" fill="#ef4444" name="Like rate" />
                     <Bar dataKey="cart_rate" fill="#3b82f6" name="Cart rate" />
