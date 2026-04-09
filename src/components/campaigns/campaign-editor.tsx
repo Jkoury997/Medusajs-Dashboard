@@ -319,24 +319,50 @@ export function CampaignEditor({ open, onOpenChange, campaignId, onSaved }: Camp
 
   const loadPreset = (preset: typeof presets extends (infer T)[] | undefined ? T : never) => {
     if (!preset) return
+
+    // Content
     setSubject(preset.content.subject || "")
     setPreviewText(preset.content.preview_text || "")
     setHeading(preset.content.heading || "")
-    setBodyText(preset.content.body_text || "")
     setButtonText(preset.content.button_text || "")
     setButtonUrl(preset.content.button_url || "")
     setBannerGradient(preset.content.banner_gradient || "")
     setFooterText(preset.content.footer_text || "")
     setFeaturedProductIds(preset.content.featured_product_ids || [])
     setIncludePersonalized(preset.content.include_personalized_products || false)
-    setBodySections(preset.content.body_sections || undefined)
+
+    // Body: limpiar ambos y cargar solo el que corresponde
+    if (preset.content.body_sections && preset.content.body_sections.length > 0) {
+      setBodySections(preset.content.body_sections)
+      setBodyText("")
+    } else {
+      setBodySections(undefined)
+      setBodyText(preset.content.body_text || "")
+    }
+
+    // Discount: resetear siempre, cargar solo si el preset lo tiene
     if (preset.discount) {
       setDiscountEnabled(preset.discount.enabled)
       setDiscountType(preset.discount.type)
       setDiscountValue(preset.discount.value)
       setDiscountExpiresHours(preset.discount.expires_hours)
       setDiscountSingleCode(preset.discount.single_code)
+    } else {
+      setDiscountEnabled(false)
+      setDiscountType("percentage")
+      setDiscountValue(10)
+      setDiscountExpiresHours(48)
+      setDiscountSingleCode(true)
     }
+
+    // Audiencia y AI: resetear para no arrastrar de otra campana
+    setRules([{ type: "all_customers" }])
+    setMatch("all")
+    setSegmentId(null)
+    setAiTheme("")
+    setAiTone("formal")
+    setPreviewHtml(null)
+
     setDraftMsg(`Preset "${preset.name}" cargado`)
   }
 
