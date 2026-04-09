@@ -125,3 +125,42 @@ export interface ProductVisibilityStats {
   visibility_rate: string
   product_visibility: ProductVisibilityItem[]
 }
+
+// Inspire (Reels/TikTok feed) — métricas de engagement por producto, sesión y posición
+
+export interface InspireProductMetric {
+  product_id: string
+  product_title: string
+  views: number
+  avg_dwell_time_ms: number
+  like_count: number
+  like_rate: string
+  cart_count: number
+  cart_rate: string
+  skip_rate: string
+  detail_clicks: number
+  avg_images_viewed: number
+}
+
+export interface InspireSessionMetrics {
+  total_sessions: number
+  avg_depth: number
+  avg_duration_ms: number
+  avg_likes_per_session: number
+  avg_carts_per_session: number
+  avg_dwell_time_ms: number
+}
+
+export interface InspirePositionMetric {
+  position: number
+  views: number
+  like_rate: string
+  cart_rate: string
+  avg_dwell_time_ms: number
+}
+
+export interface InspireStats {
+  products: InspireProductMetric[]
+  session_metrics: InspireSessionMetrics
+  position_metrics: InspirePositionMetric[]
+}
