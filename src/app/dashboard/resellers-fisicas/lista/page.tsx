@@ -35,6 +35,11 @@ const TYPE_LABELS: Record<PhysicalResellerType, string> = {
   redes: "Solo Redes",
 }
 
+const MAP_CONFIG: Record<string, { label: string; className: string }> = {
+  stock: { label: "Con catálogo", className: "bg-green-100 text-green-700" },
+  compras: { label: "Por compras", className: "bg-amber-100 text-amber-700" },
+}
+
 export default function ResellersFisicasListaPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<PhysicalResellerStatus | "">("")
@@ -156,6 +161,7 @@ export default function ResellersFisicasListaPage() {
                   <TableHead>Tipo</TableHead>
                   <TableHead>Zona</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Mapa</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -163,7 +169,7 @@ export default function ResellersFisicasListaPage() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 7 }).map((_, j) => (
+                      {Array.from({ length: 8 }).map((_, j) => (
                         <TableCell key={j}>
                           <div className="h-4 bg-gray-200 rounded animate-pulse w-20" />
                         </TableCell>
@@ -172,13 +178,14 @@ export default function ResellersFisicasListaPage() {
                   ))
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                       No se encontraron revendedoras
                     </TableCell>
                   </TableRow>
                 ) : (
                   filtered.map((r) => {
                     const statusCfg = STATUS_CONFIG[r.status] ?? { label: r.status, className: "bg-gray-100 text-gray-500" }
+                    const mapCfg = r.visible_on_map ? MAP_CONFIG[r.visible_on_map] : null
                     return (
                       <TableRow key={r._id}>
                         <TableCell className="font-medium">
@@ -205,6 +212,15 @@ export default function ResellersFisicasListaPage() {
                           >
                             {statusCfg.label}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          {mapCfg ? (
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${mapCfg.className}`}>
+                              {mapCfg.label}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">No visible</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
