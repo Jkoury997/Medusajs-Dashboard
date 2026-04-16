@@ -31,19 +31,20 @@ const STATUS_CONFIG: Record<
 }
 
 const TYPE_LABELS: Record<PhysicalResellerType, string> = {
-  tienda_fisica: "Tienda Física",
+  tienda_fisica: "Tienda F\u00edsica",
   redes: "Solo Redes",
 }
 
 const MAP_CONFIG: Record<string, { label: string; className: string }> = {
-  stock: { label: "Con catálogo", className: "bg-green-100 text-green-700" },
-  compras: { label: "Por compras", className: "bg-amber-100 text-amber-700" },
+  stock: { label: "Stock", className: "bg-green-100 text-green-700" },
+  compras: { label: "Compras", className: "bg-amber-100 text-amber-700" },
 }
 
 export default function ResellersFisicasListaPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<PhysicalResellerStatus | "">("")
   const [typeFilter, setTypeFilter] = useState<PhysicalResellerType | "">("")
+  const [mapFilter, setMapFilter] = useState<"" | "visible" | "not_visible">("")
   const [offset, setOffset] = useState(0)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -60,15 +61,26 @@ export default function ResellersFisicasListaPage() {
 
   const filtered = useMemo(() => {
     if (!data?.resellers) return []
-    if (!search.trim()) return data.resellers
-    const q = search.toLowerCase()
-    return data.resellers.filter(
-      (r) =>
-        r.business_name?.toLowerCase().includes(q) ||
-        r.email?.toLowerCase().includes(q) ||
-        r.whatsapp?.includes(q)
-    )
-  }, [data?.resellers, search])
+    let list = data.resellers
+
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(
+        (r) =>
+          r.business_name?.toLowerCase().includes(q) ||
+          r.email?.toLowerCase().includes(q) ||
+          r.whatsapp?.includes(q)
+      )
+    }
+
+    if (mapFilter === "visible") {
+      list = list.filter((r) => r.visible_on_map && r.visible_on_map !== false)
+    } else if (mapFilter === "not_visible") {
+      list = list.filter((r) => !r.visible_on_map || r.visible_on_map === false)
+    }
+
+    return list
+  }, [data?.resellers, search, mapFilter])
 
   const count = data?.count ?? 0
 
@@ -93,10 +105,10 @@ export default function ResellersFisicasListaPage() {
   if (error) {
     return (
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Revendedoras Físicas — Lista</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Revendedoras F\u00edsicas \u2014 Lista</h1>
         <Card>
           <CardContent className="p-6 text-center text-red-500">
-            Error al cargar revendedoras. Verificá que la API esté configurada.
+            Error al cargar revendedoras. Verific\u00e1 que la API est\u00e9 configurada.
           </CardContent>
         </Card>
       </div>
@@ -105,7 +117,7 @@ export default function ResellersFisicasListaPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Revendedoras Físicas — Lista</h1>
+      <h1 className="text-2xl font-bold text-gray-900">Revendedoras F\u00edsicas \u2014 Lista</h1>
 
       {actionError && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm">
@@ -143,8 +155,17 @@ export default function ResellersFisicasListaPage() {
           }}
         >
           <option value="">Todos los tipos</option>
-          <option value="tienda_fisica">Tienda Física</option>
+          <option value="tienda_fisica">Tienda F\u00edsica</option>
           <option value="redes">Solo Redes</option>
+        </select>
+        <select
+          className="border rounded-md px-3 py-2 text-sm bg-white"
+          value={mapFilter}
+          onChange={(e) => setMapFilter(e.target.value as "" | "visible" | "not_visible")}
+        >
+          <option value="">Mapa: Todas</option>
+          <option value="visible">En el mapa</option>
+          <option value="not_visible">No en el mapa</option>
         </select>
       </div>
 
@@ -219,7 +240,9 @@ export default function ResellersFisicasListaPage() {
                               {mapCfg.label}
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-400">No visible</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-400">
+                              No
+                            </span>
                           )}
                         </TableCell>
                         <TableCell>
