@@ -216,6 +216,28 @@ export function useSyncOrders() {
   })
 }
 
+export function useSyncOrderTotals() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${BASE}/orders/sync-totals`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      if (!res.ok) throw new Error("Error al sincronizar totales")
+      return res.json() as Promise<{
+        message: string
+        total_checked: number
+        updated: number
+        errors: number
+      }>
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers-fisicas", "orders"] })
+    },
+  })
+}
+
 export function useImportOrder() {
   const qc = useQueryClient()
   return useMutation({
