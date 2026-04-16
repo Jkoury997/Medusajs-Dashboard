@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePhysicalResellerOrders, useMarkOrderShipped, useConfirmOrderDelivery, useSyncOrders, useImportOrder } from "@/hooks/use-resellers-fisicas"
+import { usePhysicalResellerOrders, useMarkOrderShipped, useConfirmOrderDelivery, useSyncOrders, useSyncOrderTotals, useImportOrder } from "@/hooks/use-resellers-fisicas"
 import type { ResellerOrderStatus } from "@/types/reseller-fisicas"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -66,6 +66,7 @@ export default function PedidosResellersFisicasPage() {
   const [importOrderId, setImportOrderId] = useState("")
   const [showSyncResult, setShowSyncResult] = useState<string | null>(null)
   const [showImportResult, setShowImportResult] = useState<string | null>(null)
+  const [showSyncTotalsResult, setShowSyncTotalsResult] = useState<string | null>(null)
 
   const { data, isLoading, error } = usePhysicalResellerOrders({
     status: statusFilter || undefined,
@@ -76,6 +77,7 @@ export default function PedidosResellersFisicasPage() {
   const markShipped = useMarkOrderShipped()
   const confirmDelivery = useConfirmOrderDelivery()
   const syncOrders = useSyncOrders()
+  const syncTotals = useSyncOrderTotals()
   const importOrder = useImportOrder()
   const count = data?.count ?? 0
 
@@ -123,7 +125,7 @@ export default function PedidosResellersFisicasPage() {
       <h1 className="text-2xl font-bold text-gray-900">Pedidos de Revendedoras Físicas</h1>
 
       {/* Sync & Import Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4 space-y-3">
             <h3 className="text-sm font-semibold text-gray-700">Sincronizar desde Medusa</h3>
@@ -176,6 +178,30 @@ export default function PedidosResellersFisicasPage() {
             {showImportResult && (
               <p className={`text-xs ${showImportResult.startsWith("Error") ? "text-red-500" : "text-green-600"}`}>
                 {showImportResult}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700">Sincronizar totales</h3>
+            <p className="text-xs text-gray-500">Actualiza el monto total de pedidos que no lo tienen cargado desde Medusa.</p>
+            <button
+              className="px-3 py-1 text-sm bg-amber-600 text-white rounded disabled:opacity-50"
+              disabled={syncTotals.isPending}
+              onClick={() => {
+                setShowSyncTotalsResult(null)
+                syncTotals.mutate(undefined, {
+                  onSuccess: (result) => setShowSyncTotalsResult(result.message),
+                  onError: (err) => setShowSyncTotalsResult(`Error: ${err.message}`),
+                })
+              }}
+            >
+              {syncTotals.isPending ? "Sincronizando..." : "Sincronizar Totales"}
+            </button>
+            {showSyncTotalsResult && (
+              <p className={`text-xs ${showSyncTotalsResult.startsWith("Error") ? "text-red-500" : "text-green-600"}`}>
+                {showSyncTotalsResult}
               </p>
             )}
           </CardContent>
