@@ -47,6 +47,7 @@ import {
   Store,
   PanelLeftClose,
   PanelLeftOpen,
+  Brain,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -166,6 +167,7 @@ const staticNavEntries: NavEntry[] = [
     children: [
       { href: "/dashboard/analytics", label: "General", icon: BarChart3 },
       { href: "/dashboard/analytics/inspire", label: "Inspirate", icon: Palette },
+      { href: "/dashboard/analytics/ai-pricing", label: "Inteligencia IA", icon: Brain },
     ],
   },
   { href: "/dashboard/ai", label: "IA Insights", icon: Bot },

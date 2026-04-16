@@ -47,3 +47,39 @@ export async function GET(
     )
   }
 }
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
+  try {
+    const { path } = await params
+    const apiPath = path.join("/")
+    const body = await request.json()
+
+    const url = `${EVENTS_API_URL}/api/${apiPath}`
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "X-API-Key": EVENTS_API_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Unknown error" }))
+      return NextResponse.json(error, { status: response.status })
+    }
+
+    const data = await response.json()
+    return NextResponse.json(data)
+  } catch (error: any) {
+    console.error("Events proxy POST error:", error)
+    return NextResponse.json(
+      { error: error.message || "Failed to post events data" },
+      { status: 500 }
+    )
+  }
+}

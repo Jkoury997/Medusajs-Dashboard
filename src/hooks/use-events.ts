@@ -262,3 +262,69 @@ export function useCustomerCohorts(from: Date, to: Date) {
     },
   })
 }
+
+// ============================================================
+// AI Pricing & Discounts
+// ============================================================
+
+export function useAIScore(customerId: string | null) {
+  return useQuery({
+    queryKey: ["ai", "score", customerId],
+    queryFn: async () => {
+      const res = await fetch(`/api/events-proxy/ai/score/${customerId}`)
+      if (!res.ok) throw new Error("Error al obtener score AI")
+      return res.json()
+    },
+    enabled: !!customerId,
+  })
+}
+
+export function useAIHotLeads(limit: number = 50) {
+  return useQuery({
+    queryKey: ["ai", "hot-leads", limit],
+    queryFn: async () => {
+      const res = await fetch(`/api/events-proxy/ai/intent/hot-leads?limit=${limit}`)
+      if (!res.ok) throw new Error("Error al obtener hot leads")
+      return res.json()
+    },
+  })
+}
+
+export function useAIPriceSuggestions(limit: number = 20) {
+  return useQuery({
+    queryKey: ["ai", "price-suggestions", limit],
+    queryFn: async () => {
+      const res = await fetch(`/api/events-proxy/ai/price/suggestions?limit=${limit}`)
+      if (!res.ok) throw new Error("Error al obtener sugerencias de precio")
+      return res.json()
+    },
+  })
+}
+
+export function useAIROISummary(from?: string, to?: string) {
+  return useQuery({
+    queryKey: ["ai", "roi-summary", from, to],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (from) params.set("from", from)
+      if (to) params.set("to", to)
+      const res = await fetch(`/api/events-proxy/ai/roi/summary?${params.toString()}`)
+      if (!res.ok) throw new Error("Error al obtener resumen de ROI")
+      return res.json()
+    },
+  })
+}
+
+export function useAIROIBySegment(from?: string, to?: string) {
+  return useQuery({
+    queryKey: ["ai", "roi-by-segment", from, to],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (from) params.set("from", from)
+      if (to) params.set("to", to)
+      const res = await fetch(`/api/events-proxy/ai/roi/by-segment?${params.toString()}`)
+      if (!res.ok) throw new Error("Error al obtener ROI por segmento")
+      return res.json()
+    },
+  })
+}

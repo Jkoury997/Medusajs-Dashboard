@@ -114,7 +114,20 @@
       "Bash(git status -u)",
       "Bash(git pull)",
       "Bash(git stash)",
-      "Bash(git stash pop)"
+      "Bash(git stash pop)",
+      "WebFetch(domain:marcela-koury-ranking-ai-production.up.railway.app)",
+      "mcp__e25ef0ae-381d-4e59-8b02-233274865f14__list_teams",
+      "mcp__e25ef0ae-381d-4e59-8b02-233274865f14__list_projects",
+      "mcp__e25ef0ae-381d-4e59-8b02-233274865f14__get_deployment",
+      "mcp__e25ef0ae-381d-4e59-8b02-233274865f14__get_runtime_logs",
+      "mcp__e25ef0ae-381d-4e59-8b02-233274865f14__get_project",
+      "mcp__e25ef0ae-381d-4e59-8b02-233274865f14__web_fetch_vercel_url",
+      "mcp__e25ef0ae-381d-4e59-8b02-233274865f14__get_deployment_build_logs",
+      "Bash(xargs grep -l \"iframe\\\\|preview\")",
+      "Bash(curl -s -H \"x-api-key: mk_ranking_deb0c9b1a383ccfeb8ebe9f125c71c12f27b4a2b48ca9016246bfb7bb5a0cb2e\" https://marcela-koury-ranking-ai-production.up.railway.app/api/rankings/status/last)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -H \"x-api-key: mk_ranking_deb0c9b1a383ccfeb8ebe9f125c71c12f27b4a2b48ca9016246bfb7bb5a0cb2e\" https://marcela-koury-ranking-ai-production.up.railway.app/api/health)",
+      "Bash(curl -s -H \"x-api-key: mk_ranking_deb0c9b1a383ccfeb8ebe9f125c71c12f27b4a2b48ca9016246bfb7bb5a0\" https://marcela-koury-ranking-ai-production.up.railway.app/api/rankings/status/last)"
     ]
   }
 }
