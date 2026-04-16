@@ -31,6 +31,7 @@ export interface PhysicalReseller {
   }
   status: PhysicalResellerStatus
   active: boolean
+  visible_on_map?: "stock" | "compras" | false
   created_at: string
   updated_at: string
 }

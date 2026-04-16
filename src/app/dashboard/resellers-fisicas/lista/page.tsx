@@ -31,14 +31,20 @@ const STATUS_CONFIG: Record<
 }
 
 const TYPE_LABELS: Record<PhysicalResellerType, string> = {
-  tienda_fisica: "Tienda Física",
+  tienda_fisica: "Tienda F\u00edsica",
   redes: "Solo Redes",
+}
+
+const MAP_CONFIG: Record<string, { label: string; className: string }> = {
+  stock: { label: "Stock", className: "bg-green-100 text-green-700" },
+  compras: { label: "Compras", className: "bg-amber-100 text-amber-700" },
 }
 
 export default function ResellersFisicasListaPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<PhysicalResellerStatus | "">("")
   const [typeFilter, setTypeFilter] = useState<PhysicalResellerType | "">("")
+  const [mapFilter, setMapFilter] = useState<"" | "visible" | "not_visible">("")
   const [offset, setOffset] = useState(0)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -55,15 +61,26 @@ export default function ResellersFisicasListaPage() {
 
   const filtered = useMemo(() => {
     if (!data?.resellers) return []
-    if (!search.trim()) return data.resellers
-    const q = search.toLowerCase()
-    return data.resellers.filter(
-      (r) =>
-        r.business_name?.toLowerCase().includes(q) ||
-        r.email?.toLowerCase().includes(q) ||
-        r.whatsapp?.includes(q)
-    )
-  }, [data?.resellers, search])
+    let list = data.resellers
+
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(
+        (r) =>
+          r.business_name?.toLowerCase().includes(q) ||
+          r.email?.toLowerCase().includes(q) ||
+          r.whatsapp?.includes(q)
+      )
+    }
+
+    if (mapFilter === "visible") {
+      list = list.filter((r) => r.visible_on_map && r.visible_on_map !== false)
+    } else if (mapFilter === "not_visible") {
+      list = list.filter((r) => !r.visible_on_map || r.visible_on_map === false)
+    }
+
+    return list
+  }, [data?.resellers, search, mapFilter])
 
   const count = data?.count ?? 0
 
@@ -88,10 +105,10 @@ export default function ResellersFisicasListaPage() {
   if (error) {
     return (
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Revendedoras Físicas — Lista</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Revendedoras F\u00edsicas \u2014 Lista</h1>
         <Card>
           <CardContent className="p-6 text-center text-red-500">
-            Error al cargar revendedoras. Verificá que la API esté configurada.
+            Error al cargar revendedoras. Verific\u00e1 que la API est\u00e9 configurada.
           </CardContent>
         </Card>
       </div>
@@ -100,7 +117,7 @@ export default function ResellersFisicasListaPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Revendedoras Físicas — Lista</h1>
+      <h1 className="text-2xl font-bold text-gray-900">Revendedoras F\u00edsicas \u2014 Lista</h1>
 
       {actionError && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm">
@@ -138,8 +155,17 @@ export default function ResellersFisicasListaPage() {
           }}
         >
           <option value="">Todos los tipos</option>
-          <option value="tienda_fisica">Tienda Física</option>
+          <option value="tienda_fisica">Tienda F\u00edsica</option>
           <option value="redes">Solo Redes</option>
+        </select>
+        <select
+          className="border rounded-md px-3 py-2 text-sm bg-white"
+          value={mapFilter}
+          onChange={(e) => setMapFilter(e.target.value as "" | "visible" | "not_visible")}
+        >
+          <option value="">Mapa: Todas</option>
+          <option value="visible">En el mapa</option>
+          <option value="not_visible">No en el mapa</option>
         </select>
       </div>
 
@@ -156,6 +182,7 @@ export default function ResellersFisicasListaPage() {
                   <TableHead>Tipo</TableHead>
                   <TableHead>Zona</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Mapa</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -163,7 +190,7 @@ export default function ResellersFisicasListaPage() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 7 }).map((_, j) => (
+                      {Array.from({ length: 8 }).map((_, j) => (
                         <TableCell key={j}>
                           <div className="h-4 bg-gray-200 rounded animate-pulse w-20" />
                         </TableCell>
@@ -172,13 +199,14 @@ export default function ResellersFisicasListaPage() {
                   ))
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                       No se encontraron revendedoras
                     </TableCell>
                   </TableRow>
                 ) : (
                   filtered.map((r) => {
                     const statusCfg = STATUS_CONFIG[r.status] ?? { label: r.status, className: "bg-gray-100 text-gray-500" }
+                    const mapCfg = r.visible_on_map ? MAP_CONFIG[r.visible_on_map] : null
                     return (
                       <TableRow key={r._id}>
                         <TableCell className="font-medium">
@@ -205,6 +233,17 @@ export default function ResellersFisicasListaPage() {
                           >
                             {statusCfg.label}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          {mapCfg ? (
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${mapCfg.className}`}>
+                              {mapCfg.label}
+                            </span>
+                          ) : (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-400">
+                              No
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
