@@ -74,9 +74,9 @@ export default function ResellersFisicasListaPage() {
     }
 
     if (mapFilter === "visible") {
-      list = list.filter((r) => r.visible_on_map && r.visible_on_map !== false)
+      list = list.filter((r) => !!r.visible_on_map)
     } else if (mapFilter === "not_visible") {
-      list = list.filter((r) => !r.visible_on_map || r.visible_on_map === false)
+      list = list.filter((r) => !r.visible_on_map)
     }
 
     return list
