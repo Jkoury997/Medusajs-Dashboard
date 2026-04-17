@@ -166,6 +166,10 @@ const staticNavEntries: NavEntry[] = [
     icon: Satellite,
     children: [
       { href: "/dashboard/analytics", label: "General", icon: BarChart3 },
+      { href: "/dashboard/analytics/sesiones", label: "Sesiones", icon: UserCheck },
+      { href: "/dashboard/analytics/live", label: "En vivo", icon: Satellite },
+      { href: "/dashboard/analytics/utm", label: "UTM", icon: Megaphone },
+      { href: "/dashboard/analytics/dispositivos", label: "Dispositivos", icon: Layers },
       { href: "/dashboard/analytics/inspire", label: "Inspirate", icon: Palette },
       { href: "/dashboard/analytics/ai-pricing", label: "Inteligencia IA", icon: Brain },
     ],
