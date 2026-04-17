@@ -238,3 +238,72 @@ export function useTopPagesWithDuration(range: Range, limit = 20) {
     },
   })
 }
+
+export type LandingPagesResponse = {
+  pages: Array<{
+    path: string
+    sessions: number
+    bounce_rate: number
+    conversion_rate: number
+    revenue: number
+    avg_duration_ms: number
+    avg_pageviews: number
+  }>
+}
+
+export function useLandingPages(range: Range, limit = 20) {
+  return useQuery<LandingPagesResponse>({
+    queryKey: ["landing-pages", range.from.toISOString(), range.to.toISOString(), limit],
+    queryFn: async () => {
+      const res = await fetch(`/api/events-proxy/stats/landing-pages?${buildQS(range, { limit: String(limit) })}`)
+      if (!res.ok) throw new Error("Error al cargar landing pages")
+      return res.json()
+    },
+  })
+}
+
+export type ExitPagesResponse = {
+  pages: Array<{
+    path: string
+    views: number
+    exits: number
+    exit_rate: number
+    exits_bounce: number
+    exits_converted: number
+    abandonment_rate: number
+    avg_duration_before_exit: number
+    avg_scroll: number
+  }>
+}
+
+export function useExitPages(range: Range, limit = 20) {
+  return useQuery<ExitPagesResponse>({
+    queryKey: ["exit-pages", range.from.toISOString(), range.to.toISOString(), limit],
+    queryFn: async () => {
+      const res = await fetch(`/api/events-proxy/stats/exit-pages?${buildQS(range, { limit: String(limit) })}`)
+      if (!res.ok) throw new Error("Error al cargar exit pages")
+      return res.json()
+    },
+  })
+}
+
+export type BouncePagesResponse = {
+  pages: Array<{
+    path: string
+    sessions: number
+    bounces: number
+    bounce_rate: number
+    avg_duration_ms: number
+  }>
+}
+
+export function useBouncePages(range: Range, limit = 20) {
+  return useQuery<BouncePagesResponse>({
+    queryKey: ["bounce-pages", range.from.toISOString(), range.to.toISOString(), limit],
+    queryFn: async () => {
+      const res = await fetch(`/api/events-proxy/stats/bounce-pages?${buildQS(range, { limit: String(limit) })}`)
+      if (!res.ok) throw new Error("Error al cargar bounce pages")
+      return res.json()
+    },
+  })
+}
