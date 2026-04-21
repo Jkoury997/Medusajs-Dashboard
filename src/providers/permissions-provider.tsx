@@ -38,11 +38,17 @@ const PermissionsContext = createContext<PermissionsContextType | null>(null)
 const ROLE_STORAGE_KEY = "dashboard_user_role"
 
 export function PermissionsProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading: isLoadingAuth } = useAuth()
   const [role, setRole] = useState<Role>(ROLES.VIEWER)
   const [isLoadingRole, setIsLoadingRole] = useState(true)
 
   const fetchRole = useCallback(async () => {
+    // Esperar a que AuthProvider termine de inicializar antes de decidir.
+    // Si resolvemos acá con isAuthenticated=false (valor inicial), RoutePermissionGate
+    // verá role=VIEWER + isLoadingRole=false y redirigirá al /dashboard cualquier
+    // ruta que requiera permisos antes de que auth confirme la sesión real.
+    if (isLoadingAuth) return
+
     if (!isAuthenticated) {
       setRole(ROLES.VIEWER)
       setIsLoadingRole(false)
@@ -77,7 +83,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoadingRole(false)
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, isLoadingAuth])
 
   useEffect(() => {
     fetchRole()
