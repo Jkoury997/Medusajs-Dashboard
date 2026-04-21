@@ -264,6 +264,39 @@ export function useImportOrder() {
   })
 }
 
+export function useRelinkResellersByEmail() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${BASE}/resellers/relink-by-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.message || "Error al re-vincular revendedoras")
+      }
+      return res.json() as Promise<{
+        message: string
+        checked: number
+        relinked: number
+        skipped: number
+        errors: number
+        details: Array<{
+          reseller_id: string
+          business_name: string
+          email: string
+          old_customer_id: string
+          new_customer_id: string
+        }>
+      }>
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers-fisicas"] })
+    },
+  })
+}
+
 // ============================================================
 // MAP
 // ============================================================
