@@ -36,7 +36,6 @@ const TYPE_LABELS: Record<PhysicalResellerType, string> = {
 }
 
 const MAP_CONFIG: Record<string, { label: string; className: string }> = {
-  stock: { label: "Stock", className: "bg-green-100 text-green-700" },
   compras: { label: "Compras", className: "bg-amber-100 text-amber-700" },
 }
 
