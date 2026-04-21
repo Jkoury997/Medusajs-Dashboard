@@ -157,6 +157,7 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/resellers-fisicas/pedidos", label: "Pedidos", icon: Package },
       { href: "/dashboard/resellers-fisicas/ventas", label: "Ventas", icon: ShoppingCart },
       { href: "/dashboard/resellers-fisicas/mapa", label: "Mapa", icon: MapPin },
+      { href: "/dashboard/resellers-fisicas/configuracion", label: "Configuración", icon: Settings },
     ],
   },
   // ← Administración se inserta dinámicamente aquí
