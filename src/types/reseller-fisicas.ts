@@ -35,8 +35,31 @@ export interface PhysicalReseller {
   map_enabled: boolean
   // Computed by backend based on approval + location + map_enabled + purchase eligibility.
   visible_on_map?: "compras" | false
+  // Human-readable reason when visible_on_map is false (null when visible).
+  not_visible_reason?: string | null
+  // Monthly purchase totals (from the list / map endpoints).
+  purchase_last_30d?: number
+  purchase_needed_for_map?: number
+  // 30d engagement counters (from list / map endpoints).
+  clicks_30d?: ResellerClicksBucket
+  last_order?: { date: string; total: number | null } | null
   created_at: string
   updated_at: string
+}
+
+export interface ResellerClicksBucket {
+  card_views: number
+  whatsapp_clicks: number
+  social_clicks: number
+  catalog_views: number
+  total: number
+}
+
+export interface ResellerPurchaseHistoryEntry {
+  month: string // "YYYY-MM"
+  total: number
+  order_count: number
+  threshold_met: boolean
 }
 
 export interface PhysicalResellerWithStats extends PhysicalReseller {
@@ -48,6 +71,13 @@ export interface PhysicalResellerWithStats extends PhysicalReseller {
     total_orders: number
     has_location: boolean
     is_purchase_eligible: boolean
+    purchase_last_30d: number
+    purchase_needed_for_map: number
+    map_eligibility_threshold: number
+    purchase_history: ResellerPurchaseHistoryEntry[]
+    clicks_30d: ResellerClicksBucket
+    last_order: { date: string; total: number | null } | null
+    days_since_last_order: number | null
   }
 }
 
@@ -164,6 +194,27 @@ export interface PhysicalResellerStats {
   revenue_this_month: number
   pending_sales: number
   pending_orders: number
+  total_purchases_30d: number
+  total_purchase_orders_30d: number
+  total_clicks_30d: number
+  clicks_30d_by_type: ResellerClicksBucket
+  top_spenders_30d: Array<{
+    reseller_id: string
+    business_name: string
+    type: string
+    total: number
+    order_count: number
+  }>
+  top_clicked_30d: Array<{
+    reseller_id: string
+    business_name: string
+    type: string
+    total: number
+    card_views: number
+    whatsapp_clicks: number
+    social_clicks: number
+    catalog_views: number
+  }>
 }
 
 // ---- API Responses ----

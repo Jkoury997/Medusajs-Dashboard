@@ -9,6 +9,8 @@ import type {
   ResellerSale,
   ResellerSaleFilters,
   ResellerInventoryItem,
+  ResellerClicksBucket,
+  ResellerPurchaseHistoryEntry,
 } from "@/types/reseller-fisicas"
 
 const BASE = "/api/reseller-fisicas-proxy"
@@ -51,8 +53,27 @@ export function usePhysicalResellers(filters: PhysicalResellerFilters = {}) {
         count: number
         limit: number
         offset: number
+        map_eligibility_threshold: number
       }>
     },
+  })
+}
+
+export function usePurchaseHistory(id: string, months: number = 3) {
+  return useQuery({
+    queryKey: ["resellers-fisicas", "purchase-history", id, months],
+    queryFn: async () => {
+      const res = await fetch(
+        `${BASE}/resellers/${id}/purchase-history?months=${months}`
+      )
+      if (!res.ok) throw new Error("Error al obtener historial de compras")
+      return res.json() as Promise<{
+        history: ResellerPurchaseHistoryEntry[]
+        months: number
+        map_eligibility_threshold: number
+      }>
+    },
+    enabled: !!id,
   })
 }
 
@@ -316,10 +337,12 @@ export interface ResellerMapItem {
   active: boolean
   map_enabled: boolean
   visible_on_map: "compras" | false
-  product_count: number
-  total_stock: number
+  not_visible_reason: string | null
+  purchase_last_30d: number
+  purchase_needed_for_map: number
   sales_this_month: number
   revenue_this_month: number
+  clicks_30d: ResellerClicksBucket
   created_at: string
 }
 

@@ -142,20 +142,22 @@ export function ResellerMap({ resellers, onToggleMapEnabled, togglingId }: Resel
 
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-2 border-t mt-2">
                     <div>
-                      <div className="text-[10px] uppercase text-gray-400">Stock</div>
-                      <div className="font-medium">{r.total_stock}</div>
+                      <div className="text-[10px] uppercase text-gray-400">Compras 30d</div>
+                      <div className="font-medium">{formatCurrency(r.purchase_last_30d || 0)}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase text-gray-400">Productos</div>
-                      <div className="font-medium">{r.product_count}</div>
+                      <div className="text-[10px] uppercase text-gray-400">Falta para mapa</div>
+                      <div className={`font-medium ${r.purchase_needed_for_map === 0 ? "text-green-600" : "text-orange-600"}`}>
+                        {r.purchase_needed_for_map === 0 ? "OK" : formatCurrency(r.purchase_needed_for_map || 0)}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase text-gray-400">Ventas mes</div>
-                      <div className="font-medium">{r.sales_this_month}</div>
+                      <div className="text-[10px] uppercase text-gray-400">Clicks 30d</div>
+                      <div className="font-medium">{r.clicks_30d?.total ?? 0}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase text-gray-400">Facturación</div>
-                      <div className="font-medium">{formatCurrency(r.revenue_this_month || 0)}</div>
+                      <div className="text-[10px] uppercase text-gray-400">WhatsApp</div>
+                      <div className="font-medium">{r.clicks_30d?.whatsapp_clicks ?? 0}</div>
                     </div>
                   </div>
 

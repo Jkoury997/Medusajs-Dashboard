@@ -11,6 +11,7 @@ import {
   useApprovePhysicalReseller,
   useRejectPhysicalReseller,
   useToggleResellerMap,
+  usePurchaseHistory,
 } from "@/hooks/use-resellers-fisicas"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -33,6 +34,11 @@ import {
   XCircle,
   EyeOff,
   Eye,
+  MessageCircle,
+  TrendingUp,
+  MousePointerClick,
+  DollarSign,
+  AlertCircle,
 } from "lucide-react"
 
 type TabId = "info" | "inventario" | "pedidos" | "ventas"
@@ -67,6 +73,17 @@ function formatDate(dateStr: string): string {
   })
 }
 
+const MONTH_LABELS = [
+  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+]
+
+function formatMonthKey(key: string): string {
+  const [y, m] = key.split("-")
+  const idx = parseInt(m, 10) - 1
+  return `${MONTH_LABELS[idx] ?? m} ${y.slice(2)}`
+}
+
 export default function ResellerFisicaDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [tab, setTab] = useState<TabId>("info")
@@ -75,6 +92,7 @@ export default function ResellerFisicaDetailPage() {
   const inventory = usePhysicalResellerInventory(id)
   const orders = usePhysicalResellerOrders({ reseller_id: id, limit: 50 })
   const sales = usePhysicalResellerSales({ reseller_id: id, limit: 50 })
+  const purchaseHistory = usePurchaseHistory(id, 3)
   const markShipped = useMarkOrderShipped()
   const approve = useApprovePhysicalReseller()
   const reject = useRejectPhysicalReseller()
@@ -210,28 +228,136 @@ export default function ResellerFisicaDetailPage() {
         </div>
       )}
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="bg-white border rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500">Stock</p>
-          <p className="text-lg font-bold">{stats.total_stock}</p>
+      {/* Not-visible banner */}
+      {reseller.status === "aprobada" && reseller.visible_on_map !== "compras" && reseller.not_visible_reason && (
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-md text-sm">
+          <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <div>
+            <span className="font-semibold">No visible en el mapa público:</span>{" "}
+            {reseller.not_visible_reason}
+            {stats.purchase_needed_for_map > 0 && (
+              <span>
+                {" "}(le faltan {formatCurrency(stats.purchase_needed_for_map)} en
+                compras en los últimos 30 días)
+              </span>
+            )}
+          </div>
         </div>
-        <div className="bg-white border rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500">Productos</p>
-          <p className="text-lg font-bold">{stats.inventory_items}</p>
+      )}
+
+      {/* Spend + engagement KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white border rounded-lg p-3">
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+            <DollarSign className="w-3.5 h-3.5" /> Compras 30d
+          </div>
+          <p className="text-lg font-bold">{formatCurrency(stats.purchase_last_30d)}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            {stats.is_purchase_eligible ? (
+              <span className="text-green-600 font-medium">
+                Supera el mínimo ({formatCurrency(stats.map_eligibility_threshold)})
+              </span>
+            ) : (
+              <span className="text-orange-600 font-medium">
+                Faltan {formatCurrency(stats.purchase_needed_for_map)}
+              </span>
+            )}
+          </p>
         </div>
-        <div className="bg-white border rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500">Ventas Mes</p>
+        <div className="bg-white border rounded-lg p-3">
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+            <TrendingUp className="w-3.5 h-3.5" /> Última compra
+          </div>
+          {stats.last_order ? (
+            <>
+              <p className="text-lg font-bold">
+                {stats.last_order.total != null
+                  ? formatCurrency(stats.last_order.total)
+                  : "—"}
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Hace {stats.days_since_last_order ?? "?"} días
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-lg font-bold text-gray-400">Sin pedidos</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Todavía no compró</p>
+            </>
+          )}
+        </div>
+        <div className="bg-white border rounded-lg p-3">
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+            <MousePointerClick className="w-3.5 h-3.5" /> Clicks 30d
+          </div>
+          <p className="text-lg font-bold">{stats.clicks_30d.total}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            {stats.clicks_30d.card_views} vistas · {stats.clicks_30d.whatsapp_clicks} WA
+          </p>
+        </div>
+        <div className="bg-white border rounded-lg p-3">
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+            <ShoppingCart className="w-3.5 h-3.5" /> Ventas del mes
+          </div>
           <p className="text-lg font-bold">{stats.sales_this_month}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            {formatCurrency(stats.revenue_this_month)}
+          </p>
         </div>
-        <div className="bg-white border rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500">Facturación Mes</p>
-          <p className="text-lg font-bold">{formatCurrency(stats.revenue_this_month)}</p>
-        </div>
-        <div className="bg-white border rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500">Pedidos Totales</p>
-          <p className="text-lg font-bold">{stats.total_orders}</p>
-        </div>
+      </div>
+
+      {/* Purchase history chart (last 3 months) + clicks panel */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">
+                Compras últimos 3 meses
+              </h3>
+              <span className="text-xs text-gray-400">
+                Mínimo mensual: {formatCurrency(stats.map_eligibility_threshold)}
+              </span>
+            </div>
+            {purchaseHistory.isLoading ? (
+              <div className="h-32 bg-gray-100 rounded animate-pulse" />
+            ) : (
+              <PurchaseHistoryChart
+                history={purchaseHistory.data?.history ?? stats.purchase_history}
+                threshold={stats.map_eligibility_threshold}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">
+              Engagement últimos 30 días
+            </h3>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <ClickStat label="Vistas de tarjeta" value={stats.clicks_30d.card_views} />
+              <ClickStat
+                label="Clicks WhatsApp"
+                value={stats.clicks_30d.whatsapp_clicks}
+                icon={<MessageCircle className="w-3.5 h-3.5 text-green-500" />}
+              />
+              <ClickStat label="Clicks en redes" value={stats.clicks_30d.social_clicks} />
+              <ClickStat label="Vistas catálogo" value={stats.clicks_30d.catalog_views} />
+            </div>
+            <div className="pt-2 border-t text-xs text-gray-500">
+              Conversión a WhatsApp:{" "}
+              <span className="font-medium text-gray-900">
+                {stats.clicks_30d.card_views > 0
+                  ? (
+                      (stats.clicks_30d.whatsapp_clicks /
+                        stats.clicks_30d.card_views) *
+                      100
+                    ).toFixed(1) + "%"
+                  : "—"}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Tabs */}
@@ -555,6 +681,79 @@ export default function ResellerFisicaDetailPage() {
           </CardContent>
         </Card>
       )}
+    </div>
+  )
+}
+
+function PurchaseHistoryChart({
+  history,
+  threshold,
+}: {
+  history: Array<{ month: string; total: number; threshold_met: boolean; order_count: number }>
+  threshold: number
+}) {
+  if (!history || history.length === 0) {
+    return <p className="text-sm text-gray-400">Sin datos</p>
+  }
+  const max = Math.max(threshold, ...history.map((h) => h.total)) || threshold
+  return (
+    <div className="space-y-2">
+      <div className="flex items-end gap-3 h-32">
+        {history.map((h) => {
+          const pct = max > 0 ? (h.total / max) * 100 : 0
+          const thresholdPct = max > 0 ? (threshold / max) * 100 : 0
+          return (
+            <div key={h.month} className="flex-1 flex flex-col items-center gap-1">
+              <div className="relative w-full flex-1 bg-gray-100 rounded overflow-hidden">
+                <div
+                  className="absolute bottom-0 left-0 right-0"
+                  style={{
+                    height: `${pct}%`,
+                    backgroundColor: h.threshold_met ? "#16a34a" : "#f97316",
+                  }}
+                />
+                <div
+                  className="absolute left-0 right-0 border-t border-dashed border-red-400"
+                  style={{ bottom: `${thresholdPct}%` }}
+                  title={`Mínimo: ${threshold.toLocaleString("es-AR")}`}
+                />
+              </div>
+              <div className="text-[11px] text-gray-500">{formatMonthKey(h.month)}</div>
+              <div className="text-xs font-medium">
+                {h.total.toLocaleString("es-AR", {
+                  style: "currency",
+                  currency: "ARS",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}
+              </div>
+              <div className="text-[10px] text-gray-400">
+                {h.order_count} {h.order_count === 1 ? "pedido" : "pedidos"}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function ClickStat({
+  label,
+  value,
+  icon,
+}: {
+  label: string
+  value: number
+  icon?: React.ReactNode
+}) {
+  return (
+    <div className="bg-gray-50 border rounded p-2">
+      <div className="flex items-center gap-1 text-[11px] text-gray-500">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <div className="text-base font-semibold text-gray-900">{value}</div>
     </div>
   )
 }

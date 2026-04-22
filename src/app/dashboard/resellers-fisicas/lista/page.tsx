@@ -41,6 +41,23 @@ const MAP_CONFIG: Record<string, { label: string; className: string }> = {
   compras: { label: "Compras", className: "bg-amber-100 text-amber-700" },
 }
 
+function formatCurrency(amount: number): string {
+  return amount.toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+}
+
+function formatDateShort(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  })
+}
+
 export default function ResellersFisicasListaPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<PhysicalResellerStatus | "">("")
@@ -202,11 +219,12 @@ export default function ResellersFisicasListaPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Negocio</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>WhatsApp</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Zona</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Compras 30d</TableHead>
+                  <TableHead className="text-right">Falta</TableHead>
+                  <TableHead>Última compra</TableHead>
+                  <TableHead className="text-right">Clicks 30d</TableHead>
                   <TableHead>Mapa</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -215,7 +233,7 @@ export default function ResellersFisicasListaPage() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 8 }).map((_, j) => (
+                      {Array.from({ length: 9 }).map((_, j) => (
                         <TableCell key={j}>
                           <div className="h-4 bg-gray-200 rounded animate-pulse w-20" />
                         </TableCell>
@@ -224,7 +242,7 @@ export default function ResellersFisicasListaPage() {
                   ))
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                       No se encontraron revendedoras
                     </TableCell>
                   </TableRow>
@@ -232,6 +250,9 @@ export default function ResellersFisicasListaPage() {
                   filtered.map((r) => {
                     const statusCfg = STATUS_CONFIG[r.status] ?? { label: r.status, className: "bg-gray-100 text-gray-500" }
                     const mapCfg = r.visible_on_map ? MAP_CONFIG[r.visible_on_map] : null
+                    const purchase30d = r.purchase_last_30d ?? 0
+                    const needed = r.purchase_needed_for_map ?? 0
+                    const clicks = r.clicks_30d?.total ?? 0
                     return (
                       <TableRow key={r._id}>
                         <TableCell className="font-medium">
@@ -241,16 +262,15 @@ export default function ResellersFisicasListaPage() {
                           >
                             {r.business_name}
                           </Link>
+                          <div className="text-xs text-gray-400">{r.email}</div>
                         </TableCell>
-                        <TableCell className="text-sm text-gray-500">{r.email}</TableCell>
-                        <TableCell className="text-sm">{r.whatsapp}</TableCell>
                         <TableCell>
                           <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
                             {TYPE_LABELS[r.type]}
                           </span>
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500">
-                          {r.approximate_zone || "-"}
+                          {r.approximate_zone && (
+                            <div className="text-xs text-gray-400 mt-1">{r.approximate_zone}</div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <span
@@ -259,6 +279,40 @@ export default function ResellersFisicasListaPage() {
                             {statusCfg.label}
                           </span>
                         </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          <span className={purchase30d > 0 ? "text-gray-900 font-medium" : "text-gray-400"}>
+                            {formatCurrency(purchase30d)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right text-sm">
+                          {needed === 0 ? (
+                            <span className="text-green-600 text-xs font-medium">OK</span>
+                          ) : (
+                            <span className="font-mono text-orange-600">{formatCurrency(needed)}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-600">
+                          {r.last_order ? (
+                            <div>
+                              <div>{formatDateShort(r.last_order.date)}</div>
+                              {r.last_order.total != null && (
+                                <div className="text-xs text-gray-400 font-mono">
+                                  {formatCurrency(r.last_order.total)}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-xs">Sin pedidos</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right text-sm">
+                          <div className={clicks > 0 ? "font-medium" : "text-gray-400"}>{clicks}</div>
+                          {r.clicks_30d && r.clicks_30d.whatsapp_clicks > 0 && (
+                            <div className="text-xs text-green-600">
+                              {r.clicks_30d.whatsapp_clicks} WA
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
                             {mapCfg ? (
@@ -266,13 +320,16 @@ export default function ResellersFisicasListaPage() {
                                 {mapCfg.label}
                               </span>
                             ) : (
-                              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-400 text-center">
+                              <span
+                                className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500 text-center"
+                                title={r.not_visible_reason ?? "No visible"}
+                              >
                                 No
                               </span>
                             )}
-                            {r.map_enabled === false && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-orange-100 text-orange-700 text-center">
-                                Deshab.
+                            {r.not_visible_reason && !mapCfg && (
+                              <span className="text-[10px] text-gray-400 max-w-[140px] leading-tight">
+                                {r.not_visible_reason}
                               </span>
                             )}
                           </div>
