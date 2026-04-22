@@ -6,6 +6,7 @@ import {
   usePhysicalResellers,
   useApprovePhysicalReseller,
   useRejectPhysicalReseller,
+  useToggleResellerMap,
 } from "@/hooks/use-resellers-fisicas"
 import type { PhysicalResellerStatus, PhysicalResellerType } from "@/types/reseller-fisicas"
 import { Card, CardContent } from "@/components/ui/card"
@@ -33,6 +34,7 @@ const STATUS_CONFIG: Record<
 const TYPE_LABELS: Record<PhysicalResellerType, string> = {
   tienda_fisica: "Tienda F\u00edsica",
   redes: "Solo Redes",
+  distribuidor: "Distribuidor",
 }
 
 const MAP_CONFIG: Record<string, { label: string; className: string }> = {
@@ -43,7 +45,9 @@ export default function ResellersFisicasListaPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<PhysicalResellerStatus | "">("")
   const [typeFilter, setTypeFilter] = useState<PhysicalResellerType | "">("")
-  const [mapFilter, setMapFilter] = useState<"" | "visible" | "not_visible">("")
+  const [mapFilter, setMapFilter] = useState<
+    "" | "visible" | "not_visible" | "disabled"
+  >("")
   const [offset, setOffset] = useState(0)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -56,6 +60,8 @@ export default function ResellersFisicasListaPage() {
 
   const approve = useApprovePhysicalReseller()
   const reject = useRejectPhysicalReseller()
+  const toggleMap = useToggleResellerMap()
+  const [togglingId, setTogglingId] = useState<string | null>(null)
   const isActioning = approve.isPending || reject.isPending
 
   const filtered = useMemo(() => {
@@ -76,6 +82,8 @@ export default function ResellersFisicasListaPage() {
       list = list.filter((r) => !!r.visible_on_map)
     } else if (mapFilter === "not_visible") {
       list = list.filter((r) => !r.visible_on_map)
+    } else if (mapFilter === "disabled") {
+      list = list.filter((r) => r.map_enabled === false)
     }
 
     return list
@@ -98,6 +106,18 @@ export default function ResellersFisicasListaPage() {
       await reject.mutateAsync(id)
     } catch (e: unknown) {
       setActionError(e instanceof Error ? e.message : "Error al rechazar")
+    }
+  }
+
+  async function handleToggleMap(id: string, enabled: boolean) {
+    setActionError(null)
+    setTogglingId(id)
+    try {
+      await toggleMap.mutateAsync({ id, enabled })
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : "Error al actualizar mapa")
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -156,15 +176,21 @@ export default function ResellersFisicasListaPage() {
           <option value="">Todos los tipos</option>
           <option value="tienda_fisica">Tienda F\u00edsica</option>
           <option value="redes">Solo Redes</option>
+          <option value="distribuidor">Distribuidor</option>
         </select>
         <select
           className="border rounded-md px-3 py-2 text-sm bg-white"
           value={mapFilter}
-          onChange={(e) => setMapFilter(e.target.value as "" | "visible" | "not_visible")}
+          onChange={(e) =>
+            setMapFilter(
+              e.target.value as "" | "visible" | "not_visible" | "disabled"
+            )
+          }
         >
           <option value="">Mapa: Todas</option>
-          <option value="visible">En el mapa</option>
-          <option value="not_visible">No en el mapa</option>
+          <option value="visible">Visibles en mapa</option>
+          <option value="not_visible">No visibles</option>
+          <option value="disabled">Deshabilitadas por admin</option>
         </select>
       </div>
 
@@ -234,18 +260,25 @@ export default function ResellersFisicasListaPage() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          {mapCfg ? (
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${mapCfg.className}`}>
-                              {mapCfg.label}
-                            </span>
-                          ) : (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-400">
-                              No
-                            </span>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {mapCfg ? (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium text-center ${mapCfg.className}`}>
+                                {mapCfg.label}
+                              </span>
+                            ) : (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-400 text-center">
+                                No
+                              </span>
+                            )}
+                            {r.map_enabled === false && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-orange-100 text-orange-700 text-center">
+                                Deshab.
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 flex-wrap">
                             {r.status === "pendiente" && (
                               <>
                                 <button
@@ -263,6 +296,28 @@ export default function ResellersFisicasListaPage() {
                                   Rechazar
                                 </button>
                               </>
+                            )}
+                            {r.status === "aprobada" && (
+                              <button
+                                className={`px-2 py-1 text-xs rounded text-white disabled:opacity-50 ${
+                                  r.map_enabled
+                                    ? "bg-orange-600 hover:bg-orange-700"
+                                    : "bg-green-600 hover:bg-green-700"
+                                }`}
+                                disabled={togglingId === r._id}
+                                onClick={() => handleToggleMap(r._id, !r.map_enabled)}
+                                title={
+                                  r.map_enabled
+                                    ? "Ocultar del mapa público"
+                                    : "Mostrar en el mapa público"
+                                }
+                              >
+                                {togglingId === r._id
+                                  ? "..."
+                                  : r.map_enabled
+                                  ? "Ocultar mapa"
+                                  : "Mostrar mapa"}
+                              </button>
                             )}
                             <Link
                               href={`/dashboard/resellers-fisicas/lista/${r._id}`}

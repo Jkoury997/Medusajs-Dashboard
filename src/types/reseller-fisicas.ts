@@ -3,8 +3,8 @@
 // ============================================================
 
 export type PhysicalResellerStatus = "pendiente" | "aprobada" | "rechazada"
-export type PhysicalResellerType = "tienda_fisica" | "redes"
-export type ResellerOrderStatus = "pagado" | "enviado" | "entregado"
+export type PhysicalResellerType = "tienda_fisica" | "redes" | "distribuidor"
+export type ResellerOrderStatus = "pendiente" | "pagado" | "enviado" | "entregado" | "cancelado"
 export type ResellerSaleStatus = "pendiente" | "completada" | "cancelada"
 export type SaleChannel = "tienda_fisica" | "whatsapp" | "instagram" | "facebook" | "otro"
 export type SaleOrigin = "manual" | "whatsapp_locator"
@@ -31,6 +31,9 @@ export interface PhysicalReseller {
   }
   status: PhysicalResellerStatus
   active: boolean
+  // Admin override: when false the reseller is never shown on the map.
+  map_enabled: boolean
+  // Computed by backend based on approval + location + map_enabled + purchase eligibility.
   visible_on_map?: "compras" | false
   created_at: string
   updated_at: string
@@ -43,6 +46,8 @@ export interface PhysicalResellerWithStats extends PhysicalReseller {
     sales_this_month: number
     revenue_this_month: number
     total_orders: number
+    has_location: boolean
+    is_purchase_eligible: boolean
   }
 }
 
@@ -147,7 +152,13 @@ export interface ResellerSaleFilters {
 export interface PhysicalResellerStats {
   total_resellers: number
   pending_resellers: number
+  rejected_resellers: number
   resellers_by_type: Record<string, number>
+  resellers_with_location: number
+  map_enabled_count: number
+  map_disabled_count: number
+  visible_on_map: number
+  purchase_eligible_resellers: number
   total_stock_distributed: number
   sales_this_month: number
   revenue_this_month: number

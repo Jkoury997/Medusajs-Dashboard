@@ -18,6 +18,10 @@ import {
   Building2,
   Eye,
   MessageCircle,
+  MapPinned,
+  EyeOff,
+  Truck,
+  TrendingUp,
 } from "lucide-react"
 
 function formatCurrency(amount: number): string {
@@ -68,6 +72,7 @@ export default function ResellersFisicasResumenPage() {
             <MetricCard
               title="Total Revendedoras"
               value={String(stats.total_resellers)}
+              subtitle="aprobadas y activas"
               icon={<Users className="w-5 h-5 text-gray-400" />}
             />
             <MetricCard
@@ -87,7 +92,35 @@ export default function ResellersFisicasResumenPage() {
             />
           </div>
 
-          {/* Row 2: Stock & Sales */}
+          {/* Row 2: Map visibility */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              title="Visibles en el Mapa"
+              value={String(stats.visible_on_map)}
+              subtitle="cumplen todos los criterios"
+              icon={<MapPinned className="w-5 h-5 text-green-500" />}
+            />
+            <MetricCard
+              title="Con Ubicación"
+              value={String(stats.resellers_with_location)}
+              subtitle="aprobadas con coordenadas"
+              icon={<MapPin className="w-5 h-5 text-orange-500" />}
+            />
+            <MetricCard
+              title="Elegibles por Compras"
+              value={String(stats.purchase_eligible_resellers)}
+              subtitle="≥ $200.000 en 30 días"
+              icon={<TrendingUp className="w-5 h-5 text-emerald-500" />}
+            />
+            <MetricCard
+              title="Deshabilitadas por Admin"
+              value={String(stats.map_disabled_count)}
+              subtitle="ocultas manualmente"
+              icon={<EyeOff className="w-5 h-5 text-orange-500" />}
+            />
+          </div>
+
+          {/* Row 3: Stock & Sales */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Stock Distribuido"
@@ -112,6 +145,16 @@ export default function ResellersFisicasResumenPage() {
               icon={<Package className="w-5 h-5 text-blue-500" />}
             />
           </div>
+
+          {stats.resellers_by_type?.distribuidor ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <MetricCard
+                title="Distribuidores"
+                value={String(stats.resellers_by_type.distribuidor)}
+                icon={<Truck className="w-5 h-5 text-emerald-500" />}
+              />
+            </div>
+          ) : null}
         </>
       ) : null}
 

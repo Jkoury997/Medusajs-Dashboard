@@ -8,8 +8,11 @@ import {
   usePhysicalResellerOrders,
   usePhysicalResellerSales,
   useMarkOrderShipped,
+  useApprovePhysicalReseller,
+  useRejectPhysicalReseller,
+  useToggleResellerMap,
 } from "@/hooks/use-resellers-fisicas"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -18,7 +21,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Store, Smartphone, MapPin, Package, ShoppingCart, Boxes } from "lucide-react"
+import {
+  Store,
+  Smartphone,
+  MapPin,
+  Package,
+  ShoppingCart,
+  Boxes,
+  Truck,
+  CheckCircle2,
+  XCircle,
+  EyeOff,
+  Eye,
+} from "lucide-react"
 
 type TabId = "info" | "inventario" | "pedidos" | "ventas"
 
@@ -61,6 +76,19 @@ export default function ResellerFisicaDetailPage() {
   const orders = usePhysicalResellerOrders({ reseller_id: id, limit: 50 })
   const sales = usePhysicalResellerSales({ reseller_id: id, limit: 50 })
   const markShipped = useMarkOrderShipped()
+  const approve = useApprovePhysicalReseller()
+  const reject = useRejectPhysicalReseller()
+  const toggleMap = useToggleResellerMap()
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  async function runAction(fn: () => Promise<unknown>, errorLabel: string) {
+    setActionError(null)
+    try {
+      await fn()
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : errorLabel)
+    }
+  }
 
   if (error) {
     return (
@@ -103,14 +131,84 @@ export default function ResellerFisicaDetailPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">{reseller.business_name}</h1>
-        <span
-          className={`text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[reseller.status]}`}
-        >
-          {reseller.status.charAt(0).toUpperCase() + reseller.status.slice(1)}
-        </span>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-gray-900">{reseller.business_name}</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[reseller.status]}`}
+            >
+              {reseller.status.charAt(0).toUpperCase() + reseller.status.slice(1)}
+            </span>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                reseller.visible_on_map === "compras"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-gray-100 text-gray-500"
+              }`}
+            >
+              {reseller.visible_on_map === "compras"
+                ? "Visible en mapa público"
+                : "No visible en mapa"}
+            </span>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                reseller.map_enabled
+                  ? "bg-blue-50 text-blue-700"
+                  : "bg-orange-100 text-orange-700"
+              }`}
+            >
+              {reseller.map_enabled ? "Mapa: habilitada" : "Mapa: deshabilitada"}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {reseller.status === "pendiente" && (
+            <>
+              <button
+                className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-md font-medium disabled:opacity-50 flex items-center gap-1"
+                disabled={approve.isPending}
+                onClick={() => runAction(() => approve.mutateAsync(id), "Error al aprobar")}
+              >
+                <CheckCircle2 className="w-4 h-4" /> Aprobar
+              </button>
+              <button
+                className="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-md font-medium disabled:opacity-50 flex items-center gap-1"
+                disabled={reject.isPending}
+                onClick={() => runAction(() => reject.mutateAsync(id), "Error al rechazar")}
+              >
+                <XCircle className="w-4 h-4" /> Rechazar
+              </button>
+            </>
+          )}
+          {reseller.status === "aprobada" && (
+            <button
+              className={`px-3 py-1.5 text-sm rounded-md font-medium text-white disabled:opacity-50 flex items-center gap-1 ${
+                reseller.map_enabled
+                  ? "bg-orange-600 hover:bg-orange-700"
+                  : "bg-green-600 hover:bg-green-700"
+              }`}
+              disabled={toggleMap.isPending}
+              onClick={() =>
+                runAction(
+                  () => toggleMap.mutateAsync({ id, enabled: !reseller.map_enabled }),
+                  "Error al actualizar mapa"
+                )
+              }
+            >
+              {reseller.map_enabled ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {reseller.map_enabled ? "Ocultar del mapa" : "Mostrar en mapa"}
+            </button>
+          )}
+        </div>
       </div>
+
+      {actionError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm">
+          {actionError}
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -173,10 +271,18 @@ export default function ResellerFisicaDetailPage() {
                   <div className="flex items-center gap-2">
                     {reseller.type === "tienda_fisica" ? (
                       <Store className="w-4 h-4 text-blue-500" />
+                    ) : reseller.type === "distribuidor" ? (
+                      <Truck className="w-4 h-4 text-emerald-500" />
                     ) : (
                       <Smartphone className="w-4 h-4 text-purple-500" />
                     )}
-                    <span>{reseller.type === "tienda_fisica" ? "Tienda Física" : "Solo Redes"}</span>
+                    <span>
+                      {reseller.type === "tienda_fisica"
+                        ? "Tienda Física"
+                        : reseller.type === "distribuidor"
+                        ? "Distribuidor"
+                        : "Solo Redes"}
+                    </span>
                   </div>
                 </div>
                 {reseller.address && (
@@ -216,6 +322,46 @@ export default function ResellerFisicaDetailPage() {
                 <div>
                   <p className="text-xs text-gray-500">Fecha de registro</p>
                   <p className="text-sm">{formatDate(reseller.created_at)}</p>
+                </div>
+
+                <div className="pt-3 border-t">
+                  <p className="text-xs text-gray-500 mb-2">Elegibilidad para el mapa</p>
+                  <ul className="text-sm space-y-1">
+                    <li className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          reseller.status === "aprobada" && reseller.active
+                            ? "bg-green-500"
+                            : "bg-gray-300"
+                        }`}
+                      />
+                      <span>Aprobada y activa</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          stats.has_location ? "bg-green-500" : "bg-gray-300"
+                        }`}
+                      />
+                      <span>Coordenadas cargadas</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          reseller.map_enabled ? "bg-green-500" : "bg-orange-500"
+                        }`}
+                      />
+                      <span>Habilitada por admin</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          stats.is_purchase_eligible ? "bg-green-500" : "bg-gray-300"
+                        }`}
+                      />
+                      <span>Compras ≥ $200.000 en 30 días</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>

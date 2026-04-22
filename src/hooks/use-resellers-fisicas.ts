@@ -302,7 +302,8 @@ export function useRelinkResellersByEmail() {
 // ============================================================
 
 export interface ResellerMapItem {
-  id: string
+  _id: string
+  id: string // legacy alias, same value as _id
   business_name: string
   email: string
   whatsapp: string
@@ -313,20 +314,52 @@ export interface ResellerMapItem {
   social_media: { instagram?: string; facebook?: string; tiktok?: string }
   status: string
   active: boolean
+  map_enabled: boolean
+  visible_on_map: "compras" | false
   product_count: number
   total_stock: number
+  sales_this_month: number
+  revenue_this_month: number
   created_at: string
 }
 
-export function usePhysicalResellersMap(status?: string) {
+export interface ResellerMapFilters {
+  status?: string
+  type?: string
+  only_with_location?: boolean
+  only_visible?: boolean
+}
+
+export function usePhysicalResellersMap(filters: ResellerMapFilters = {}) {
   return useQuery({
-    queryKey: ["resellers-fisicas", "map", status],
+    queryKey: ["resellers-fisicas", "map", filters],
     queryFn: async () => {
       const params = new URLSearchParams()
-      if (status) params.set("status", status)
+      if (filters.status) params.set("status", filters.status)
+      if (filters.type) params.set("type", filters.type)
+      if (filters.only_with_location) params.set("only_with_location", "true")
+      if (filters.only_visible) params.set("only_visible", "true")
       const res = await fetch(`${BASE}/resellers/map?${params}`)
       if (!res.ok) throw new Error("Error al obtener datos de mapa")
       return res.json() as Promise<{ resellers: ResellerMapItem[]; count: number }>
+    },
+  })
+}
+
+export function useToggleResellerMap() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (args: { id: string; enabled?: boolean }) => {
+      const res = await fetch(`${BASE}/resellers/${args.id}/toggle-map`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: args.enabled !== undefined ? JSON.stringify({ enabled: args.enabled }) : "{}",
+      })
+      if (!res.ok) throw new Error("Error al actualizar visibilidad del mapa")
+      return res.json() as Promise<{ reseller: PhysicalReseller }>
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers-fisicas"] })
     },
   })
 }
