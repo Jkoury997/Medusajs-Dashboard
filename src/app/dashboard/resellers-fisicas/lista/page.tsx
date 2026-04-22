@@ -6,6 +6,7 @@ import {
   usePhysicalResellers,
   useApprovePhysicalReseller,
   useRejectPhysicalReseller,
+  useToggleResellerMap,
 } from "@/hooks/use-resellers-fisicas"
 import type { PhysicalResellerStatus, PhysicalResellerType } from "@/types/reseller-fisicas"
 import { Card, CardContent } from "@/components/ui/card"
@@ -33,17 +34,37 @@ const STATUS_CONFIG: Record<
 const TYPE_LABELS: Record<PhysicalResellerType, string> = {
   tienda_fisica: "Tienda F\u00edsica",
   redes: "Solo Redes",
+  distribuidor: "Distribuidor",
 }
 
 const MAP_CONFIG: Record<string, { label: string; className: string }> = {
   compras: { label: "Compras", className: "bg-amber-100 text-amber-700" },
 }
 
+function formatCurrency(amount: number): string {
+  return amount.toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+}
+
+function formatDateShort(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  })
+}
+
 export default function ResellersFisicasListaPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<PhysicalResellerStatus | "">("")
   const [typeFilter, setTypeFilter] = useState<PhysicalResellerType | "">("")
-  const [mapFilter, setMapFilter] = useState<"" | "visible" | "not_visible">("")
+  const [mapFilter, setMapFilter] = useState<
+    "" | "visible" | "not_visible" | "disabled"
+  >("")
   const [offset, setOffset] = useState(0)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -56,6 +77,8 @@ export default function ResellersFisicasListaPage() {
 
   const approve = useApprovePhysicalReseller()
   const reject = useRejectPhysicalReseller()
+  const toggleMap = useToggleResellerMap()
+  const [togglingId, setTogglingId] = useState<string | null>(null)
   const isActioning = approve.isPending || reject.isPending
 
   const filtered = useMemo(() => {
@@ -76,6 +99,8 @@ export default function ResellersFisicasListaPage() {
       list = list.filter((r) => !!r.visible_on_map)
     } else if (mapFilter === "not_visible") {
       list = list.filter((r) => !r.visible_on_map)
+    } else if (mapFilter === "disabled") {
+      list = list.filter((r) => r.map_enabled === false)
     }
 
     return list
@@ -98,6 +123,18 @@ export default function ResellersFisicasListaPage() {
       await reject.mutateAsync(id)
     } catch (e: unknown) {
       setActionError(e instanceof Error ? e.message : "Error al rechazar")
+    }
+  }
+
+  async function handleToggleMap(id: string, enabled: boolean) {
+    setActionError(null)
+    setTogglingId(id)
+    try {
+      await toggleMap.mutateAsync({ id, enabled })
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : "Error al actualizar mapa")
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -156,15 +193,21 @@ export default function ResellersFisicasListaPage() {
           <option value="">Todos los tipos</option>
           <option value="tienda_fisica">Tienda F\u00edsica</option>
           <option value="redes">Solo Redes</option>
+          <option value="distribuidor">Distribuidor</option>
         </select>
         <select
           className="border rounded-md px-3 py-2 text-sm bg-white"
           value={mapFilter}
-          onChange={(e) => setMapFilter(e.target.value as "" | "visible" | "not_visible")}
+          onChange={(e) =>
+            setMapFilter(
+              e.target.value as "" | "visible" | "not_visible" | "disabled"
+            )
+          }
         >
           <option value="">Mapa: Todas</option>
-          <option value="visible">En el mapa</option>
-          <option value="not_visible">No en el mapa</option>
+          <option value="visible">Visibles en mapa</option>
+          <option value="not_visible">No visibles</option>
+          <option value="disabled">Deshabilitadas por admin</option>
         </select>
       </div>
 
@@ -176,11 +219,12 @@ export default function ResellersFisicasListaPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Negocio</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>WhatsApp</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Zona</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Compras 30d</TableHead>
+                  <TableHead className="text-right">Falta</TableHead>
+                  <TableHead>Última compra</TableHead>
+                  <TableHead className="text-right">Clicks 30d</TableHead>
                   <TableHead>Mapa</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -189,7 +233,7 @@ export default function ResellersFisicasListaPage() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 8 }).map((_, j) => (
+                      {Array.from({ length: 9 }).map((_, j) => (
                         <TableCell key={j}>
                           <div className="h-4 bg-gray-200 rounded animate-pulse w-20" />
                         </TableCell>
@@ -198,7 +242,7 @@ export default function ResellersFisicasListaPage() {
                   ))
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                       No se encontraron revendedoras
                     </TableCell>
                   </TableRow>
@@ -206,6 +250,9 @@ export default function ResellersFisicasListaPage() {
                   filtered.map((r) => {
                     const statusCfg = STATUS_CONFIG[r.status] ?? { label: r.status, className: "bg-gray-100 text-gray-500" }
                     const mapCfg = r.visible_on_map ? MAP_CONFIG[r.visible_on_map] : null
+                    const purchase30d = r.purchase_last_30d ?? 0
+                    const needed = r.purchase_needed_for_map ?? 0
+                    const clicks = r.clicks_30d?.total ?? 0
                     return (
                       <TableRow key={r._id}>
                         <TableCell className="font-medium">
@@ -215,16 +262,15 @@ export default function ResellersFisicasListaPage() {
                           >
                             {r.business_name}
                           </Link>
+                          <div className="text-xs text-gray-400">{r.email}</div>
                         </TableCell>
-                        <TableCell className="text-sm text-gray-500">{r.email}</TableCell>
-                        <TableCell className="text-sm">{r.whatsapp}</TableCell>
                         <TableCell>
                           <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
                             {TYPE_LABELS[r.type]}
                           </span>
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500">
-                          {r.approximate_zone || "-"}
+                          {r.approximate_zone && (
+                            <div className="text-xs text-gray-400 mt-1">{r.approximate_zone}</div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <span
@@ -233,19 +279,63 @@ export default function ResellersFisicasListaPage() {
                             {statusCfg.label}
                           </span>
                         </TableCell>
-                        <TableCell>
-                          {mapCfg ? (
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${mapCfg.className}`}>
-                              {mapCfg.label}
-                            </span>
+                        <TableCell className="text-right font-mono text-sm">
+                          <span className={purchase30d > 0 ? "text-gray-900 font-medium" : "text-gray-400"}>
+                            {formatCurrency(purchase30d)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right text-sm">
+                          {needed === 0 ? (
+                            <span className="text-green-600 text-xs font-medium">OK</span>
                           ) : (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-400">
-                              No
-                            </span>
+                            <span className="font-mono text-orange-600">{formatCurrency(needed)}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-600">
+                          {r.last_order ? (
+                            <div>
+                              <div>{formatDateShort(r.last_order.date)}</div>
+                              {r.last_order.total != null && (
+                                <div className="text-xs text-gray-400 font-mono">
+                                  {formatCurrency(r.last_order.total)}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-xs">Sin pedidos</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right text-sm">
+                          <div className={clicks > 0 ? "font-medium" : "text-gray-400"}>{clicks}</div>
+                          {r.clicks_30d && r.clicks_30d.whatsapp_clicks > 0 && (
+                            <div className="text-xs text-green-600">
+                              {r.clicks_30d.whatsapp_clicks} WA
+                            </div>
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
+                          <div className="flex flex-col gap-1">
+                            {mapCfg ? (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium text-center ${mapCfg.className}`}>
+                                {mapCfg.label}
+                              </span>
+                            ) : (
+                              <span
+                                className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500 text-center"
+                                title={r.not_visible_reason ?? "No visible"}
+                              >
+                                No
+                              </span>
+                            )}
+                            {r.not_visible_reason && !mapCfg && (
+                              <span className="text-[10px] text-gray-400 max-w-[140px] leading-tight">
+                                {r.not_visible_reason}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 flex-wrap">
                             {r.status === "pendiente" && (
                               <>
                                 <button
@@ -263,6 +353,28 @@ export default function ResellersFisicasListaPage() {
                                   Rechazar
                                 </button>
                               </>
+                            )}
+                            {r.status === "aprobada" && (
+                              <button
+                                className={`px-2 py-1 text-xs rounded text-white disabled:opacity-50 ${
+                                  r.map_enabled
+                                    ? "bg-orange-600 hover:bg-orange-700"
+                                    : "bg-green-600 hover:bg-green-700"
+                                }`}
+                                disabled={togglingId === r._id}
+                                onClick={() => handleToggleMap(r._id, !r.map_enabled)}
+                                title={
+                                  r.map_enabled
+                                    ? "Ocultar del mapa público"
+                                    : "Mostrar en el mapa público"
+                                }
+                              >
+                                {togglingId === r._id
+                                  ? "..."
+                                  : r.map_enabled
+                                  ? "Ocultar mapa"
+                                  : "Mostrar mapa"}
+                              </button>
                             )}
                             <Link
                               href={`/dashboard/resellers-fisicas/lista/${r._id}`}

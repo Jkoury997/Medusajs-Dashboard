@@ -3,8 +3,8 @@
 // ============================================================
 
 export type PhysicalResellerStatus = "pendiente" | "aprobada" | "rechazada"
-export type PhysicalResellerType = "tienda_fisica" | "redes"
-export type ResellerOrderStatus = "pagado" | "enviado" | "entregado"
+export type PhysicalResellerType = "tienda_fisica" | "redes" | "distribuidor"
+export type ResellerOrderStatus = "pendiente" | "pagado" | "enviado" | "entregado" | "cancelado"
 export type ResellerSaleStatus = "pendiente" | "completada" | "cancelada"
 export type SaleChannel = "tienda_fisica" | "whatsapp" | "instagram" | "facebook" | "otro"
 export type SaleOrigin = "manual" | "whatsapp_locator"
@@ -31,9 +31,35 @@ export interface PhysicalReseller {
   }
   status: PhysicalResellerStatus
   active: boolean
+  // Admin override: when false the reseller is never shown on the map.
+  map_enabled: boolean
+  // Computed by backend based on approval + location + map_enabled + purchase eligibility.
   visible_on_map?: "compras" | false
+  // Human-readable reason when visible_on_map is false (null when visible).
+  not_visible_reason?: string | null
+  // Monthly purchase totals (from the list / map endpoints).
+  purchase_last_30d?: number
+  purchase_needed_for_map?: number
+  // 30d engagement counters (from list / map endpoints).
+  clicks_30d?: ResellerClicksBucket
+  last_order?: { date: string; total: number | null } | null
   created_at: string
   updated_at: string
+}
+
+export interface ResellerClicksBucket {
+  card_views: number
+  whatsapp_clicks: number
+  social_clicks: number
+  catalog_views: number
+  total: number
+}
+
+export interface ResellerPurchaseHistoryEntry {
+  month: string // "YYYY-MM"
+  total: number
+  order_count: number
+  threshold_met: boolean
 }
 
 export interface PhysicalResellerWithStats extends PhysicalReseller {
@@ -43,6 +69,15 @@ export interface PhysicalResellerWithStats extends PhysicalReseller {
     sales_this_month: number
     revenue_this_month: number
     total_orders: number
+    has_location: boolean
+    is_purchase_eligible: boolean
+    purchase_last_30d: number
+    purchase_needed_for_map: number
+    map_eligibility_threshold: number
+    purchase_history: ResellerPurchaseHistoryEntry[]
+    clicks_30d: ResellerClicksBucket
+    last_order: { date: string; total: number | null } | null
+    days_since_last_order: number | null
   }
 }
 
@@ -147,12 +182,39 @@ export interface ResellerSaleFilters {
 export interface PhysicalResellerStats {
   total_resellers: number
   pending_resellers: number
+  rejected_resellers: number
   resellers_by_type: Record<string, number>
+  resellers_with_location: number
+  map_enabled_count: number
+  map_disabled_count: number
+  visible_on_map: number
+  purchase_eligible_resellers: number
   total_stock_distributed: number
   sales_this_month: number
   revenue_this_month: number
   pending_sales: number
   pending_orders: number
+  total_purchases_30d: number
+  total_purchase_orders_30d: number
+  total_clicks_30d: number
+  clicks_30d_by_type: ResellerClicksBucket
+  top_spenders_30d: Array<{
+    reseller_id: string
+    business_name: string
+    type: string
+    total: number
+    order_count: number
+  }>
+  top_clicked_30d: Array<{
+    reseller_id: string
+    business_name: string
+    type: string
+    total: number
+    card_views: number
+    whatsapp_clicks: number
+    social_clicks: number
+    catalog_views: number
+  }>
 }
 
 // ---- API Responses ----

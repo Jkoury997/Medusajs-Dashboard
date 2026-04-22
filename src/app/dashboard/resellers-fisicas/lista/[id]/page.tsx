@@ -8,8 +8,12 @@ import {
   usePhysicalResellerOrders,
   usePhysicalResellerSales,
   useMarkOrderShipped,
+  useApprovePhysicalReseller,
+  useRejectPhysicalReseller,
+  useToggleResellerMap,
+  usePurchaseHistory,
 } from "@/hooks/use-resellers-fisicas"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -18,7 +22,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Store, Smartphone, MapPin, Package, ShoppingCart, Boxes } from "lucide-react"
+import {
+  Store,
+  Smartphone,
+  MapPin,
+  Package,
+  ShoppingCart,
+  Boxes,
+  Truck,
+  CheckCircle2,
+  XCircle,
+  EyeOff,
+  Eye,
+  MessageCircle,
+  TrendingUp,
+  MousePointerClick,
+  DollarSign,
+  AlertCircle,
+} from "lucide-react"
 
 type TabId = "info" | "inventario" | "pedidos" | "ventas"
 
@@ -52,6 +73,17 @@ function formatDate(dateStr: string): string {
   })
 }
 
+const MONTH_LABELS = [
+  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+]
+
+function formatMonthKey(key: string): string {
+  const [y, m] = key.split("-")
+  const idx = parseInt(m, 10) - 1
+  return `${MONTH_LABELS[idx] ?? m} ${y.slice(2)}`
+}
+
 export default function ResellerFisicaDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [tab, setTab] = useState<TabId>("info")
@@ -60,7 +92,21 @@ export default function ResellerFisicaDetailPage() {
   const inventory = usePhysicalResellerInventory(id)
   const orders = usePhysicalResellerOrders({ reseller_id: id, limit: 50 })
   const sales = usePhysicalResellerSales({ reseller_id: id, limit: 50 })
+  const purchaseHistory = usePurchaseHistory(id, 3)
   const markShipped = useMarkOrderShipped()
+  const approve = useApprovePhysicalReseller()
+  const reject = useRejectPhysicalReseller()
+  const toggleMap = useToggleResellerMap()
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  async function runAction(fn: () => Promise<unknown>, errorLabel: string) {
+    setActionError(null)
+    try {
+      await fn()
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : errorLabel)
+    }
+  }
 
   if (error) {
     return (
@@ -103,37 +149,215 @@ export default function ResellerFisicaDetailPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">{reseller.business_name}</h1>
-        <span
-          className={`text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[reseller.status]}`}
-        >
-          {reseller.status.charAt(0).toUpperCase() + reseller.status.slice(1)}
-        </span>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-gray-900">{reseller.business_name}</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[reseller.status]}`}
+            >
+              {reseller.status.charAt(0).toUpperCase() + reseller.status.slice(1)}
+            </span>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                reseller.visible_on_map === "compras"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-gray-100 text-gray-500"
+              }`}
+            >
+              {reseller.visible_on_map === "compras"
+                ? "Visible en mapa público"
+                : "No visible en mapa"}
+            </span>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                reseller.map_enabled
+                  ? "bg-blue-50 text-blue-700"
+                  : "bg-orange-100 text-orange-700"
+              }`}
+            >
+              {reseller.map_enabled ? "Mapa: habilitada" : "Mapa: deshabilitada"}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {reseller.status === "pendiente" && (
+            <>
+              <button
+                className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-md font-medium disabled:opacity-50 flex items-center gap-1"
+                disabled={approve.isPending}
+                onClick={() => runAction(() => approve.mutateAsync(id), "Error al aprobar")}
+              >
+                <CheckCircle2 className="w-4 h-4" /> Aprobar
+              </button>
+              <button
+                className="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-md font-medium disabled:opacity-50 flex items-center gap-1"
+                disabled={reject.isPending}
+                onClick={() => runAction(() => reject.mutateAsync(id), "Error al rechazar")}
+              >
+                <XCircle className="w-4 h-4" /> Rechazar
+              </button>
+            </>
+          )}
+          {reseller.status === "aprobada" && (
+            <button
+              className={`px-3 py-1.5 text-sm rounded-md font-medium text-white disabled:opacity-50 flex items-center gap-1 ${
+                reseller.map_enabled
+                  ? "bg-orange-600 hover:bg-orange-700"
+                  : "bg-green-600 hover:bg-green-700"
+              }`}
+              disabled={toggleMap.isPending}
+              onClick={() =>
+                runAction(
+                  () => toggleMap.mutateAsync({ id, enabled: !reseller.map_enabled }),
+                  "Error al actualizar mapa"
+                )
+              }
+            >
+              {reseller.map_enabled ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {reseller.map_enabled ? "Ocultar del mapa" : "Mostrar en mapa"}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="bg-white border rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500">Stock</p>
-          <p className="text-lg font-bold">{stats.total_stock}</p>
+      {actionError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm">
+          {actionError}
         </div>
-        <div className="bg-white border rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500">Productos</p>
-          <p className="text-lg font-bold">{stats.inventory_items}</p>
+      )}
+
+      {/* Not-visible banner */}
+      {reseller.status === "aprobada" && reseller.visible_on_map !== "compras" && reseller.not_visible_reason && (
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-md text-sm">
+          <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <div>
+            <span className="font-semibold">No visible en el mapa público:</span>{" "}
+            {reseller.not_visible_reason}
+            {stats.purchase_needed_for_map > 0 && (
+              <span>
+                {" "}(le faltan {formatCurrency(stats.purchase_needed_for_map)} en
+                compras en los últimos 30 días)
+              </span>
+            )}
+          </div>
         </div>
-        <div className="bg-white border rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500">Ventas Mes</p>
+      )}
+
+      {/* Spend + engagement KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white border rounded-lg p-3">
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+            <DollarSign className="w-3.5 h-3.5" /> Compras 30d
+          </div>
+          <p className="text-lg font-bold">{formatCurrency(stats.purchase_last_30d)}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            {stats.is_purchase_eligible ? (
+              <span className="text-green-600 font-medium">
+                Supera el mínimo ({formatCurrency(stats.map_eligibility_threshold)})
+              </span>
+            ) : (
+              <span className="text-orange-600 font-medium">
+                Faltan {formatCurrency(stats.purchase_needed_for_map)}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="bg-white border rounded-lg p-3">
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+            <TrendingUp className="w-3.5 h-3.5" /> Última compra
+          </div>
+          {stats.last_order ? (
+            <>
+              <p className="text-lg font-bold">
+                {stats.last_order.total != null
+                  ? formatCurrency(stats.last_order.total)
+                  : "—"}
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Hace {stats.days_since_last_order ?? "?"} días
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-lg font-bold text-gray-400">Sin pedidos</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Todavía no compró</p>
+            </>
+          )}
+        </div>
+        <div className="bg-white border rounded-lg p-3">
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+            <MousePointerClick className="w-3.5 h-3.5" /> Clicks 30d
+          </div>
+          <p className="text-lg font-bold">{stats.clicks_30d.total}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            {stats.clicks_30d.card_views} vistas · {stats.clicks_30d.whatsapp_clicks} WA
+          </p>
+        </div>
+        <div className="bg-white border rounded-lg p-3">
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+            <ShoppingCart className="w-3.5 h-3.5" /> Ventas del mes
+          </div>
           <p className="text-lg font-bold">{stats.sales_this_month}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            {formatCurrency(stats.revenue_this_month)}
+          </p>
         </div>
-        <div className="bg-white border rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500">Facturación Mes</p>
-          <p className="text-lg font-bold">{formatCurrency(stats.revenue_this_month)}</p>
-        </div>
-        <div className="bg-white border rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500">Pedidos Totales</p>
-          <p className="text-lg font-bold">{stats.total_orders}</p>
-        </div>
+      </div>
+
+      {/* Purchase history chart (last 3 months) + clicks panel */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">
+                Compras últimos 3 meses
+              </h3>
+              <span className="text-xs text-gray-400">
+                Mínimo mensual: {formatCurrency(stats.map_eligibility_threshold)}
+              </span>
+            </div>
+            {purchaseHistory.isLoading ? (
+              <div className="h-32 bg-gray-100 rounded animate-pulse" />
+            ) : (
+              <PurchaseHistoryChart
+                history={purchaseHistory.data?.history ?? stats.purchase_history}
+                threshold={stats.map_eligibility_threshold}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">
+              Engagement últimos 30 días
+            </h3>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <ClickStat label="Vistas de tarjeta" value={stats.clicks_30d.card_views} />
+              <ClickStat
+                label="Clicks WhatsApp"
+                value={stats.clicks_30d.whatsapp_clicks}
+                icon={<MessageCircle className="w-3.5 h-3.5 text-green-500" />}
+              />
+              <ClickStat label="Clicks en redes" value={stats.clicks_30d.social_clicks} />
+              <ClickStat label="Vistas catálogo" value={stats.clicks_30d.catalog_views} />
+            </div>
+            <div className="pt-2 border-t text-xs text-gray-500">
+              Conversión a WhatsApp:{" "}
+              <span className="font-medium text-gray-900">
+                {stats.clicks_30d.card_views > 0
+                  ? (
+                      (stats.clicks_30d.whatsapp_clicks /
+                        stats.clicks_30d.card_views) *
+                      100
+                    ).toFixed(1) + "%"
+                  : "—"}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Tabs */}
@@ -173,10 +397,18 @@ export default function ResellerFisicaDetailPage() {
                   <div className="flex items-center gap-2">
                     {reseller.type === "tienda_fisica" ? (
                       <Store className="w-4 h-4 text-blue-500" />
+                    ) : reseller.type === "distribuidor" ? (
+                      <Truck className="w-4 h-4 text-emerald-500" />
                     ) : (
                       <Smartphone className="w-4 h-4 text-purple-500" />
                     )}
-                    <span>{reseller.type === "tienda_fisica" ? "Tienda Física" : "Solo Redes"}</span>
+                    <span>
+                      {reseller.type === "tienda_fisica"
+                        ? "Tienda Física"
+                        : reseller.type === "distribuidor"
+                        ? "Distribuidor"
+                        : "Solo Redes"}
+                    </span>
                   </div>
                 </div>
                 {reseller.address && (
@@ -216,6 +448,46 @@ export default function ResellerFisicaDetailPage() {
                 <div>
                   <p className="text-xs text-gray-500">Fecha de registro</p>
                   <p className="text-sm">{formatDate(reseller.created_at)}</p>
+                </div>
+
+                <div className="pt-3 border-t">
+                  <p className="text-xs text-gray-500 mb-2">Elegibilidad para el mapa</p>
+                  <ul className="text-sm space-y-1">
+                    <li className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          reseller.status === "aprobada" && reseller.active
+                            ? "bg-green-500"
+                            : "bg-gray-300"
+                        }`}
+                      />
+                      <span>Aprobada y activa</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          stats.has_location ? "bg-green-500" : "bg-gray-300"
+                        }`}
+                      />
+                      <span>Coordenadas cargadas</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          reseller.map_enabled ? "bg-green-500" : "bg-orange-500"
+                        }`}
+                      />
+                      <span>Habilitada por admin</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          stats.is_purchase_eligible ? "bg-green-500" : "bg-gray-300"
+                        }`}
+                      />
+                      <span>Compras ≥ $200.000 en 30 días</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
@@ -409,6 +681,79 @@ export default function ResellerFisicaDetailPage() {
           </CardContent>
         </Card>
       )}
+    </div>
+  )
+}
+
+function PurchaseHistoryChart({
+  history,
+  threshold,
+}: {
+  history: Array<{ month: string; total: number; threshold_met: boolean; order_count: number }>
+  threshold: number
+}) {
+  if (!history || history.length === 0) {
+    return <p className="text-sm text-gray-400">Sin datos</p>
+  }
+  const max = Math.max(threshold, ...history.map((h) => h.total)) || threshold
+  return (
+    <div className="space-y-2">
+      <div className="flex items-end gap-3 h-32">
+        {history.map((h) => {
+          const pct = max > 0 ? (h.total / max) * 100 : 0
+          const thresholdPct = max > 0 ? (threshold / max) * 100 : 0
+          return (
+            <div key={h.month} className="flex-1 flex flex-col items-center gap-1">
+              <div className="relative w-full flex-1 bg-gray-100 rounded overflow-hidden">
+                <div
+                  className="absolute bottom-0 left-0 right-0"
+                  style={{
+                    height: `${pct}%`,
+                    backgroundColor: h.threshold_met ? "#16a34a" : "#f97316",
+                  }}
+                />
+                <div
+                  className="absolute left-0 right-0 border-t border-dashed border-red-400"
+                  style={{ bottom: `${thresholdPct}%` }}
+                  title={`Mínimo: ${threshold.toLocaleString("es-AR")}`}
+                />
+              </div>
+              <div className="text-[11px] text-gray-500">{formatMonthKey(h.month)}</div>
+              <div className="text-xs font-medium">
+                {h.total.toLocaleString("es-AR", {
+                  style: "currency",
+                  currency: "ARS",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}
+              </div>
+              <div className="text-[10px] text-gray-400">
+                {h.order_count} {h.order_count === 1 ? "pedido" : "pedidos"}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function ClickStat({
+  label,
+  value,
+  icon,
+}: {
+  label: string
+  value: number
+  icon?: React.ReactNode
+}) {
+  return (
+    <div className="bg-gray-50 border rounded p-2">
+      <div className="flex items-center gap-1 text-[11px] text-gray-500">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <div className="text-base font-semibold text-gray-900">{value}</div>
     </div>
   )
 }

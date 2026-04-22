@@ -9,6 +9,8 @@ import type {
   ResellerSale,
   ResellerSaleFilters,
   ResellerInventoryItem,
+  ResellerClicksBucket,
+  ResellerPurchaseHistoryEntry,
 } from "@/types/reseller-fisicas"
 
 const BASE = "/api/reseller-fisicas-proxy"
@@ -51,8 +53,27 @@ export function usePhysicalResellers(filters: PhysicalResellerFilters = {}) {
         count: number
         limit: number
         offset: number
+        map_eligibility_threshold: number
       }>
     },
+  })
+}
+
+export function usePurchaseHistory(id: string, months: number = 3) {
+  return useQuery({
+    queryKey: ["resellers-fisicas", "purchase-history", id, months],
+    queryFn: async () => {
+      const res = await fetch(
+        `${BASE}/resellers/${id}/purchase-history?months=${months}`
+      )
+      if (!res.ok) throw new Error("Error al obtener historial de compras")
+      return res.json() as Promise<{
+        history: ResellerPurchaseHistoryEntry[]
+        months: number
+        map_eligibility_threshold: number
+      }>
+    },
+    enabled: !!id,
   })
 }
 
@@ -302,7 +323,8 @@ export function useRelinkResellersByEmail() {
 // ============================================================
 
 export interface ResellerMapItem {
-  id: string
+  _id: string
+  id: string // legacy alias, same value as _id
   business_name: string
   email: string
   whatsapp: string
@@ -313,20 +335,54 @@ export interface ResellerMapItem {
   social_media: { instagram?: string; facebook?: string; tiktok?: string }
   status: string
   active: boolean
-  product_count: number
-  total_stock: number
+  map_enabled: boolean
+  visible_on_map: "compras" | false
+  not_visible_reason: string | null
+  purchase_last_30d: number
+  purchase_needed_for_map: number
+  sales_this_month: number
+  revenue_this_month: number
+  clicks_30d: ResellerClicksBucket
   created_at: string
 }
 
-export function usePhysicalResellersMap(status?: string) {
+export interface ResellerMapFilters {
+  status?: string
+  type?: string
+  only_with_location?: boolean
+  only_visible?: boolean
+}
+
+export function usePhysicalResellersMap(filters: ResellerMapFilters = {}) {
   return useQuery({
-    queryKey: ["resellers-fisicas", "map", status],
+    queryKey: ["resellers-fisicas", "map", filters],
     queryFn: async () => {
       const params = new URLSearchParams()
-      if (status) params.set("status", status)
+      if (filters.status) params.set("status", filters.status)
+      if (filters.type) params.set("type", filters.type)
+      if (filters.only_with_location) params.set("only_with_location", "true")
+      if (filters.only_visible) params.set("only_visible", "true")
       const res = await fetch(`${BASE}/resellers/map?${params}`)
       if (!res.ok) throw new Error("Error al obtener datos de mapa")
       return res.json() as Promise<{ resellers: ResellerMapItem[]; count: number }>
+    },
+  })
+}
+
+export function useToggleResellerMap() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (args: { id: string; enabled?: boolean }) => {
+      const res = await fetch(`${BASE}/resellers/${args.id}/toggle-map`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: args.enabled !== undefined ? JSON.stringify({ enabled: args.enabled }) : "{}",
+      })
+      if (!res.ok) throw new Error("Error al actualizar visibilidad del mapa")
+      return res.json() as Promise<{ reseller: PhysicalReseller }>
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resellers-fisicas"] })
     },
   })
 }
