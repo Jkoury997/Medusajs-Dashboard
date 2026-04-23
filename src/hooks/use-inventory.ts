@@ -20,6 +20,7 @@ export interface ProductWithStock {
   title: string
   thumbnail: string | null
   external_id: string | null
+  status: string | null
   variants: VariantWithStock[]
   totalStock: number
   allOutOfStock: boolean
@@ -83,7 +84,7 @@ export function useProductsWithStock() {
           query: {
             limit,
             offset,
-            fields: "id,title,thumbnail,external_id,*variants",
+            fields: "id,title,thumbnail,external_id,status,*variants",
           },
         })) as { products: any[]; count: number }
 
@@ -123,6 +124,7 @@ export function useProductsWithStock() {
             title: product.title,
             thumbnail: product.thumbnail,
             external_id: product.external_id || null,
+            status: product.status || null,
             variants,
             totalStock,
             allOutOfStock,
