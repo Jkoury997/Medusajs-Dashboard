@@ -83,7 +83,8 @@ export function useProductsWithStock() {
           query: {
             limit,
             offset,
-            fields: "id,title,thumbnail,external_id,*variants",
+            fields: "id,title,thumbnail,external_id,status,*variants",
+            status: ["active"],
           },
         })) as { products: any[]; count: number }
 
