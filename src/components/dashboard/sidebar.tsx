@@ -48,7 +48,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Brain,
-  Sparkles,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -174,7 +173,6 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/analytics/dispositivos", label: "Dispositivos", icon: Layers },
       { href: "/dashboard/analytics/inspire", label: "Inspirate", icon: Palette },
       { href: "/dashboard/analytics/ai-pricing", label: "Inteligencia IA", icon: Brain },
-      { href: "/dashboard/ranking-metrics", label: "Métricas Ranking IA", icon: Sparkles },
     ],
   },
   { href: "/dashboard/ai", label: "IA Insights", icon: Bot },
