@@ -485,7 +485,7 @@ export default function ResellerFisicaDetailPage() {
                           stats.is_purchase_eligible ? "bg-green-500" : "bg-gray-300"
                         }`}
                       />
-                      <span>Compras ≥ $200.000 en 30 días</span>
+                      <span>Compras ≥ $150.000 en 30 días</span>
                     </li>
                   </ul>
                 </div>

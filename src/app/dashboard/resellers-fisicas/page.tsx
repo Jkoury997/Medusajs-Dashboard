@@ -92,7 +92,7 @@ export default function ResellersFisicasResumenPage() {
             <MetricCard
               title="Elegibles por Compras"
               value={String(stats.purchase_eligible_resellers)}
-              subtitle="≥ $200.000 en 30 días"
+              subtitle="≥ $150.000 en 30 días"
               icon={<TrendingUp className="w-5 h-5 text-emerald-500" />}
             />
           </div>
