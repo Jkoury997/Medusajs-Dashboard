@@ -38,6 +38,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { AIDecisionsTab } from "@/components/dashboard/ai-decisions-tab"
+import { cn } from "@/lib/utils"
 import {
   BarChart,
   Bar,
@@ -80,6 +81,8 @@ import {
   Search,
   RefreshCw,
   Sparkles,
+  Copy,
+  Check,
 } from "lucide-react"
 
 const SEGMENT_COLORS: Record<string, string> = {
@@ -128,6 +131,15 @@ export default function AIPricingPage() {
   const [leadsLimit, setLeadsLimit] = useState(50)
   const [intentFilter, setIntentFilter] = useState<PurchaseIntent | "all">("all")
   const [leadsSearch, setLeadsSearch] = useState("")
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const copyToClipboard = (value: string) => {
+    if (!value) return
+    void navigator.clipboard.writeText(value).then(() => {
+      setCopiedId(value)
+      setTimeout(() => setCopiedId((cur) => (cur === value ? null : cur)), 1500)
+    })
+  }
 
   const fromStr = formatDateParam(dateRange.from)
   const toStr = formatDateParam(dateRange.to)
@@ -440,17 +452,43 @@ export default function AIPricingPage() {
                   <TableBody>
                     {filteredLeads.map((lead, i) => {
                       const intentInfo = INTENT_LABELS[lead.purchase_intent] || INTENT_LABELS.browsing
-                      const id = lead.customer_id ?? lead.session_id ?? "—"
+                      const fullId = lead.customer_id ?? lead.session_id ?? ""
+                      const isCopied = copiedId === fullId && fullId !== ""
+                      const shortId = lead.customer_id
+                        ? lead.customer_id.slice(0, 20) + "…"
+                        : lead.session_id
+                          ? lead.session_id.slice(0, 12) + "…"
+                          : "—"
                       return (
-                        <TableRow key={`${id}-${i}`}>
+                        <TableRow key={`${fullId || "anon"}-${i}`}>
                           <TableCell className="font-mono text-xs">
-                            {lead.customer_id
-                              ? lead.customer_id.slice(0, 20) + "..."
-                              : lead.session_id?.slice(0, 12) + "..."
-                            }
-                            {!lead.customer_id && (
-                              <Badge variant="outline" className="ml-2 text-xs">Anónimo</Badge>
-                            )}
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(fullId)}
+                                title={fullId ? `Click para copiar: ${fullId}` : ""}
+                                disabled={!fullId}
+                                className={cn(
+                                  "group flex items-center gap-1.5 rounded px-1.5 py-0.5 transition-colors",
+                                  fullId
+                                    ? "hover:bg-gray-100 cursor-pointer"
+                                    : "cursor-default",
+                                  isCopied && "bg-green-50 text-green-700"
+                                )}
+                              >
+                                <span>{shortId}</span>
+                                {fullId ? (
+                                  isCopied ? (
+                                    <Check className="h-3 w-3 text-green-600" />
+                                  ) : (
+                                    <Copy className="h-3 w-3 text-gray-300 group-hover:text-gray-600" />
+                                  )
+                                ) : null}
+                              </button>
+                              {!lead.customer_id && (
+                                <Badge variant="outline" className="text-xs">Anónimo</Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge className={intentInfo.color}>
