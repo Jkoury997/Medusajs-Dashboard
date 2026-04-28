@@ -21,6 +21,8 @@ import type {
   PriceSuggestionsResponse,
   AIROISummary,
   AIROIBySegment,
+  AIDiscountHistoryResponse,
+  PriceAnalysisFull,
 } from "@/types/events"
 import { eventsGet } from "@/lib/events-skills-client"
 
@@ -308,5 +310,22 @@ export function useAIROIBySegment(from?: string, to?: string) {
   return useQuery({
     queryKey: ["ai", "roi-by-segment", from, to],
     queryFn: () => eventsGet<AIROIBySegment>("ai/roi/by-segment", { from, to }),
+  })
+}
+
+export function useAIDiscountHistory(customerId: string | null, limit: number = 20) {
+  return useQuery({
+    queryKey: ["ai", "discount-history", customerId, limit],
+    queryFn: () =>
+      eventsGet<AIDiscountHistoryResponse>(`ai/discount/history/${customerId}`, { limit }),
+    enabled: !!customerId,
+  })
+}
+
+export function useAIPriceAnalysis(productId: string | null) {
+  return useQuery({
+    queryKey: ["ai", "price-analysis", productId],
+    queryFn: () => eventsGet<PriceAnalysisFull>(`ai/price/${productId}`),
+    enabled: !!productId,
   })
 }

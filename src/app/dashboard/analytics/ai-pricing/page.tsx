@@ -30,6 +30,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { AIDecisionsTab } from "@/components/dashboard/ai-decisions-tab"
+import {
   BarChart,
   Bar,
   XAxis,
@@ -70,6 +79,7 @@ import {
   Clock,
   Search,
   RefreshCw,
+  Sparkles,
 } from "lucide-react"
 
 const SEGMENT_COLORS: Record<string, string> = {
@@ -197,6 +207,7 @@ export default function AIPricingPage() {
           <TabsTrigger value="hot-leads">Hot Leads</TabsTrigger>
           <TabsTrigger value="precios">Análisis de Precios</TabsTrigger>
           <TabsTrigger value="roi">ROI Descuentos</TabsTrigger>
+          <TabsTrigger value="decisiones">Decisiones IA</TabsTrigger>
         </TabsList>
 
         {/* ============================================================ */}
@@ -555,7 +566,64 @@ export default function AIPricingPage() {
                             </span>
                           </TableCell>
                           <TableCell className="max-w-[250px] truncate text-xs text-gray-500">
-                            {item.ai_reasoning || "Sin análisis IA"}
+                            {item.ai_reasoning ? (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                                    <Sparkles className="mr-1 h-3 w-3 text-purple-500" />
+                                    Ver razón
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl">
+                                  <DialogHeader>
+                                    <DialogTitle>{item.product_title}</DialogTitle>
+                                    <DialogDescription>
+                                      Análisis y razonamiento de la IA para el ajuste de precio
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <div className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3 text-sm">
+                                      <div>
+                                        <div className="text-xs text-gray-500 uppercase">
+                                          Precio actual
+                                        </div>
+                                        <div className="font-semibold">
+                                          {formatCurrency(item.current_price)}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="text-xs text-gray-500 uppercase">
+                                          Sugerido
+                                        </div>
+                                        <div
+                                          className={
+                                            item.suggested_price != null &&
+                                            item.suggested_price < item.current_price
+                                              ? "font-semibold text-red-600"
+                                              : "font-semibold text-green-600"
+                                          }
+                                        >
+                                          {item.suggested_price != null
+                                            ? formatCurrency(item.suggested_price)
+                                            : "—"}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="rounded-lg border border-purple-100 bg-purple-50/50 p-4">
+                                      <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase text-purple-700">
+                                        <Sparkles className="h-3.5 w-3.5" />
+                                        Razonamiento de la IA
+                                      </div>
+                                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
+                                        {item.ai_reasoning}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            ) : (
+                              <span className="italic text-gray-400">Sin análisis IA</span>
+                            )}
                           </TableCell>
                         </TableRow>
                       )
@@ -713,6 +781,13 @@ export default function AIPricingPage() {
               )}
             </>
           )}
+        </TabsContent>
+
+        {/* ============================================================ */}
+        {/* TAB: Decisiones IA */}
+        {/* ============================================================ */}
+        <TabsContent value="decisiones" className="space-y-6">
+          <AIDecisionsTab />
         </TabsContent>
       </Tabs>
     </div>

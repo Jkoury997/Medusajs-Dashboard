@@ -373,3 +373,42 @@ export interface AIROIBySegment {
   segments: Record<string, AISegmentBreakdown>
   types: Record<string, AISegmentBreakdown>
 }
+
+export interface AIDiscount {
+  discount_id: string
+  customer_id: string | null
+  session_id: string | null
+  discount_percent: number
+  discount_type: DiscountType
+  product_ids: string[]
+  ai_reasoning: string
+  status: DiscountStatus
+  expires_at: string
+  created_at: string
+}
+
+export interface AIDiscountHistoryResponse {
+  discounts: AIDiscount[]
+  total: number
+}
+
+export interface PriceAnalysisFull {
+  product_id: string
+  product_title: string
+  current_price: number
+  currency: string
+  suggested_price: number | null
+  elasticity_score: number
+  conversion_rate_at_current: number
+  views_to_purchase_ratio?: number
+  avg_time_to_purchase_hours?: number
+  cart_abandonment_rate_for_product: number
+  demand_trend: "rising" | "stable" | "declining"
+  margin_estimate_at_suggested?: number | null
+  ai_reasoning: string | null
+  ai_tokens_used?: number
+  ai_cost_usd?: number
+  model_used?: string
+  updated_at: string
+  created_at?: string
+}
