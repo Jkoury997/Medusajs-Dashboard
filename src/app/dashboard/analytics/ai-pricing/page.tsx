@@ -9,6 +9,15 @@ import {
   type DateRange,
 } from "@/components/dashboard/date-range-picker"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -39,6 +48,12 @@ import {
   useAIROISummary,
   useAIROIBySegment,
 } from "@/hooks/use-events"
+import type {
+  HotLead,
+  PriceSuggestion,
+  PurchaseIntent,
+  AISegmentBreakdown,
+} from "@/types/events"
 import { formatCurrency, formatNumber } from "@/lib/format"
 import {
   Brain,
@@ -53,6 +68,8 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Search,
+  RefreshCw,
 } from "lucide-react"
 
 const SEGMENT_COLORS: Record<string, string> = {
@@ -70,12 +87,20 @@ const TYPE_COLORS: Record<string, string> = {
   segment: "#3b82f6",
 }
 
-const INTENT_LABELS: Record<string, { label: string; color: string; icon: typeof Target }> = {
+const INTENT_LABELS: Record<PurchaseIntent, { label: string; color: string; icon: typeof Target }> = {
   ready_to_buy: { label: "Listo para comprar", color: "bg-green-100 text-green-800", icon: ShoppingCart },
   cart_abandoner: { label: "Abandonó carrito", color: "bg-orange-100 text-orange-800", icon: AlertTriangle },
   price_watcher: { label: "Busca precios", color: "bg-blue-100 text-blue-800", icon: DollarSign },
   comparing: { label: "Comparando", color: "bg-purple-100 text-purple-800", icon: Target },
   browsing: { label: "Navegando", color: "bg-gray-100 text-gray-800", icon: Clock },
+}
+
+const INTENT_PRIORITY: Record<PurchaseIntent, number> = {
+  ready_to_buy: 5,
+  cart_abandoner: 4,
+  comparing: 3,
+  price_watcher: 2,
+  browsing: 1,
 }
 
 const DEMAND_LABELS: Record<string, { label: string; color: string }> = {
@@ -90,30 +115,53 @@ function formatDateParam(date: Date): string {
 
 export default function AIPricingPage() {
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange())
+  const [leadsLimit, setLeadsLimit] = useState(50)
+  const [intentFilter, setIntentFilter] = useState<PurchaseIntent | "all">("all")
+  const [leadsSearch, setLeadsSearch] = useState("")
 
   const fromStr = formatDateParam(dateRange.from)
   const toStr = formatDateParam(dateRange.to)
 
-  const { data: hotLeads, isLoading: loadingLeads } = useAIHotLeads(50)
+  const { data: hotLeads, isLoading: loadingLeads, isFetching: fetchingLeads, refetch: refetchLeads } =
+    useAIHotLeads(leadsLimit)
   const { data: priceSuggestions, isLoading: loadingPrices } = useAIPriceSuggestions(20)
   const { data: roiSummary, isLoading: loadingROI } = useAIROISummary(fromStr, toStr)
   const { data: roiSegment, isLoading: loadingSegment } = useAIROIBySegment(fromStr, toStr)
 
-  // Datos para el gráfico de ROI diario
+  const filteredLeads = useMemo<HotLead[]>(() => {
+    const all = hotLeads?.leads ?? []
+    const q = leadsSearch.trim().toLowerCase()
+    return all
+      .filter((l) => intentFilter === "all" || l.purchase_intent === intentFilter)
+      .filter((l) => {
+        if (!q) return true
+        return (
+          l.customer_id?.toLowerCase().includes(q) ||
+          l.session_id?.toLowerCase().includes(q)
+        )
+      })
+      .sort((a, b) => {
+        const intentDiff =
+          INTENT_PRIORITY[b.purchase_intent] - INTENT_PRIORITY[a.purchase_intent]
+        if (intentDiff !== 0) return intentDiff
+        if (b.cart_value !== a.cart_value) return b.cart_value - a.cart_value
+        return b.confidence - a.confidence
+      })
+  }, [hotLeads, intentFilter, leadsSearch])
+
   const dailyChartData = useMemo(() => {
     if (!roiSummary?.daily) return []
-    return roiSummary.daily.map((d: { date: string; generated: number; converted: number; revenue: number }) => ({
-      date: d.date.slice(5), // MM-DD
+    return roiSummary.daily.map((d) => ({
+      date: d.date.slice(5),
       generados: d.generated,
       convertidos: d.converted,
       revenue: d.revenue,
     }))
   }, [roiSummary])
 
-  // Datos para el pie chart de segmentos
   const segmentPieData = useMemo(() => {
     if (!roiSegment?.segments) return []
-    return Object.entries(roiSegment.segments).map(([name, data]: [string, any]) => ({
+    return Object.entries(roiSegment.segments).map(([name, data]) => ({
       name: name.charAt(0).toUpperCase() + name.slice(1),
       value: data.count,
       revenue: data.revenue,
@@ -122,10 +170,9 @@ export default function AIPricingPage() {
     }))
   }, [roiSegment])
 
-  // Datos para el pie chart de tipos
   const typePieData = useMemo(() => {
     if (!roiSegment?.types) return []
-    return Object.entries(roiSegment.types).map(([name, data]: [string, any]) => ({
+    return Object.entries(roiSegment.types).map(([name, data]) => ({
       name: name.replace("_", " ").charAt(0).toUpperCase() + name.replace("_", " ").slice(1),
       value: data.count,
       revenue: data.revenue,
@@ -291,23 +338,82 @@ export default function AIPricingPage() {
         <TabsContent value="hot-leads" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-orange-500" />
-                Hot Leads — Últimas 24h
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-orange-500" />
+                  Hot Leads — Últimas 24h
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refetchLeads()}
+                  disabled={fetchingLeads}
+                >
+                  <RefreshCw
+                    className={`mr-1.5 h-3.5 w-3.5 ${fetchingLeads ? "animate-spin" : ""}`}
+                  />
+                  Actualizar
+                </Button>
               </CardTitle>
               <CardDescription>
                 Usuarios con mayor intención de compra que aún no completaron una orden
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Buscar customer / session id..."
+                    value={leadsSearch}
+                    onChange={(e) => setLeadsSearch(e.target.value)}
+                  />
+                </div>
+                <Select
+                  value={intentFilter}
+                  onValueChange={(v) => setIntentFilter(v as PurchaseIntent | "all")}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Intent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los intents</SelectItem>
+                    <SelectItem value="ready_to_buy">Listo para comprar</SelectItem>
+                    <SelectItem value="cart_abandoner">Abandonó carrito</SelectItem>
+                    <SelectItem value="comparing">Comparando</SelectItem>
+                    <SelectItem value="price_watcher">Busca precios</SelectItem>
+                    <SelectItem value="browsing">Navegando</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={String(leadsLimit)}
+                  onValueChange={(v) => setLeadsLimit(Number(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Límite" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="20">Top 20</SelectItem>
+                    <SelectItem value="50">Top 50</SelectItem>
+                    <SelectItem value="100">Top 100</SelectItem>
+                    <SelectItem value="200">Top 200</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               {loadingLeads ? (
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12" />)}
                 </div>
-              ) : !hotLeads?.leads?.length ? (
+              ) : filteredLeads.length === 0 ? (
                 <div className="flex flex-col items-center py-8 text-center">
                   <Users className="mb-3 h-10 w-10 text-gray-300" />
-                  <p className="text-sm text-gray-500">No hay hot leads en las últimas 24 horas</p>
+                  <p className="text-sm text-gray-500">
+                    {hotLeads?.leads?.length
+                      ? "No hay leads que coincidan con los filtros"
+                      : "No hay hot leads en las últimas 24 horas"}
+                  </p>
                 </div>
               ) : (
                 <Table>
@@ -321,10 +427,11 @@ export default function AIPricingPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {hotLeads.leads.map((lead: any, i: number) => {
+                    {filteredLeads.map((lead, i) => {
                       const intentInfo = INTENT_LABELS[lead.purchase_intent] || INTENT_LABELS.browsing
+                      const id = lead.customer_id ?? lead.session_id ?? "—"
                       return (
-                        <TableRow key={i}>
+                        <TableRow key={`${id}-${i}`}>
                           <TableCell className="font-mono text-xs">
                             {lead.customer_id
                               ? lead.customer_id.slice(0, 20) + "..."
@@ -416,8 +523,11 @@ export default function AIPricingPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {priceSuggestions.suggestions.map((item: any, i: number) => {
+                    {priceSuggestions.suggestions.map((item: PriceSuggestion, i: number) => {
                       const demandInfo = DEMAND_LABELS[item.demand_trend] || DEMAND_LABELS.stable
+                      const viewsToPurchase =
+                        (item as PriceSuggestion & { views_to_purchase_ratio?: number })
+                          .views_to_purchase_ratio ?? 0
                       return (
                         <TableRow key={i}>
                           <TableCell className="max-w-[200px] truncate font-medium">
@@ -437,7 +547,7 @@ export default function AIPricingPage() {
                             <span className={demandInfo.color}>{demandInfo.label}</span>
                           </TableCell>
                           <TableCell>
-                            {(item.views_to_purchase_ratio * 100).toFixed(2)}%
+                            {(viewsToPurchase * 100).toFixed(2)}%
                           </TableCell>
                           <TableCell>
                             <span className={item.cart_abandonment_rate_for_product > 0.5 ? "text-red-600 font-medium" : ""}>
@@ -513,7 +623,7 @@ export default function AIPricingPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {Object.entries(roiSegment.segments).map(([segment, data]: [string, any]) => (
+                        {Object.entries(roiSegment.segments).map(([segment, data]: [string, AISegmentBreakdown]) => (
                           <TableRow key={segment}>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -560,7 +670,7 @@ export default function AIPricingPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {Object.entries(roiSegment.types).map(([type, data]: [string, any]) => (
+                        {Object.entries(roiSegment.types).map(([type, data]: [string, AISegmentBreakdown]) => (
                           <TableRow key={type}>
                             <TableCell>
                               <div className="flex items-center gap-2">
