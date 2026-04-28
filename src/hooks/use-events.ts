@@ -16,7 +16,13 @@ import type {
   CartAbandonmentStats,
   SearchQualityStats,
   CustomerCohortsStats,
+  AIScoreResponse,
+  HotLeadsResponse,
+  PriceSuggestionsResponse,
+  AIROISummary,
+  AIROIBySegment,
 } from "@/types/events"
+import { eventsGet } from "@/lib/events-skills-client"
 
 function formatDateParam(date: Date): string {
   return date.toISOString().split("T")[0]
@@ -270,11 +276,7 @@ export function useCustomerCohorts(from: Date, to: Date) {
 export function useAIScore(customerId: string | null) {
   return useQuery({
     queryKey: ["ai", "score", customerId],
-    queryFn: async () => {
-      const res = await fetch(`/api/events-proxy/ai/score/${customerId}`)
-      if (!res.ok) throw new Error("Error al obtener score AI")
-      return res.json()
-    },
+    queryFn: () => eventsGet<AIScoreResponse>(`ai/score/${customerId}`),
     enabled: !!customerId,
   })
 }
@@ -282,49 +284,29 @@ export function useAIScore(customerId: string | null) {
 export function useAIHotLeads(limit: number = 50) {
   return useQuery({
     queryKey: ["ai", "hot-leads", limit],
-    queryFn: async () => {
-      const res = await fetch(`/api/events-proxy/ai/intent/hot-leads?limit=${limit}`)
-      if (!res.ok) throw new Error("Error al obtener hot leads")
-      return res.json()
-    },
+    queryFn: () => eventsGet<HotLeadsResponse>("ai/intent/hot-leads", { limit }),
+    refetchInterval: 60_000,
   })
 }
 
 export function useAIPriceSuggestions(limit: number = 20) {
   return useQuery({
     queryKey: ["ai", "price-suggestions", limit],
-    queryFn: async () => {
-      const res = await fetch(`/api/events-proxy/ai/price/suggestions?limit=${limit}`)
-      if (!res.ok) throw new Error("Error al obtener sugerencias de precio")
-      return res.json()
-    },
+    queryFn: () =>
+      eventsGet<PriceSuggestionsResponse>("ai/price/suggestions", { limit }),
   })
 }
 
 export function useAIROISummary(from?: string, to?: string) {
   return useQuery({
     queryKey: ["ai", "roi-summary", from, to],
-    queryFn: async () => {
-      const params = new URLSearchParams()
-      if (from) params.set("from", from)
-      if (to) params.set("to", to)
-      const res = await fetch(`/api/events-proxy/ai/roi/summary?${params.toString()}`)
-      if (!res.ok) throw new Error("Error al obtener resumen de ROI")
-      return res.json()
-    },
+    queryFn: () => eventsGet<AIROISummary>("ai/roi/summary", { from, to }),
   })
 }
 
 export function useAIROIBySegment(from?: string, to?: string) {
   return useQuery({
     queryKey: ["ai", "roi-by-segment", from, to],
-    queryFn: async () => {
-      const params = new URLSearchParams()
-      if (from) params.set("from", from)
-      if (to) params.set("to", to)
-      const res = await fetch(`/api/events-proxy/ai/roi/by-segment?${params.toString()}`)
-      if (!res.ok) throw new Error("Error al obtener ROI por segmento")
-      return res.json()
-    },
+    queryFn: () => eventsGet<AIROIBySegment>("ai/roi/by-segment", { from, to }),
   })
 }

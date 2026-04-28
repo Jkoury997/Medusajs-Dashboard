@@ -239,3 +239,137 @@ export interface CustomerCohortsStats {
   total_customers: number
   total_repeat_customers: number
 }
+
+// ============================================================
+// AI: Scoring, Intent, Discounts, Pricing, ROI
+// ============================================================
+
+export type UserSegment = "hot" | "warm" | "cold" | "lost"
+export type PriceSensitivity = "low" | "medium" | "high"
+export type PurchaseIntent =
+  | "browsing"
+  | "comparing"
+  | "ready_to_buy"
+  | "cart_abandoner"
+  | "price_watcher"
+export type DiscountType =
+  | "personal"
+  | "segment"
+  | "cart_recovery"
+  | "intent_boost"
+export type DiscountStatus = "active" | "used" | "expired" | "canceled"
+
+export interface AIUserSignals {
+  total_views: number
+  total_product_clicks: number
+  total_cart_adds: number
+  total_purchases: number
+  total_revenue: number
+  avg_order_value: number
+  total_checkouts_started: number
+  total_checkouts_abandoned: number
+  cart_abandonment_rate: number
+  total_searches: number
+  days_since_last_visit: number
+  days_since_last_purchase: number
+  bounce_rate: number
+  avg_time_on_site_ms: number
+  primary_device: "mobile" | "tablet" | "desktop" | "unknown"
+  primary_traffic_source: string | null
+  primary_country: string | null
+  most_viewed_products: Array<{
+    product_id: string
+    product_title: string
+    views: number
+    added_to_cart: boolean
+    purchased: boolean
+  }>
+  has_converted_session: boolean
+}
+
+export interface AIScoreResponse {
+  customer_id: string | null
+  session_id: string | null
+  score: number
+  segment: UserSegment
+  purchase_intent: PurchaseIntent
+  price_sensitivity: PriceSensitivity
+  recommended_discount_pct: number | null
+  ai_reasoning: string | null
+  signals: AIUserSignals
+  cached: boolean
+  computed_at: string
+  ai_cost_usd: number
+}
+
+export interface HotLead {
+  customer_id: string | null
+  session_id: string | null
+  purchase_intent: PurchaseIntent
+  confidence: number
+  last_activity: string
+  cart_value: number
+}
+
+export interface HotLeadsResponse {
+  leads: HotLead[]
+  total: number
+}
+
+export interface PriceSuggestion {
+  product_id: string
+  product_title: string
+  current_price: number
+  currency: string
+  suggested_price: number | null
+  elasticity_score: number
+  conversion_rate_at_current: number
+  cart_abandonment_rate_for_product: number
+  demand_trend: "rising" | "stable" | "declining"
+  ai_reasoning: string | null
+  updated_at: string
+}
+
+export interface PriceSuggestionsResponse {
+  suggestions: PriceSuggestion[]
+  total: number
+}
+
+export interface AIROIDailyBucket {
+  date: string
+  generated: number
+  converted: number
+  revenue: number
+  ai_cost: number
+}
+
+export interface AIROISummary {
+  period: { from: string; to: string }
+  total_discounts_generated: number
+  total_discounts_converted: number
+  total_discounts_expired: number
+  total_discounts_active: number
+  conversion_rate: string
+  total_revenue: number
+  total_discount_value: number
+  total_ai_cost: number
+  net_profit: number
+  roi_percentage: number
+  profitable: boolean
+  avg_discount_pct: number
+  daily: AIROIDailyBucket[]
+}
+
+export interface AISegmentBreakdown {
+  count: number
+  revenue: number
+  discount_value: number
+  ai_cost: number
+  roi: number
+}
+
+export interface AIROIBySegment {
+  period: { from: string; to: string }
+  segments: Record<string, AISegmentBreakdown>
+  types: Record<string, AISegmentBreakdown>
+}

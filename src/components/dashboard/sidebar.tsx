@@ -176,6 +176,8 @@ const staticNavEntries: NavEntry[] = [
     ],
   },
   { href: "/dashboard/ai", label: "IA Insights", icon: Bot },
+  { href: "/dashboard/ai/hot-leads", label: "Hot Leads", icon: Bot },
+  { href: "/dashboard/ai/roi", label: "ROI IA", icon: Bot },
 ]
 
 // ============================================================
