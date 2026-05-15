@@ -37,7 +37,7 @@ import {
   useRankingPerformance,
   useTriggerPerformanceMeasure,
 } from "@/hooks/use-ranking-metrics"
-import { formatNumber, formatDate } from "@/lib/format"
+import { formatCurrency, formatNumber, formatDate } from "@/lib/format"
 import {
   RankingDetailSheet,
   EntityTypeBadge,
@@ -366,6 +366,7 @@ export function MetricsView() {
                   <TableHead>Productos</TableHead>
                   <TableHead>Ventas pre → activo</TableHead>
                   <TableHead>Δ ventas</TableHead>
+                  <TableHead>Revenue pre → activo</TableHead>
                   <TableHead>Δ revenue</TableHead>
                 </TableRow>
               </TableHeader>
@@ -410,6 +411,10 @@ export function MetricsView() {
                         >
                           {formatPct(item.total_delta_sales_pct)}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-500">
+                        {formatCurrency(item.total_pre_revenue)} →{" "}
+                        {formatCurrency(item.total_active_revenue)}
                       </TableCell>
                       <TableCell>
                         <span
