@@ -107,7 +107,9 @@ export interface CostSummaryResponse {
 // --- Metrics: Performance ---
 
 export interface RankingPerformanceItem {
+  id: string
   ranking_id: string
+  ranking_history_id: string | null
   entity_id: string
   entity_type: "collection" | "category"
   entity_name: string
