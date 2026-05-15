@@ -368,7 +368,7 @@ export function MetricsView() {
                   const deltaRev = item.total_delta_revenue_pct
                   const positive = deltaRev !== null && deltaRev >= 0
                   return (
-                    <TableRow key={item.ranking_id}>
+                    <TableRow key={item.id}>
                       <TableCell className="text-xs text-gray-500">
                         {formatDate(item.applied_at)}
                       </TableCell>
