@@ -39,6 +39,10 @@ import {
 } from "@/hooks/use-ranking-metrics"
 import { formatNumber, formatDate } from "@/lib/format"
 import {
+  RankingDetailSheet,
+  EntityTypeBadge,
+} from "./ranking-detail-sheet"
+import {
   DollarSign,
   Cpu,
   TrendingUp,
@@ -72,6 +76,7 @@ function dayLabel(dateIso: string): string {
 
 export function MetricsView() {
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange())
+  const [detailId, setDetailId] = useState<string | null>(null)
 
   const { data: summary, isLoading: loadingSummary } = useAiCostSummary(
     dateRange.from,
@@ -355,7 +360,8 @@ export function MetricsView() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha</TableHead>
-                  <TableHead>Categoría</TableHead>
+                  <TableHead>Entidad</TableHead>
+                  <TableHead>Origen</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Productos</TableHead>
                   <TableHead>Ventas pre → activo</TableHead>
@@ -368,12 +374,19 @@ export function MetricsView() {
                   const deltaRev = item.total_delta_revenue_pct
                   const positive = deltaRev !== null && deltaRev >= 0
                   return (
-                    <TableRow key={item.id}>
+                    <TableRow
+                      key={item.id}
+                      onClick={() => setDetailId(item.id)}
+                      className="cursor-pointer hover:bg-gray-50"
+                    >
                       <TableCell className="text-xs text-gray-500">
                         {formatDate(item.applied_at)}
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate font-medium">
                         {item.entity_name}
+                      </TableCell>
+                      <TableCell>
+                        <EntityTypeBadge entityType={item.entity_type} />
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
@@ -447,6 +460,11 @@ export function MetricsView() {
           </CardContent>
         </Card>
       )}
+
+      <RankingDetailSheet
+        rankingId={detailId}
+        onClose={() => setDetailId(null)}
+      />
     </div>
   )
 }

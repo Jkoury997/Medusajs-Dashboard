@@ -137,6 +137,8 @@ export interface RankingPerformanceListResponse {
 export interface RankingPerformanceProduct {
   product_id: string
   rank_position: number
+  previous_rank_position: number | null
+  delta_rank_position: number | null
   pre_sales: number
   pre_revenue: number
   active_sales: number
