@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useRankingPerformanceDetail } from "@/hooks/use-ranking-metrics"
 import { useProductsByIds, type ProductInfo } from "@/hooks/use-products-by-ids"
-import { formatDate, formatNumber } from "@/lib/format"
+import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { ArrowDown, ArrowUp, Minus, Sparkles, Package } from "lucide-react"
 import type { RankingPerformanceProduct } from "@/types/ranking"
 
@@ -139,6 +139,7 @@ export function RankingDetailSheet({ rankingId, onClose }: Props) {
                   <TableHead>Posicion</TableHead>
                   <TableHead className="text-right">Ventas</TableHead>
                   <TableHead className="text-right">Δ ventas</TableHead>
+                  <TableHead className="text-right">Revenue</TableHead>
                   <TableHead className="text-right">Δ revenue</TableHead>
                 </TableRow>
               </TableHeader>
@@ -193,6 +194,22 @@ export function RankingDetailSheet({ rankingId, onClose }: Props) {
                         >
                           {formatPct(p.delta_sales_pct)}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-right text-xs text-gray-500">
+                        <div>
+                          {formatCurrency(p.pre_revenue)} →{" "}
+                          {formatCurrency(p.active_revenue)}
+                        </div>
+                        <div
+                          className={
+                            p.delta_revenue >= 0
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }
+                        >
+                          {p.delta_revenue >= 0 ? "+" : ""}
+                          {formatCurrency(p.delta_revenue)}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <span
