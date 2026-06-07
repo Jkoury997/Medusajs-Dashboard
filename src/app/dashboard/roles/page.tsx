@@ -253,7 +253,6 @@ function RolesReference() {
     "products:view": "Productos",
     "customers:view": "Clientes",
     "marketing:view": "Marketing",
-    "email_marketing:view": "Email Marketing",
     "picking:view": "Picking",
     "resellers:view": "Revendedoras",
     "resellers_fisicas:view": "Revendedoras Físicas",
