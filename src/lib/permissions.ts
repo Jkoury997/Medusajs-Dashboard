@@ -26,9 +26,6 @@ export const PERMISSIONS = {
   // Marketing
   MARKETING_VIEW: "marketing:view",
 
-  // Email Marketing
-  EMAIL_MARKETING_VIEW: "email_marketing:view",
-
   // Picking
   PICKING_VIEW: "picking:view",
 
@@ -91,7 +88,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.PRODUCTS_VIEW,
     PERMISSIONS.CUSTOMERS_VIEW,
     PERMISSIONS.MARKETING_VIEW,
-    PERMISSIONS.EMAIL_MARKETING_VIEW,
     PERMISSIONS.PICKING_VIEW,
     PERMISSIONS.RESELLERS_VIEW,
     PERMISSIONS.RESELLERS_FISICAS_VIEW,
@@ -104,7 +100,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.DASHBOARD_VIEW,
     PERMISSIONS.CUSTOMERS_VIEW,
     PERMISSIONS.MARKETING_VIEW,
-    PERMISSIONS.EMAIL_MARKETING_VIEW,
     PERMISSIONS.ANALYTICS_VIEW,
   ],
 
@@ -151,15 +146,6 @@ export const ROUTE_PERMISSIONS: { prefix: string; permission: Permission }[] = [
 
   // Marketing
   { prefix: "/dashboard/marketing", permission: PERMISSIONS.MARKETING_VIEW },
-
-  // Email marketing (todas las sub-rutas)
-  { prefix: "/dashboard/carritos-abandonados", permission: PERMISSIONS.EMAIL_MARKETING_VIEW },
-  { prefix: "/dashboard/campaigns", permission: PERMISSIONS.EMAIL_MARKETING_VIEW },
-  { prefix: "/dashboard/email-marketing", permission: PERMISSIONS.EMAIL_MARKETING_VIEW },
-  { prefix: "/dashboard/contacts", permission: PERMISSIONS.EMAIL_MARKETING_VIEW },
-  { prefix: "/dashboard/segments", permission: PERMISSIONS.EMAIL_MARKETING_VIEW },
-  { prefix: "/dashboard/templates", permission: PERMISSIONS.EMAIL_MARKETING_VIEW },
-  { prefix: "/dashboard/email-stats", permission: PERMISSIONS.EMAIL_MARKETING_VIEW },
 
   // Picking
   { prefix: "/dashboard/picking", permission: PERMISSIONS.PICKING_VIEW },
@@ -214,7 +200,6 @@ export const SIDEBAR_PERMISSIONS: Record<string, Permission> = {
   "Productos": PERMISSIONS.PRODUCTS_VIEW,
   "Clientes": PERMISSIONS.CUSTOMERS_VIEW,
   "Marketing": PERMISSIONS.MARKETING_VIEW,
-  "Email Marketing": PERMISSIONS.EMAIL_MARKETING_VIEW,
   "Picking": PERMISSIONS.PICKING_VIEW,
   "Revendedoras": PERMISSIONS.RESELLERS_VIEW,
   "Revendedoras Físicas": PERMISSIONS.RESELLERS_FISICAS_VIEW,
