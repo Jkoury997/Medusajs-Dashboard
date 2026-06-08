@@ -29,7 +29,7 @@ Formato de respuesta: Usá markdown con headers ## para cada categoría.`
 
 export async function getAIRecommendations(
   metrics: Record<string, any>,
-  provider: "anthropic" | "openai" = "openai"
+  provider: "anthropic" | "openai" = "anthropic"
 ): Promise<string> {
   const userMessage = `Analizá estas métricas de Marcela Koury (tienda de indumentaria) y dáme recomendaciones accionables:
 
@@ -105,7 +105,7 @@ export interface CustomerMessageInput {
 
 export async function draftCustomerMessage(
   input: CustomerMessageInput,
-  provider: "anthropic" | "openai" = "openai"
+  provider: "anthropic" | "openai" = "anthropic"
 ): Promise<string> {
   const userMessage = `Redactá un mensaje de WhatsApp para esta clienta de Marcela Koury, según su perfil:
 
@@ -144,7 +144,7 @@ Devolvé SOLO el texto del mensaje.`
 export async function getAIPageInsight(
   metrics: Record<string, any>,
   focusInstruction: string,
-  provider: "anthropic" | "openai" = "openai"
+  provider: "anthropic" | "openai" = "anthropic"
 ): Promise<string> {
   const userMessage = `Analizá estas métricas de Marcela Koury y dáme un insight BREVE y accionable:
 

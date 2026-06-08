@@ -30,7 +30,7 @@ import { formatCurrency } from "@/lib/format"
 
 export default function AIPage() {
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange())
-  const [provider, setProvider] = useState<"anthropic" | "openai">("openai")
+  const [provider, setProvider] = useState<"anthropic" | "openai">("anthropic")
   const [history, setHistory] = useState<
     { date: string; provider: string; content: string }[]
   >([])
