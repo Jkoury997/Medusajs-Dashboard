@@ -34,7 +34,7 @@ import {
 import { formatNumber } from "@/lib/format"
 import { CAMPAIGN_KIND_LABELS } from "@/types/email-intelligence"
 import type { VariantStatus, EmailVariant, EmailCampaign } from "@/types/email-intelligence"
-import { Sparkles } from "lucide-react"
+import { Sparkles, Eye } from "lucide-react"
 
 const pct = (n: number): string => `${(n * 100).toFixed(1)}%`
 
@@ -61,6 +61,7 @@ export function VariantsTab() {
 
   const campaigns = campaignsData?.campaigns ?? []
   const [analyzeV, setAnalyzeV] = useState<EmailVariant | null>(null)
+  const [viewV, setViewV] = useState<EmailVariant | null>(null)
   const analyzeCampaign = campaigns.find((c) => c.id === analyzeV?.campaign_id) ?? null
 
   return (
@@ -113,7 +114,7 @@ export function VariantsTab() {
                   <TableHead className="text-right">CTR</TableHead>
                   <TableHead className="text-right">Conv.</TableHead>
                   <TableHead className="text-right">Score</TableHead>
-                  <TableHead className="text-right">IA</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -147,15 +148,26 @@ export function VariantsTab() {
                         {v.score.toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5"
-                          onClick={() => setAnalyzeV(v)}
-                        >
-                          <Sparkles className="w-4 h-4" />
-                          Analizar
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => setViewV(v)}
+                          >
+                            <Eye className="w-4 h-4" />
+                            Ver
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => setAnalyzeV(v)}
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            Analizar
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -171,6 +183,33 @@ export function VariantsTab() {
         campaign={analyzeCampaign}
         onClose={() => setAnalyzeV(null)}
       />
+
+      <Dialog open={viewV !== null} onOpenChange={(o) => { if (!o) setViewV(null) }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{viewV?.label}</DialogTitle>
+          </DialogHeader>
+          {viewV && (
+            <div className="space-y-3 text-sm">
+              <PlantillaField label="Asunto" value={viewV.subject_template} />
+              <PlantillaField label="Título" value={viewV.headline_template} />
+              <PlantillaField label="Cuerpo / estilo" value={viewV.body_template} mono />
+              <PlantillaField label="Botón (CTA)" value={viewV.cta_label || "—"} />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function PlantillaField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{label}</p>
+      <p className={mono ? "mt-1 rounded-md bg-gray-50 p-2 text-xs text-gray-700 whitespace-pre-wrap" : "mt-0.5 text-gray-900"}>
+        {value || "—"}
+      </p>
     </div>
   )
 }
