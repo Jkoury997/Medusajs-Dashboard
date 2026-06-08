@@ -112,6 +112,7 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/picking/audit", label: "Auditoría", icon: ClipboardList },
       { href: "/dashboard/picking/users", label: "Usuarios", icon: Users },
       { href: "/dashboard/picking/gestion", label: "Gestión", icon: Boxes },
+      { href: "/dashboard/picking/seguridad", label: "Seguridad", icon: KeyRound },
     ],
   },
   {
