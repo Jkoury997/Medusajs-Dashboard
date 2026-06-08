@@ -110,14 +110,7 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/customers/seguimiento", label: "Seguimiento", icon: ClipboardList },
     ],
   },
-  {
-    label: "Marketing",
-    icon: TrendingUp,
-    children: [
-      { href: "/dashboard/marketing", label: "General", icon: BarChart3 },
-      { href: "/dashboard/marketing/emails", label: "Emails", icon: Megaphone },
-    ],
-  },
+  { href: "/dashboard/marketing", label: "Marketing", icon: TrendingUp },
   {
     label: "Picking",
     icon: PackageCheck,
