@@ -45,6 +45,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Brain,
+  Mail,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -110,7 +111,14 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/customers/seguimiento", label: "Seguimiento", icon: ClipboardList },
     ],
   },
-  { href: "/dashboard/marketing", label: "Marketing", icon: TrendingUp },
+  {
+    label: "Marketing",
+    icon: TrendingUp,
+    children: [
+      { href: "/dashboard/marketing", label: "General", icon: BarChart3 },
+      { href: "/dashboard/marketing/email-intelligence", label: "Email IA", icon: Mail },
+    ],
+  },
   {
     label: "Picking",
     icon: PackageCheck,

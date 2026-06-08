@@ -141,6 +141,81 @@ Devolvé SOLO el texto del mensaje.`
   return completion.choices[0].message.content?.trim() || ""
 }
 
+// ============================================================
+// ANÁLISIS DE PLANTILLAS DE EMAIL (email-intelligence)
+// ============================================================
+
+const EMAIL_ANALYST_PROMPT = `Sos analista de email marketing de "Marcela Koury" (indumentaria de mujer, Argentina).
+Evaluás el rendimiento de UNA plantilla (variante) de email automático y decidís si rinde o conviene cambiarla.
+Reglas:
+- Respondé en español argentino, concreto y accionable.
+- Arrancá SIEMPRE con una línea de veredicto con emoji: "✅ Rinde", "🟡 Aceptable / a vigilar", "🔴 Bajo rendimiento — cambiar", o "⚪ Sin datos suficientes" (si los envíos son muy pocos, ej < 30).
+- Compará CTR/aperturas/conversión con benchmarks de ecommerce (CTR email ~2%, open rate ~25-40%) y con el umbral mínimo de la campaña si se da.
+- Si recomendás cambios, sé específico sobre QUÉ tocar (asunto, gancho/headline, cuerpo, CTA) y por qué.
+- No inventes datos que no estén. Si hay pocos envíos, decí que falta volumen para concluir.
+- Formato: markdown breve (máx ~180 palabras). Línea de veredicto, luego "Por qué" y "Qué haría".`
+
+export interface EmailVariantAnalysisInput {
+  campaignKind: string
+  campaignName: string
+  minCtrThreshold?: number
+  variant: {
+    label: string
+    status: string
+    subject_template: string
+    headline_template: string
+    body_template: string
+    cta_label?: string | null
+    sends_count: number
+    opens_count: number
+    clicks_count: number
+    conversions_count: number
+    conversions_revenue_ars: number
+    ctr: number
+    open_rate: number
+    conv_rate: number
+    score: number
+  }
+}
+
+export async function analyzeEmailVariant(
+  input: EmailVariantAnalysisInput,
+  provider: "anthropic" | "openai" = "anthropic"
+): Promise<string> {
+  const userMessage = `Analizá esta plantilla de email automático y decidí si rinde o hay que cambiarla.
+
+Campaña: ${input.campaignName} (tipo: ${input.campaignKind})
+${input.minCtrThreshold != null ? `Umbral mínimo de CTR de la campaña: ${(input.minCtrThreshold * 100).toFixed(1)}%` : ""}
+
+Datos de la variante:
+${JSON.stringify(input.variant, null, 2)}
+
+Recordá: ctr/open_rate/conv_rate vienen como fracción (0.02 = 2%). Dáme el veredicto y qué harías.`
+
+  if (provider === "anthropic") {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-5-20250929",
+      max_tokens: 700,
+      system: EMAIL_ANALYST_PROMPT,
+      messages: [{ role: "user", content: userMessage }],
+    })
+    const textBlock = message.content.find((block) => block.type === "text")
+    return textBlock?.text?.trim() || "No se pudo generar el análisis."
+  }
+
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4-turbo",
+    max_tokens: 700,
+    messages: [
+      { role: "system", content: EMAIL_ANALYST_PROMPT },
+      { role: "user", content: userMessage },
+    ],
+  })
+  return completion.choices[0].message.content?.trim() || "No se pudo generar el análisis."
+}
+
 export async function getAIPageInsight(
   metrics: Record<string, any>,
   focusInstruction: string,
