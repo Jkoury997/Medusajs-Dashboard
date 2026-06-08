@@ -4,7 +4,7 @@ import { draftCustomerMessage, type CustomerMessageInput } from "@/lib/ai-client
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { customer, provider = "openai" } = body as {
+    const { customer, provider = "anthropic" } = body as {
       customer?: CustomerMessageInput
       provider?: "openai" | "anthropic"
     }
