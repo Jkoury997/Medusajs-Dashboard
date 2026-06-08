@@ -1,116 +1,24 @@
 "use client"
 
-import { useQuery, useMutation } from "@tanstack/react-query"
-import { sdk } from "@/lib/medusa-sdk"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import type {
+  CampaignsResponse,
+  EmailCampaign,
+  EmailCampaignPatch,
+  OverviewResponse,
+  VariantsResponse,
+  SendsResponse,
+  SalesChannel,
+} from "@/types/email-intelligence"
 import type { EmailVariantAnalysisInput } from "@/lib/ai-client"
 
-const ROOT = "/admin/ai-agents/email-intelligence"
-
-// Etiquetas legibles por tipo de campaña (kind)
-export const CAMPAIGN_KIND_LABELS: Record<string, string> = {
-  cart_recovery: "Carrito abandonado",
-  browse_abandon: "Navegó sin comprar",
-  winback: "Reactivación (winback)",
-  price_drop: "Bajó de precio",
-  post_purchase_upsell: "Post-compra (cross-sell)",
-  back_in_stock: "Volvió el stock",
-}
-
-export interface EmailOverview {
-  range: { days: number; from: string; to: string }
-  totals: {
-    sends: number
-    opens: number
-    clicks: number
-    conversions: number
-    revenue_ars: number
-    llm_cost_usd: number
-    evolution_cost_usd: number
-    ctr: number
-    conv_rate: number
-  }
-  per_campaign: EmailCampaignBreakdown[]
-}
-
-export interface EmailCampaignBreakdown {
-  campaign_id: string
-  kind: string
-  name: string
-  enabled: boolean
-  sends: number
-  opens: number
-  clicks: number
-  conversions: number
-  revenue_ars: number
-  ctr: number
-  conv_rate: number
-}
-
-export interface EmailCampaign {
-  id: string
-  kind: string
-  name: string
-  enabled: boolean
-  min_ctr_threshold: number
-  target_active_variants: number
-  evolution_model: string | null
-  variant_counts: { active: number; retired: number; drafted: number }
-}
-
-export interface EmailVariant {
-  id: string
-  campaign_id: string
-  label: string
-  status: "drafted" | "active" | "retired"
-  subject_template: string
-  headline_template: string
-  body_template: string
-  cta_label: string | null
-  sends_count: number
-  opens_count: number
-  clicks_count: number
-  conversions_count: number
-  conversions_revenue_ars: number
-  score: number
-  ctr: number
-  open_rate: number
-  conv_rate: number
-}
-
-export function useEmailOverview(days = 30) {
-  return useQuery({
-    queryKey: ["email-intel", "overview", days],
-    queryFn: () =>
-      sdk.client.fetch<EmailOverview>(`${ROOT}/overview`, { query: { days } }),
-  })
-}
-
-export function useEmailCampaigns() {
-  return useQuery({
-    queryKey: ["email-intel", "campaigns"],
-    queryFn: async () => {
-      const res = await sdk.client.fetch<{ campaigns: EmailCampaign[] }>(`${ROOT}/campaigns`)
-      return res.campaigns ?? []
-    },
-  })
-}
-
-export function useEmailVariants(campaignId: string | null) {
-  return useQuery({
-    queryKey: ["email-intel", "variants", campaignId],
-    queryFn: async () => {
-      const res = await sdk.client.fetch<{ variants: EmailVariant[] }>(`${ROOT}/variants`, {
-        query: campaignId ? { campaign_id: campaignId, limit: 200 } : { limit: 200 },
-      })
-      return res.variants ?? []
-    },
-    enabled: campaignId !== null,
-  })
-}
+// ============================================================
+// Análisis IA de una variante (¿rinde o conviene cambiarla?)
+// ============================================================
 
 export function useAnalyzeVariant() {
   return useMutation({
-    mutationFn: async (input: EmailVariantAnalysisInput) => {
+    mutationFn: async (input: EmailVariantAnalysisInput): Promise<string> => {
       const res = await fetch("/api/ai/email-analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,5 +31,171 @@ export function useAnalyzeVariant() {
       const data = await res.json()
       return (data.analysis as string) ?? ""
     },
+  })
+}
+
+const BACKEND_URL =
+  typeof window !== "undefined"
+    ? `${window.location.origin}/medusa`
+    : process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL!
+
+const SDK_JWT_KEY = "medusa_auth_token"
+
+function getToken(): string {
+  if (typeof window === "undefined") return ""
+  return window.localStorage.getItem(SDK_JWT_KEY) || ""
+}
+
+function authHeaders(): HeadersInit {
+  return {
+    Authorization: `Bearer ${getToken()}`,
+    "Content-Type": "application/json",
+  }
+}
+
+// No reintentar en 4xx (auth / endpoint inexistente).
+function shouldRetry(failureCount: number, error: unknown): boolean {
+  if (failureCount >= 2) return false
+  if (error instanceof Error && /4\d{2}|not found|bad request/i.test(error.message))
+    return false
+  return true
+}
+
+const EI_BASE = `${BACKEND_URL}/admin/ai-agents/email-intelligence`
+
+// ============================================================
+// Campañas (config)
+// ============================================================
+
+export function useEmailCampaigns() {
+  return useQuery({
+    queryKey: ["email-intelligence", "campaigns"],
+    queryFn: async (): Promise<CampaignsResponse> => {
+      const res = await fetch(`${EI_BASE}/campaigns`, { headers: authHeaders() })
+      if (!res.ok) throw new Error(`${res.status} - Error al obtener campañas`)
+      return res.json()
+    },
+    retry: shouldRetry,
+  })
+}
+
+export function useUpdateEmailCampaign() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string
+      patch: EmailCampaignPatch
+    }): Promise<{ ok: boolean; campaign: EmailCampaign }> => {
+      const res = await fetch(`${EI_BASE}/campaigns/${id}`, {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify(patch),
+      })
+      if (!res.ok) throw new Error(`${res.status} - Error al guardar la campaña`)
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["email-intelligence", "campaigns"] })
+      qc.invalidateQueries({ queryKey: ["email-intelligence", "overview"] })
+    },
+  })
+}
+
+// ============================================================
+// Overview / KPIs
+// ============================================================
+
+export function useEmailOverview(days: number = 30) {
+  return useQuery({
+    queryKey: ["email-intelligence", "overview", days],
+    queryFn: async (): Promise<OverviewResponse> => {
+      const res = await fetch(`${EI_BASE}/overview?days=${days}`, {
+        headers: authHeaders(),
+      })
+      if (!res.ok) throw new Error(`${res.status} - Error al obtener métricas`)
+      return res.json()
+    },
+    retry: shouldRetry,
+  })
+}
+
+// ============================================================
+// Variantes
+// ============================================================
+
+export function useEmailVariants(campaignId?: string, status?: string) {
+  return useQuery({
+    queryKey: ["email-intelligence", "variants", campaignId || "all", status || "all"],
+    queryFn: async (): Promise<VariantsResponse> => {
+      const params = new URLSearchParams({ limit: "200" })
+      if (campaignId) params.set("campaign_id", campaignId)
+      if (status) params.set("status", status)
+      const res = await fetch(`${EI_BASE}/variants?${params.toString()}`, {
+        headers: authHeaders(),
+      })
+      if (!res.ok) throw new Error(`${res.status} - Error al obtener variantes`)
+      return res.json()
+    },
+    retry: shouldRetry,
+  })
+}
+
+// ============================================================
+// Envíos (log)
+// ============================================================
+
+export function useEmailSends(opts: {
+  campaignId?: string
+  status?: string
+  limit?: number
+  offset?: number
+}) {
+  const { campaignId, status, limit = 100, offset = 0 } = opts
+  return useQuery({
+    queryKey: [
+      "email-intelligence",
+      "sends",
+      campaignId || "all",
+      status || "all",
+      limit,
+      offset,
+    ],
+    queryFn: async (): Promise<SendsResponse> => {
+      const params = new URLSearchParams({
+        limit: String(limit),
+        offset: String(offset),
+      })
+      if (campaignId) params.set("campaign_id", campaignId)
+      if (status) params.set("status", status)
+      const res = await fetch(`${EI_BASE}/sends?${params.toString()}`, {
+        headers: authHeaders(),
+      })
+      if (!res.ok) throw new Error(`${res.status} - Error al obtener envíos`)
+      return res.json()
+    },
+    retry: shouldRetry,
+  })
+}
+
+// ============================================================
+// Sales channels (para overrides por marca)
+// ============================================================
+
+export function useSalesChannels() {
+  return useQuery({
+    queryKey: ["sales-channels"],
+    queryFn: async (): Promise<SalesChannel[]> => {
+      const res = await fetch(`${BACKEND_URL}/admin/sales-channels?limit=100`, {
+        headers: authHeaders(),
+      })
+      if (!res.ok) throw new Error(`${res.status} - Error al obtener canales de venta`)
+      const data = await res.json()
+      return (data.sales_channels ?? []) as SalesChannel[]
+    },
+    staleTime: 30 * 60 * 1000,
+    retry: shouldRetry,
   })
 }

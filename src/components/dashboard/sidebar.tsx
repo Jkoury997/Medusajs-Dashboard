@@ -97,10 +97,7 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/products/facturacion", label: "Facturación", icon: DollarSign },
       { href: "/dashboard/products/unidades", label: "Unidades Compradas", icon: ShoppingCart },
       { href: "/dashboard/products/promedio", label: "Promedio por Compra", icon: BarChart3 },
-      { href: "/dashboard/products/ranking", label: "Ranking", icon: Trophy },
-      { href: "/dashboard/products/combos", label: "Combos", icon: Boxes },
       { href: "/dashboard/products/decisiones", label: "Decisiones Inventario", icon: ClipboardCheck },
-      { href: "/dashboard/products/ai-pending", label: "Descripciones IA", icon: Bot },
     ],
   },
   {
@@ -111,14 +108,7 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/customers/seguimiento", label: "Seguimiento", icon: ClipboardList },
     ],
   },
-  {
-    label: "Marketing",
-    icon: TrendingUp,
-    children: [
-      { href: "/dashboard/marketing", label: "General", icon: BarChart3 },
-      { href: "/dashboard/marketing/email-intelligence", label: "Email IA", icon: Mail },
-    ],
-  },
+  { href: "/dashboard/marketing", label: "Marketing", icon: TrendingUp },
   {
     label: "Picking",
     icon: PackageCheck,
@@ -171,10 +161,20 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/analytics/utm", label: "UTM", icon: Megaphone },
       { href: "/dashboard/analytics/dispositivos", label: "Dispositivos", icon: Layers },
       { href: "/dashboard/analytics/inspire", label: "Inspirate", icon: Palette },
-      { href: "/dashboard/analytics/ai-pricing", label: "Inteligencia IA", icon: Brain },
     ],
   },
-  { href: "/dashboard/ai", label: "IA Insights", icon: Bot },
+  {
+    label: "Herramientas IA",
+    icon: Brain,
+    children: [
+      { href: "/dashboard/ai", label: "IA Insights", icon: Bot },
+      { href: "/dashboard/email-intelligence", label: "Email Intelligence", icon: Mail },
+      { href: "/dashboard/analytics/ai-pricing", label: "Inteligencia de Precios", icon: DollarSign },
+      { href: "/dashboard/products/ranking", label: "Ranking", icon: Trophy },
+      { href: "/dashboard/products/combos", label: "Combos", icon: Boxes },
+      { href: "/dashboard/products/ai-pending", label: "Descripciones IA", icon: Bot },
+    ],
+  },
 ]
 
 // ============================================================
