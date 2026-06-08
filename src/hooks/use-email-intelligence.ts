@@ -10,6 +10,29 @@ import type {
   SendsResponse,
   SalesChannel,
 } from "@/types/email-intelligence"
+import type { EmailVariantAnalysisInput } from "@/lib/ai-client"
+
+// ============================================================
+// Análisis IA de una variante (¿rinde o conviene cambiarla?)
+// ============================================================
+
+export function useAnalyzeVariant() {
+  return useMutation({
+    mutationFn: async (input: EmailVariantAnalysisInput): Promise<string> => {
+      const res = await fetch("/api/ai/email-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error" }))
+        throw new Error(err.error || "No se pudo analizar la plantilla")
+      }
+      const data = await res.json()
+      return (data.analysis as string) ?? ""
+    },
+  })
+}
 
 const BACKEND_URL =
   typeof window !== "undefined"
