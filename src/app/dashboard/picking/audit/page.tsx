@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Header } from "@/components/dashboard/header"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -18,13 +18,16 @@ import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
-import { formatDate, formatNumber } from "@/lib/format"
+import { formatDate, formatDateTime, formatNumber } from "@/lib/format"
+import { ACTION_FILTER_GROUPS, getActionConfig } from "@/lib/picking-actions"
 import {
   useAuditLog,
   usePickingHistory,
@@ -41,24 +44,6 @@ function formatTime(seconds: number): string {
   return m > 0 ? `${m}m ${s}s` : `${s}s`
 }
 
-function getActionBadgeClass(action: string): string {
-  switch (action) {
-    case "pick":
-      return "bg-green-100 text-green-700"
-    case "unpick":
-      return "bg-yellow-100 text-yellow-700"
-    case "missing":
-      return "bg-red-100 text-red-700"
-    case "pack":
-      return "bg-blue-100 text-blue-700"
-    case "complete":
-      return "bg-purple-100 text-purple-700"
-    case "cancel":
-      return "bg-gray-100 text-gray-700"
-    default:
-      return "bg-gray-100 text-gray-700"
-  }
-}
 
 function formatDetails(details?: string, metadata?: Record<string, unknown>): string {
   if (details) return details.length > 80 ? details.slice(0, 80) + "..." : details
@@ -222,12 +207,16 @@ export default function AuditPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todas</SelectItem>
-                        <SelectItem value="pick">Pick</SelectItem>
-                        <SelectItem value="unpick">Unpick</SelectItem>
-                        <SelectItem value="missing">Missing</SelectItem>
-                        <SelectItem value="pack">Pack</SelectItem>
-                        <SelectItem value="complete">Complete</SelectItem>
-                        <SelectItem value="cancel">Cancel</SelectItem>
+                        {ACTION_FILTER_GROUPS.map((g) => (
+                          <SelectGroup key={g.group}>
+                            <SelectLabel>{g.group}</SelectLabel>
+                            {g.actions.map((a) => (
+                              <SelectItem key={a} value={a}>
+                                {getActionConfig(a).label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -287,17 +276,16 @@ export default function AuditPage() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      auditData?.entries?.map((entry) => (
+                      auditData?.entries?.map((entry) => {
+                        const cfg = getActionConfig(entry.action)
+                        return (
                         <TableRow key={entry._id}>
                           <TableCell className="whitespace-nowrap">
-                            {formatDate(entry.timestamp)}
+                            {formatDateTime(entry.timestamp)}
                           </TableCell>
                           <TableCell>
-                            <Badge
-                              variant="secondary"
-                              className={getActionBadgeClass(entry.action)}
-                            >
-                              {entry.action}
+                            <Badge variant="secondary" className={cfg.className}>
+                              {cfg.label}
                             </Badge>
                           </TableCell>
                           <TableCell>{entry.user_name}</TableCell>
@@ -308,7 +296,8 @@ export default function AuditPage() {
                             {formatDetails(entry.details, entry.metadata)}
                           </TableCell>
                         </TableRow>
-                      ))
+                        )
+                      })
                     )}
                   </TableBody>
                 </Table>
