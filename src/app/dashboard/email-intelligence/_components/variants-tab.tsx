@@ -30,6 +30,7 @@ import {
   useEmailCampaigns,
   useEmailVariants,
   useAnalyzeVariant,
+  useVariantLatestSend,
 } from "@/hooks/use-email-intelligence"
 import { formatNumber } from "@/lib/format"
 import { CAMPAIGN_KIND_LABELS } from "@/types/email-intelligence"
@@ -184,29 +185,72 @@ export function VariantsTab() {
         onClose={() => setAnalyzeV(null)}
       />
 
-      <Dialog open={viewV !== null} onOpenChange={(o) => { if (!o) setViewV(null) }}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{viewV?.label}</DialogTitle>
-          </DialogHeader>
-          {viewV && (
-            <div className="space-y-3 text-sm">
-              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                Esta plantilla es una <strong>receta de IA</strong>: el asunto y el texto final
-                los genera la inteligencia artificial para cada cliente a partir del estilo de
-                abajo. Por eso &quot;Asunto&quot; y &quot;Título&quot; pueden aparecer vacíos. Para ver
-                emails <strong>reales</strong> enviados con esta plantilla, usá la pestaña
-                &quot;Envíos&quot;.
-              </div>
-              <PlantillaField label="Asunto (fijo, si hay)" value={viewV.subject_template} />
-              <PlantillaField label="Título (fijo, si hay)" value={viewV.headline_template} />
-              <PlantillaField label="Estilo / instrucción para la IA" value={viewV.body_template} mono />
-              <PlantillaField label="Botón (CTA)" value={viewV.cta_label || "—"} />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ViewVariantDialog variant={viewV} onClose={() => setViewV(null)} />
     </div>
+  )
+}
+
+function ViewVariantDialog({
+  variant,
+  onClose,
+}: {
+  variant: EmailVariant | null
+  onClose: () => void
+}) {
+  const { data: sample, isLoading } = useVariantLatestSend(variant?.id ?? null)
+
+  return (
+    <Dialog open={variant !== null} onOpenChange={(o) => { if (!o) onClose() }}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{variant?.label}</DialogTitle>
+        </DialogHeader>
+        {variant && (
+          <div className="space-y-4 text-sm">
+            {/* Email real */}
+            <div>
+              <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                Último email real enviado
+              </p>
+              {isLoading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : sample ? (
+                <div className="rounded-md border border-gray-200 overflow-hidden">
+                  <div className="bg-gray-50 px-3 py-2 border-b border-gray-100">
+                    <p className="text-xs text-gray-400">Asunto</p>
+                    <p className="font-medium text-gray-900">{sample.composed_subject || "—"}</p>
+                  </div>
+                  <div className="px-3 py-2 space-y-1">
+                    {sample.composed_headline && (
+                      <p className="font-semibold text-gray-900">{sample.composed_headline}</p>
+                    )}
+                    <p className="text-gray-700 whitespace-pre-wrap">
+                      {sample.composed_body || "(sin cuerpo guardado)"}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  Todavía no se envió ningún email con esta plantilla.
+                </p>
+              )}
+            </div>
+
+            {/* Receta */}
+            <div className="border-t border-gray-100 pt-3 space-y-3">
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Abajo está la <strong>receta de IA</strong> (el estilo que sigue la inteligencia
+                para generar cada email). El asunto y el texto final se crean por cliente, por eso
+                pueden no tener un valor fijo.
+              </div>
+              <PlantillaField label="Asunto fijo (si hay)" value={variant.subject_template} />
+              <PlantillaField label="Estilo / instrucción para la IA" value={variant.body_template} mono />
+              <PlantillaField label="Botón (CTA)" value={variant.cta_label || "—"} />
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 

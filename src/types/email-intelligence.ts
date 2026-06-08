@@ -153,6 +153,8 @@ export interface EmailSend {
   llm_cost_usd: number
   skip_reason: string | null
   composed_subject: string | null
+  composed_headline: string | null
+  composed_body: string | null
   created_at: string
 }
 

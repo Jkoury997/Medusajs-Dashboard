@@ -9,6 +9,7 @@ import type {
   OverviewResponse,
   VariantsResponse,
   SendsResponse,
+  EmailSend,
   SalesChannel,
 } from "@/types/email-intelligence"
 import type { EmailVariantAnalysisInput } from "@/lib/ai-client"
@@ -128,6 +129,24 @@ export function useEmailSends(opts: {
       if (status) query.status = status
       return sdk.client.fetch<SendsResponse>(`${ROOT}/sends`, { query })
     },
+    retry: shouldRetry,
+  })
+}
+
+// ============================================================
+// Último envío REAL de una variante (para ver el email tal cual se mandó)
+// ============================================================
+
+export function useVariantLatestSend(variantId: string | null) {
+  return useQuery({
+    queryKey: ["email-intelligence", "variant-sample", variantId],
+    queryFn: async (): Promise<EmailSend | null> => {
+      const data = await sdk.client.fetch<SendsResponse>(`${ROOT}/sends`, {
+        query: { variant_id: variantId!, status: "sent", limit: 1 },
+      })
+      return data.sends?.[0] ?? null
+    },
+    enabled: !!variantId,
     retry: shouldRetry,
   })
 }
