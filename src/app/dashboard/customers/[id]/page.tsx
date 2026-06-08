@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { sdk } from "@/lib/medusa-sdk"
 import { useCustomerOrders } from "@/hooks/use-customers"
 import { CustomerFollowupCard } from "@/components/customers/customer-followup"
+import { AIMessageButton } from "@/components/customers/ai-message-button"
 import { Header } from "@/components/dashboard/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -184,6 +185,19 @@ export default function CustomerDetailPage({
               </Button>
             </a>
           )}
+
+          {/* Redactar mensaje con IA */}
+          <AIMessageButton
+            customer={{
+              firstName: customer?.first_name || "",
+              phone: customer?.phone,
+              daysSinceLastOrder,
+              orderCount: orders.length,
+              totalSpent,
+              topProducts: topProducts.map((p) => p.name),
+            }}
+            label="Redactar con IA"
+          />
 
           {/* Churn status badge */}
           <div className={cn(

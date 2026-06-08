@@ -26,6 +26,8 @@ import { useAllOrders, useOrderPhoneMap } from "@/hooks/use-orders"
 import { getCustomerMetrics } from "@/lib/aggregations"
 import { formatCurrency, formatNumber, formatDate, formatDateTime } from "@/lib/format"
 import { getWhatsAppUrl } from "@/lib/whatsapp"
+import { AIInsightWidget } from "@/components/dashboard/ai-insight-widget"
+import { AIMessageButton } from "@/components/customers/ai-message-button"
 import { cn } from "@/lib/utils"
 import {
   CalendarClock,
@@ -144,6 +146,33 @@ export default function SeguimientoPage() {
     return [...map[tab]].sort((a, b) => b.priority - a.priority)
   }, [buckets, tab])
 
+  // Métricas para el coach IA: resumen + top clientes a contactar.
+  function buildCoachMetrics(): Record<string, unknown> | null {
+    if (!rows.length) return null
+    const topPendientes = [...buckets.pendientes]
+      .sort((a, b) => b.priority - a.priority)
+      .slice(0, 15)
+      .map((r) => ({
+        nombre: r.name,
+        diasSinComprar: r.daysSinceLastOrder,
+        ordenes: r.orderCount,
+        totalGastado: Math.round(r.totalSpent),
+        ultimoContacto: r.followup.lastContact ?? "nunca",
+        proximoContacto: r.followup.nextContact ?? "sin programar",
+        contactoVencido: !!r.followup.nextContact && r.followup.nextContact < today,
+      }))
+    return {
+      resumen: {
+        vencidos: buckets.vencidos.length,
+        paraHoy: buckets.hoy.length,
+        enRiesgo: buckets.enRiesgo.length,
+        programados: buckets.programados.length,
+        totalClientes: rows.length,
+      },
+      clientesAContactar: topPendientes,
+    }
+  }
+
   async function handleContactedToday(r: Row) {
     const nextFollowup: CustomerFollowup = {
       ...r.followup,
@@ -171,6 +200,13 @@ export default function SeguimientoPage() {
           <KPICard title="En riesgo" value={buckets.enRiesgo.length} icon={AlertTriangle} color="orange" loading={isLoading} />
           <KPICard title="Programados" value={buckets.programados.length} icon={ClipboardList} color="blue" loading={isLoading} />
         </div>
+
+        {/* Coach de ventas IA */}
+        <AIInsightWidget
+          pageContext="customer-followup"
+          metricsBuilder={buildCoachMetrics}
+          isDataLoading={isLoading}
+        />
 
         {/* Tabs */}
         <div className="flex flex-wrap gap-2">
@@ -297,6 +333,17 @@ export default function SeguimientoPage() {
                                 </svg>
                               </a>
                             )}
+                            <AIMessageButton
+                              customer={{
+                                firstName: r.name.split(" ")[0],
+                                phone: r.phone,
+                                daysSinceLastOrder: r.daysSinceLastOrder,
+                                orderCount: r.orderCount,
+                                totalSpent: r.totalSpent,
+                                lastNote: r.followup.notes?.[0]?.text,
+                              }}
+                              label="IA"
+                            />
                             <Button
                               variant="outline"
                               size="sm"
