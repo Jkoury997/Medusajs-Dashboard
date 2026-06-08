@@ -191,9 +191,16 @@ export function VariantsTab() {
           </DialogHeader>
           {viewV && (
             <div className="space-y-3 text-sm">
-              <PlantillaField label="Asunto" value={viewV.subject_template} />
-              <PlantillaField label="Título" value={viewV.headline_template} />
-              <PlantillaField label="Cuerpo / estilo" value={viewV.body_template} mono />
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Esta plantilla es una <strong>receta de IA</strong>: el asunto y el texto final
+                los genera la inteligencia artificial para cada cliente a partir del estilo de
+                abajo. Por eso &quot;Asunto&quot; y &quot;Título&quot; pueden aparecer vacíos. Para ver
+                emails <strong>reales</strong> enviados con esta plantilla, usá la pestaña
+                &quot;Envíos&quot;.
+              </div>
+              <PlantillaField label="Asunto (fijo, si hay)" value={viewV.subject_template} />
+              <PlantillaField label="Título (fijo, si hay)" value={viewV.headline_template} />
+              <PlantillaField label="Estilo / instrucción para la IA" value={viewV.body_template} mono />
               <PlantillaField label="Botón (CTA)" value={viewV.cta_label || "—"} />
             </div>
           )}
