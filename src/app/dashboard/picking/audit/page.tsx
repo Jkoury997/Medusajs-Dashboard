@@ -353,11 +353,13 @@ export default function AuditPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todos</SelectItem>
-                        {pickingUsers?.map((user) => (
-                          <SelectItem key={user._id} value={user._id}>
-                            {user.name}
-                          </SelectItem>
-                        ))}
+                        {pickingUsers
+                          ?.filter((user) => user._id)
+                          .map((user) => (
+                            <SelectItem key={user._id} value={user._id}>
+                              {user.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
