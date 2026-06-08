@@ -78,6 +78,69 @@ IMPORTANTE: Basá todas las recomendaciones en los DATOS REALES proporcionados. 
   return completion.choices[0].message.content || "No se pudo generar el análisis."
 }
 
+// ============================================================
+// REDACCIÓN DE MENSAJES DE WHATSAPP (1 a 1 con la clienta)
+// ============================================================
+
+const MESSAGE_SYSTEM_PROMPT = `Sos redactor de mensajes de WhatsApp para "Marcela Koury", una tienda de indumentaria de mujer en Argentina.
+Escribís mensajes 1 a 1, cálidos, cercanos y en español argentino (tratá de "vos").
+Reglas:
+- Corto: 2 a 4 oraciones. Es un WhatsApp, no un email.
+- Personal y humano, NADA de spam ni tono robótico o de plantilla.
+- Como máximo 1-2 emojis, y solo si suman.
+- Invitá a volver a comprar / responder de forma natural, sin presionar.
+- No inventes datos (precios, códigos de descuento, productos) que no estén en la info dada.
+- Devolvé SOLO el texto del mensaje, sin comillas ni encabezados ni explicaciones.`
+
+export interface CustomerMessageInput {
+  firstName?: string
+  daysSinceLastOrder?: number | null
+  orderCount?: number
+  totalSpent?: number
+  topProducts?: string[]
+  lastNote?: string
+  /** Objetivo del mensaje: reactivar, agradecer, novedades, etc. */
+  goal?: string
+}
+
+export async function draftCustomerMessage(
+  input: CustomerMessageInput,
+  provider: "anthropic" | "openai" = "openai"
+): Promise<string> {
+  const userMessage = `Redactá un mensaje de WhatsApp para esta clienta de Marcela Koury, según su perfil:
+
+${JSON.stringify(input, null, 2)}
+
+Tené en cuenta:
+- Si hace muchos días que no compra, el objetivo es reactivarla con calidez.
+- Si compró hace poco o es recurrente, agradecé y ofrecé novedades/beneficio.
+- Si nunca compró, dale la bienvenida y ofrecé ayuda.
+Devolvé SOLO el texto del mensaje.`
+
+  if (provider === "anthropic") {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-5-20250929",
+      max_tokens: 400,
+      system: MESSAGE_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: userMessage }],
+    })
+    const textBlock = message.content.find((block) => block.type === "text")
+    return textBlock?.text?.trim() || ""
+  }
+
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4-turbo",
+    max_tokens: 400,
+    messages: [
+      { role: "system", content: MESSAGE_SYSTEM_PROMPT },
+      { role: "user", content: userMessage },
+    ],
+  })
+  return completion.choices[0].message.content?.trim() || ""
+}
+
 export async function getAIPageInsight(
   metrics: Record<string, any>,
   focusInstruction: string,
