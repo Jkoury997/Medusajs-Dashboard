@@ -193,6 +193,32 @@ export function useUpdateCustomerMetadata(customerId: string) {
   })
 }
 
+/**
+ * Igual que useUpdateCustomerMetadata pero recibe el customerId en cada
+ * llamada — útil para listas/colas donde no hay un id fijo por hook.
+ */
+export function useCustomerMetadataMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      customerId,
+      metadata,
+    }: {
+      customerId: string
+      metadata: Record<string, unknown>
+    }) => {
+      return sdk.client.fetch(`/admin/customers/${customerId}`, {
+        method: "POST",
+        body: { metadata },
+      })
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["customers", "all"] })
+      qc.invalidateQueries({ queryKey: ["customer", vars.customerId] })
+    },
+  })
+}
+
 export function useCustomerOrders(customerId: string) {
   return useQuery({
     queryKey: ["orders", "customer", customerId],
