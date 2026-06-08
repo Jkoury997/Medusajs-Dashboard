@@ -45,6 +45,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Brain,
+  Mail,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -167,6 +168,7 @@ const staticNavEntries: NavEntry[] = [
     ],
   },
   { href: "/dashboard/ai", label: "IA Insights", icon: Bot },
+  { href: "/dashboard/email-intelligence", label: "Email Intelligence", icon: Mail },
 ]
 
 // ============================================================
