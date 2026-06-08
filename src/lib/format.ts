@@ -32,6 +32,18 @@ export function formatDate(date: string | Date | null | undefined): string {
   }).format(d)
 }
 
+export function formatDateTime(date: string | Date | null | undefined): string {
+  const d = toValidDate(date)
+  if (!d) return "—"
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d)
+}
+
 export function formatDateShort(date: string | Date | null | undefined): string {
   const d = toValidDate(date)
   if (!d) return "—"

@@ -10,6 +10,8 @@ import {
   useFaltantesStats,
   useActivityStats,
 } from "@/hooks/use-picking"
+import { formatDateTime } from "@/lib/format"
+import { getActionConfig } from "@/lib/picking-actions"
 import {
   BarChart,
   Bar,
@@ -445,19 +447,16 @@ export default function PickingStatsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {activityStats.data.audit?.recentActions?.slice(0, 15).map((a) => (
+                        {activityStats.data.audit?.recentActions?.slice(0, 15).map((a) => {
+                          const cfg = getActionConfig(a.action)
+                          return (
                           <tr key={a._id} className="border-b last:border-0">
                             <td className="py-2 text-gray-500 whitespace-nowrap">
-                              {new Date(a.createdAt).toLocaleString("es-AR", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {formatDateTime(a.createdAt)}
                             </td>
                             <td className="py-2">
-                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700">
-                                {a.action}
+                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cfg.className}`}>
+                                {cfg.label}
                               </span>
                             </td>
                             <td className="py-2">{a.userName}</td>
@@ -468,7 +467,8 @@ export default function PickingStatsPage() {
                               {a.details ?? "—"}
                             </td>
                           </tr>
-                        ))}
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
