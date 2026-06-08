@@ -186,9 +186,9 @@ export function usePickingUsers(includeInactive = false) {
       if (!res.ok) throw new Error("Error al obtener usuarios")
       const data = await res.json()
       const raw = data.users ?? data
-      // API returns camelCase — transform to our snake_case types
+      // API returns camelCase con `id` (Mikro-ORM) — transform to our types
       return (raw as Record<string, unknown>[]).map((u) => ({
-        _id: (u._id as string) ?? "",
+        _id: (u.id as string) ?? (u._id as string) ?? "",
         name: (u.name as string) ?? "",
         pin: (u.pin as string) ?? "",
         role: (u.role as string) ?? "picker",

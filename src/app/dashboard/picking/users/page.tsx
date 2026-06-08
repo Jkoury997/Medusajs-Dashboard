@@ -391,11 +391,13 @@ export default function PickingUsersPage() {
                     <SelectValue placeholder="Seleccionar tienda" />
                   </SelectTrigger>
                   <SelectContent>
-                    {stores?.map((store) => (
-                      <SelectItem key={store._id} value={store._id}>
-                        {store.name}
-                      </SelectItem>
-                    ))}
+                    {stores
+                      ?.filter((store) => store._id)
+                      .map((store) => (
+                        <SelectItem key={store._id} value={store._id}>
+                          {store.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
