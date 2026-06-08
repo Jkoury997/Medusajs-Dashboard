@@ -15,7 +15,7 @@ export default function EmailIntelligencePage() {
         description="Agente de IA de campañas de email: configuración, métricas, variantes A/B y envíos."
       />
       <div className="p-6">
-        <Tabs defaultValue="campaigns">
+        <Tabs defaultValue="variants">
           <TabsList>
             <TabsTrigger value="campaigns">Configuración</TabsTrigger>
             <TabsTrigger value="overview">Resumen</TabsTrigger>
