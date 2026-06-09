@@ -214,6 +214,15 @@ export interface VariantsResponse {
   offset: number
 }
 
+export interface VariantPreviewResponse {
+  /** HTML renderizado del email, o null si la campaña no tiene diseño. */
+  html: string | null
+  subject: string | null
+  kind: string
+  /** "last_send" = copy de un email real; "template" = copy guardado; "none"/"error". */
+  source: "last_send" | "template" | "none" | "error"
+}
+
 // ---------- Envíos (sends log) ----------
 
 export interface EmailSend {

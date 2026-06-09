@@ -11,6 +11,7 @@ import type {
   AlertsResponse,
   EmailAlert,
   VariantsResponse,
+  VariantPreviewResponse,
   SendsResponse,
   EmailSend,
   SalesChannel,
@@ -190,6 +191,22 @@ export function useVariantLatestSend(variantId: string | null) {
       })
       return data.sends?.[0] ?? null
     },
+    enabled: !!variantId,
+    retry: shouldRetry,
+  })
+}
+
+// ============================================================
+// Preview HTML del email renderizado de una variante
+// ============================================================
+
+export function useVariantPreview(variantId: string | null) {
+  return useQuery({
+    queryKey: ["email-intelligence", "variant-preview", variantId],
+    queryFn: () =>
+      sdk.client.fetch<VariantPreviewResponse>(
+        `${ROOT}/variants/${variantId}/preview`,
+      ),
     enabled: !!variantId,
     retry: shouldRetry,
   })
