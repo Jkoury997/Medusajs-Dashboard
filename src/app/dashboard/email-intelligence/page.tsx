@@ -15,24 +15,24 @@ export default function EmailIntelligencePage() {
         description="Agente de IA de campañas de email: configuración, métricas, variantes A/B y envíos."
       />
       <div className="p-6">
-        <Tabs defaultValue="variants">
+        <Tabs defaultValue="overview">
           <TabsList>
-            <TabsTrigger value="campaigns">Configuración</TabsTrigger>
             <TabsTrigger value="overview">Resumen</TabsTrigger>
-            <TabsTrigger value="variants">Variantes</TabsTrigger>
             <TabsTrigger value="sends">Envíos</TabsTrigger>
+            <TabsTrigger value="variants">Variantes</TabsTrigger>
+            <TabsTrigger value="campaigns">Configuración</TabsTrigger>
           </TabsList>
-          <TabsContent value="campaigns" className="mt-6">
-            <CampaignsTab />
-          </TabsContent>
           <TabsContent value="overview" className="mt-6">
             <OverviewTab />
+          </TabsContent>
+          <TabsContent value="sends" className="mt-6">
+            <SendsTab />
           </TabsContent>
           <TabsContent value="variants" className="mt-6">
             <VariantsTab />
           </TabsContent>
-          <TabsContent value="sends" className="mt-6">
-            <SendsTab />
+          <TabsContent value="campaigns" className="mt-6">
+            <CampaignsTab />
           </TabsContent>
         </Tabs>
       </div>
