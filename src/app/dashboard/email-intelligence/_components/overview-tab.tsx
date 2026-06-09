@@ -23,8 +23,14 @@ import {
 import { useEmailOverview } from "@/hooks/use-email-intelligence"
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format"
 import { CAMPAIGN_KIND_LABELS } from "@/types/email-intelligence"
-import type { EmailCampaignKind, SegmentRow } from "@/types/email-intelligence"
+import type {
+  EmailCampaignKind,
+  SegmentRow,
+  Deliverability,
+} from "@/types/email-intelligence"
 import { Mail, MousePointerClick, ShoppingBag, DollarSign } from "lucide-react"
+import { TrendChart } from "./trend-chart"
+import { AlertsPanel } from "./alerts-panel"
 
 const pct = (n: number): string => `${(n * 100).toFixed(1)}%`
 
@@ -88,6 +94,8 @@ export function OverviewTab() {
         </div>
       ) : (
         <>
+          <AlertsPanel />
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Emails enviados"
@@ -120,6 +128,12 @@ export function OverviewTab() {
               {...deltaProps(data!.totals_deltas?.revenue_ars)}
             />
           </div>
+
+          {data!.deliverability && (
+            <DeliverabilityCard d={data!.deliverability} />
+          )}
+
+          <TrendChart days={days} />
 
           <Card>
             <CardHeader>
@@ -247,6 +261,58 @@ function SegmentTable({
             )}
           </TableBody>
         </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+/** Tarjeta de salud de entregabilidad (bounce / quejas / fallos). */
+function DeliverabilityCard({ d }: { d: Deliverability }) {
+  const cells: Array<{ label: string; value: string; sub: string; bad: boolean }> = [
+    { label: "Procesados", value: formatNumber(d.processed), sub: `${formatNumber(d.sent)} enviados`, bad: false },
+    {
+      label: "Bounce rate",
+      value: pct(d.bounce_rate),
+      sub: `${formatNumber(d.bounced)} bounces`,
+      bad: d.bounce_rate > 0.02,
+    },
+    {
+      label: "Quejas (spam)",
+      value: pct(d.complaint_rate),
+      sub: `${formatNumber(d.complained)} quejas`,
+      bad: d.complaint_rate > 0.001,
+    },
+    {
+      label: "Fallos",
+      value: pct(d.fail_rate),
+      sub: `${formatNumber(d.failed)} fallos`,
+      bad: d.fail_rate > 0.05,
+    },
+  ]
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Entregabilidad</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {cells.map((c) => (
+            <div key={c.label}>
+              <p className="text-sm text-gray-500">{c.label}</p>
+              <p className={`text-xl font-bold ${c.bad ? "text-red-600" : "text-gray-900"}`}>
+                {c.value}
+              </p>
+              <p className="text-xs text-gray-400">{c.sub}</p>
+            </div>
+          ))}
+        </div>
+        {(d.bounce_rate > 0.02 || d.complaint_rate > 0.001) && (
+          <p className="mt-3 text-xs text-red-600">
+            ⚠️ Bounce o quejas por encima del umbral recomendado — puede afectar la
+            reputación del dominio y la entregabilidad.
+          </p>
+        )}
       </CardContent>
     </Card>
   )

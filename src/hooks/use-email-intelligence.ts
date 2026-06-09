@@ -7,6 +7,9 @@ import type {
   EmailCampaign,
   EmailCampaignPatch,
   OverviewResponse,
+  TimeseriesResponse,
+  AlertsResponse,
+  EmailAlert,
   VariantsResponse,
   SendsResponse,
   EmailSend,
@@ -83,6 +86,47 @@ export function useEmailOverview(days: number = 30) {
     queryFn: () =>
       sdk.client.fetch<OverviewResponse>(`${ROOT}/overview`, { query: { days } }),
     retry: shouldRetry,
+  })
+}
+
+export function useEmailTimeseries(days: number = 30) {
+  return useQuery({
+    queryKey: ["email-intelligence", "timeseries", days],
+    queryFn: () =>
+      sdk.client.fetch<TimeseriesResponse>(`${ROOT}/overview/timeseries`, {
+        query: { days },
+      }),
+    retry: shouldRetry,
+  })
+}
+
+// ============================================================
+// Alertas operativas
+// ============================================================
+
+export function useEmailAlerts(resolved?: boolean) {
+  return useQuery({
+    queryKey: ["email-intelligence", "alerts", resolved ?? "all"],
+    queryFn: () => {
+      const query: Record<string, string | number> = { limit: 50 }
+      if (resolved !== undefined) query.resolved = String(resolved)
+      return sdk.client.fetch<AlertsResponse>(`${ROOT}/alerts`, { query })
+    },
+    retry: shouldRetry,
+  })
+}
+
+export function useResolveAlert() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, resolved }: { id: string; resolved: boolean }) =>
+      sdk.client.fetch<{ ok: boolean; alert: EmailAlert }>(`${ROOT}/alerts/${id}`, {
+        method: "PATCH",
+        body: { resolved },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["email-intelligence", "alerts"] })
+    },
   })
 }
 

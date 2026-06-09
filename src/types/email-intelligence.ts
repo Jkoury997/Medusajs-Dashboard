@@ -117,14 +117,67 @@ export interface SegmentRow {
   deltas?: Deltas
 }
 
+export interface Deliverability {
+  processed: number
+  sent: number
+  queued: number
+  failed: number
+  bounced: number
+  complained: number
+  bounce_rate: number
+  complaint_rate: number
+  fail_rate: number
+}
+
 export interface OverviewResponse {
   range: { days: number; from: string; to: string }
   range_prev?: { from: string; to: string }
   totals: OverviewTotals
   totals_deltas?: Deltas
+  deliverability?: Deliverability
   per_campaign: CampaignBreakdown[]
   by_sales_channel: SegmentRow[]
   by_customer_group: SegmentRow[]
+}
+
+// ---------- Serie temporal ----------
+
+export interface TimeseriesPoint {
+  date: string
+  sends: number
+  conversions: number
+  revenue_ars: number
+}
+
+export interface TimeseriesResponse {
+  range: { days: number; from: string; to: string }
+  granularity: string
+  points: TimeseriesPoint[]
+}
+
+// ---------- Alertas ----------
+
+export type AlertSeverity = "info" | "warn" | "error" | "critical"
+
+export interface EmailAlert {
+  id: string
+  kind: string
+  severity: AlertSeverity
+  message: string
+  payload: unknown
+  sales_channel_id: string | null
+  notified_at: string | null
+  resolved_at: string | null
+  resolved_by: string | null
+  created_at: string
+}
+
+export interface AlertsResponse {
+  alerts: EmailAlert[]
+  count: number
+  open_count: number
+  limit: number
+  offset: number
 }
 
 // ---------- Variantes ----------

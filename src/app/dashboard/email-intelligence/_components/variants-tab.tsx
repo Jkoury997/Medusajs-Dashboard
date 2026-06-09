@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -64,6 +64,17 @@ export function VariantsTab() {
   const [analyzeV, setAnalyzeV] = useState<EmailVariant | null>(null)
   const [viewV, setViewV] = useState<EmailVariant | null>(null)
   const analyzeCampaign = campaigns.find((c) => c.id === analyzeV?.campaign_id) ?? null
+
+  // Ganadora por campaña: la variante activa con mayor score (con envíos > 0).
+  const winnerIds = useMemo(() => {
+    const best = new Map<string, EmailVariant>()
+    for (const v of data?.variants ?? []) {
+      if (v.status !== "active" || v.sends_count <= 0) continue
+      const cur = best.get(v.campaign_id)
+      if (!cur || v.score > cur.score) best.set(v.campaign_id, v)
+    }
+    return new Set(Array.from(best.values()).map((v) => v.id))
+  }, [data])
 
   return (
     <div className="space-y-4">
@@ -129,7 +140,14 @@ export function VariantsTab() {
                   data!.variants.map((v) => (
                     <TableRow key={v.id}>
                       <TableCell>
-                        <div className="font-medium text-sm">{v.label}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{v.label}</span>
+                          {winnerIds.has(v.id) && (
+                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                              ★ ganadora
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-400 truncate max-w-xs">
                           {v.subject_template}
                         </div>
