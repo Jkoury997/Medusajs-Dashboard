@@ -77,6 +77,31 @@ export function useUpdateEmailCampaign() {
   })
 }
 
+/** Dispara on-demand el flow de evolution (IA) para una campaña. */
+export interface EvolveResult {
+  ok: boolean
+  result: {
+    scanned_campaigns: number
+    total_retired: number
+    total_generated: number
+    total_cost_usd: number
+  }
+}
+
+export function useEvolveCampaign() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (campaignId: string) =>
+      sdk.client.fetch<EvolveResult>(`${ROOT}/campaigns/${campaignId}/evolve`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["email-intelligence", "campaigns"] })
+      qc.invalidateQueries({ queryKey: ["email-intelligence", "variants"] })
+    },
+  })
+}
+
 // ============================================================
 // Overview / KPIs
 // ============================================================

@@ -31,6 +31,7 @@ import type {
 import { Mail, MousePointerClick, ShoppingBag, DollarSign } from "lucide-react"
 import { TrendChart } from "./trend-chart"
 import { AlertsPanel } from "./alerts-panel"
+import { AIInsightWidget } from "@/components/dashboard/ai-insight-widget"
 
 const pct = (n: number): string => `${(n * 100).toFixed(1)}%`
 
@@ -95,6 +96,24 @@ export function OverviewTab() {
       ) : (
         <>
           <AlertsPanel />
+
+          <AIInsightWidget
+            pageContext="email-intelligence"
+            isDataLoading={isLoading}
+            metricsBuilder={() =>
+              data
+                ? {
+                    periodo_dias: data.range.days,
+                    totales: data.totals,
+                    cambio_vs_periodo_anterior: data.totals_deltas,
+                    entregabilidad: data.deliverability,
+                    por_campania: data.per_campaign,
+                    por_canal: data.by_sales_channel,
+                    por_grupo_cliente: data.by_customer_group,
+                  }
+                : null
+            }
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard

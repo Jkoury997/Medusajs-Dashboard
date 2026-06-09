@@ -7,6 +7,7 @@ export type AIPageContext =
   | "marketing"
   | "analytics"
   | "unified"
+  | "email-intelligence"
 
 export const PAGE_PROMPTS: Record<
   AIPageContext,
@@ -71,6 +72,18 @@ Sugerí mejoras en UX basadas en los datos de eventos del storefront.
 Formato: máximo 300 palabras.`,
     label: "Comportamiento y funnel",
     icon: "📡",
+  },
+  "email-intelligence": {
+    focusInstruction: `Sos el analista del AGENTE DE EMAIL con IA de Marcela Koury / MakeYou. Tenés las métricas reales del email marketing automatizado.
+Analizá y dame un diagnóstico ACCIONABLE:
+1. 📊 Estado general: envíos, open rate, CTR, conversiones, revenue atribuido vs el período anterior (usá los deltas: qué mejoró y qué empeoró).
+2. ✉️ Entregabilidad: si bounce rate >2% o quejas (spam) >0.1%, ALERTÁ fuerte — afecta la reputación del dominio. Sugerí qué hacer (limpiar lista, pausar campaña, revisar contenido).
+3. 🏆 Por campaña: cuál convierte mejor y cuál habría que pausar o revisar (CTR/conv bajos).
+4. 🎯 Por SEGMENTO: mirá by_sales_channel (marca) y by_customer_group. Si un canal o grupo convierte mucho mejor o peor, decilo con números y recomendá una acción concreta (ej: "mayoristas en MakeYou convierten 3× → subí el cap o mandales más", "minoristas en MK con CTR bajo → revisar copy").
+5. 🚀 Las 3 acciones más urgentes con impacto en revenue.
+Formato: máximo 350 palabras, headers ## y bullets, números reales.`,
+    label: "Analista del agente de email",
+    icon: "✉️",
   },
   unified: {
     focusInstruction: `Sos el analista de datos de Marcela Koury. Tenés TODOS los datos cruzados del negocio.
