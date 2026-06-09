@@ -31,6 +31,7 @@ import {
   useEmailVariants,
   useAnalyzeVariant,
   useVariantLatestSend,
+  useVariantPreview,
 } from "@/hooks/use-email-intelligence"
 import { formatNumber } from "@/lib/format"
 import { CAMPAIGN_KIND_LABELS } from "@/types/email-intelligence"
@@ -216,15 +217,47 @@ function ViewVariantDialog({
   onClose: () => void
 }) {
   const { data: sample, isLoading } = useVariantLatestSend(variant?.id ?? null)
+  const { data: preview, isLoading: previewLoading } = useVariantPreview(
+    variant?.id ?? null,
+  )
 
   return (
     <Dialog open={variant !== null} onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{variant?.label}</DialogTitle>
         </DialogHeader>
         {variant && (
           <div className="space-y-4 text-sm">
+            {/* Preview renderizado del email */}
+            <div>
+              <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                Vista previa del email
+              </p>
+              {previewLoading ? (
+                <Skeleton className="h-[420px] w-full" />
+              ) : preview?.html ? (
+                <div className="overflow-hidden rounded-md border border-gray-200">
+                  <iframe
+                    title="Vista previa del email"
+                    srcDoc={preview.html}
+                    className="h-[480px] w-full bg-white"
+                    sandbox=""
+                  />
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  No se pudo renderizar esta plantilla.
+                </p>
+              )}
+              {preview?.source === "template" && (
+                <p className="mt-1 text-xs text-gray-400">
+                  Mostrando el copy guardado (todavía no se envió un email real con
+                  esta variante).
+                </p>
+              )}
+            </div>
+
             {/* Email real */}
             <div>
               <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
