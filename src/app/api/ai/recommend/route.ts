@@ -18,11 +18,21 @@ export async function POST(request: NextRequest) {
       : await getAIRecommendations(metrics, provider)
 
     return NextResponse.json({ recommendations })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("AI API error:", error)
-    return NextResponse.json(
-      { error: error.message || "Failed to generate recommendations" },
-      { status: 500 }
-    )
+    // Surface a STRING message siempre (evita "[object Object]" en el cliente).
+    const msg =
+      error instanceof Error
+        ? error.message
+        : typeof error === "string"
+          ? error
+          : (() => {
+              try {
+                return JSON.stringify(error)
+              } catch {
+                return "Failed to generate recommendations"
+              }
+            })()
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
