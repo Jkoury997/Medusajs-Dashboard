@@ -47,6 +47,7 @@ import {
   Brain,
   Mail,
   Search,
+  Truck,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -170,6 +171,7 @@ const staticNavEntries: NavEntry[] = [
     children: [
       { href: "/dashboard/ai", label: "IA Insights", icon: Bot },
       { href: "/dashboard/email-intelligence", label: "Email Intelligence", icon: Mail },
+      { href: "/dashboard/envios-gratis", label: "Envío Gratis", icon: Truck },
       { href: "/dashboard/seo", label: "SEO", icon: Search },
       { href: "/dashboard/analytics/ai-pricing", label: "Inteligencia de Precios", icon: DollarSign },
       { href: "/dashboard/products/ranking", label: "Ranking", icon: Trophy },
