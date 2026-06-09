@@ -33,6 +33,7 @@ import {
   useSetFreeShipping,
   useToggleFreeShippingGuardrail,
   useDeactivateFreeShipping,
+  type CheckoutDropoff,
 } from "@/hooks/use-free-shipping"
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { AIInsightWidget } from "@/components/dashboard/ai-insight-widget"
@@ -106,6 +107,8 @@ export default function FreeShippingPage() {
               />
             </div>
 
+            <FunnelCard funnel={dropoff.funnel} />
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Escenarios de umbral</CardTitle>
@@ -139,16 +142,6 @@ export default function FreeShippingPage() {
                 </Table>
                 <p className="mt-3 text-xs text-gray-500">
                   {dropoff.free_shipping_recommendation.rationale}
-                </p>
-                <p className="mt-2 text-xs text-gray-500">
-                  ℹ️ Embudo por paso: checkout {formatNumber(dropoff.funnel.checkout_started)} →
-                  contacto {formatNumber(dropoff.funnel.steps.contact)} → envío{" "}
-                  {formatNumber(dropoff.funnel.steps.delivery)} → pago{" "}
-                  {formatNumber(dropoff.funnel.steps.payment)} → orden{" "}
-                  {formatNumber(dropoff.funnel.order_placed)}. Ojo: muchos clientes logueados o que
-                  ya tienen dirección/pago guardado <strong>saltean contacto/envío</strong> y van
-                  directo a pago/orden, así que esos pasos intermedios pueden verse bajos sin ser un
-                  bloqueo real. Lo confiable es checkout→orden.
                 </p>
               </CardContent>
             </Card>
@@ -418,6 +411,64 @@ function SetFreeShippingCard({
             </div>
           </div>
         )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function FunnelCard({ funnel }: { funnel: CheckoutDropoff["funnel"] }) {
+  const steps: Array<{ key: string; label: string; count: number }> = [
+    { key: "checkout", label: "Checkout iniciado", count: funnel.checkout_started },
+    { key: "contact", label: "Contacto", count: funnel.steps.contact },
+    { key: "delivery", label: "Envío", count: funnel.steps.delivery },
+    { key: "payment", label: "Pago", count: funnel.steps.payment },
+    { key: "order_placed", label: "Orden completada", count: funnel.order_placed },
+  ]
+  const max = funnel.checkout_started || 1
+  const leakTo = funnel.biggest_leak?.to ?? null
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Embudo de checkout</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {steps.map((s, i) => {
+          const prev = i > 0 ? steps[i - 1].count : null
+          const drop = prev && prev > 0 ? Math.round((1 - s.count / prev) * 100) : null
+          const isLeak = leakTo !== null && s.key === leakTo
+          const widthPct = Math.max(3, Math.round((s.count / max) * 100))
+          return (
+            <div key={s.key}>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">{s.label}</span>
+                <span className="flex items-center gap-2">
+                  <span className="font-medium">{formatNumber(s.count)}</span>
+                  {drop != null && drop > 0 && (
+                    <span
+                      className={`text-xs ${
+                        isLeak ? "font-semibold text-red-600" : "text-gray-400"
+                      }`}
+                    >
+                      ▼ {drop}%{isLeak ? " ← mayor fuga" : ""}
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="mt-1 h-3 w-full overflow-hidden rounded bg-gray-100">
+                <div
+                  className={`h-full rounded ${isLeak ? "bg-red-400" : "bg-mk-pink"}`}
+                  style={{ width: `${widthPct}%` }}
+                />
+              </div>
+            </div>
+          )
+        })}
+        <p className="pt-1 text-xs text-gray-500">
+          Conversión checkout→orden: <strong>{funnel.completion_pct}%</strong>. Los pasos
+          intermedios pueden verse altos porque clientes con dirección/pago guardado los saltean —
+          lo accionable es la mayor fuga (en rojo).
+        </p>
       </CardContent>
     </Card>
   )
