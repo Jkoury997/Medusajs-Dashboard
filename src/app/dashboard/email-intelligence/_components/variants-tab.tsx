@@ -38,7 +38,11 @@ import { CAMPAIGN_KIND_LABELS } from "@/types/email-intelligence"
 import type { VariantStatus, EmailVariant, EmailCampaign } from "@/types/email-intelligence"
 import { Sparkles, Eye } from "lucide-react"
 
-const pct = (n: number): string => `${(n * 100).toFixed(1)}%`
+// Las tasas de variante salen de contadores denormalizados que pueden driftar
+// (>100% si opens/clicks/conv superan a sends). Clampeamos a [0,100%] como red
+// de seguridad; el fix real es el script reconcile-variant-counters del backend.
+const pct = (n: number): string =>
+  `${(Math.min(Math.max(n, 0), 1) * 100).toFixed(1)}%`
 
 const STATUS_VARIANT: Record<VariantStatus, "default" | "secondary" | "outline"> = {
   active: "default",
