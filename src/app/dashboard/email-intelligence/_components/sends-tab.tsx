@@ -3,7 +3,9 @@
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Download } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -35,6 +37,23 @@ const STATUS_VARIANT: Record<SendStatus, "default" | "secondary" | "destructive"
   complained: "secondary",
 }
 
+function csvEscape(v: unknown): string {
+  const s = v == null ? "" : String(v)
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+function downloadCsv(filename: string, rows: string[][]): void {
+  const content = rows.map((r) => r.map(csvEscape).join(",")).join("\n")
+  // BOM para que Excel respete UTF-8
+  const blob = new Blob(["﻿" + content], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export function SendsTab() {
   const [campaignId, setCampaignId] = useState<string>("all")
   const [status, setStatus] = useState<string>("all")
@@ -47,10 +66,41 @@ export function SendsTab() {
 
   const campaigns = campaignsData?.campaigns ?? []
   const kindById = new Map(campaigns.map((c) => [c.id, c.kind]))
+  const sends = data?.sends ?? []
+
+  const exportCsv = () => {
+    const header = [
+      "Fecha",
+      "Email",
+      "Campaña",
+      "Estado",
+      "Abrió",
+      "Click",
+      "Convertido",
+      "Revenue ARS",
+      "Asunto",
+    ]
+    const rows = sends.map((s) => {
+      const kind = kindById.get(s.campaign_id) as EmailCampaignKind | undefined
+      return [
+        s.created_at,
+        s.email,
+        kind ? CAMPAIGN_KIND_LABELS[kind] : "",
+        s.status,
+        s.opened_at ? "sí" : "no",
+        s.clicked_at ? "sí" : "no",
+        s.converted_at ? "sí" : "no",
+        String(s.conversion_revenue_ars ?? 0),
+        s.composed_subject ?? "",
+      ]
+    })
+    const stamp = new Date().toISOString().slice(0, 10)
+    downloadCsv(`envios-email-${stamp}.csv`, [header, ...rows])
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Select value={campaignId} onValueChange={setCampaignId}>
           <SelectTrigger className="w-56">
             <SelectValue placeholder="Campaña" />
@@ -77,6 +127,16 @@ export function SendsTab() {
             <SelectItem value="complained">Spam</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto gap-1.5"
+          onClick={exportCsv}
+          disabled={sends.length === 0}
+        >
+          <Download className="h-4 w-4" />
+          Exportar CSV
+        </Button>
       </div>
 
       {error ? (
