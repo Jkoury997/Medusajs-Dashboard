@@ -197,14 +197,16 @@ export default function FreeShippingPage() {
                       envio_a_domicilio_ars: dropoff.shipping.representative_home_delivery_ars,
                       recomendacion_retail: dropoff.free_shipping_recommendation,
                       por_grupo_ticket: dropoff.by_cohort ?? [],
-                      costo_envio_por_grupo: (costs?.buckets ?? []).map((b) => ({
-                        marca: b.sales_channel_name,
-                        grupo: b.customer_group,
-                        metodo: b.shipping_method,
-                        ordenes: b.orders,
-                        envio_mediano_ars: b.median_shipping_ars,
-                        pct_gratis: b.free_pct,
-                      })),
+                      costo_envio_por_grupo: (costs?.buckets ?? [])
+                        .slice(0, 15)
+                        .map((b) => ({
+                          marca: b.sales_channel_name,
+                          grupo: b.customer_group,
+                          metodo: b.shipping_method,
+                          ordenes: b.orders,
+                          envio_mediano_ars: b.median_shipping_ars,
+                          pct_gratis: b.free_pct,
+                        })),
                     }
                   : null
               }

@@ -9,7 +9,7 @@ export function useAIRecommendations() {
       provider,
       focusInstruction,
     }: {
-      metrics: Record<string, any>
+      metrics: Record<string, unknown>
       provider: "anthropic" | "openai"
       focusInstruction?: string
     }) => {
@@ -20,8 +20,15 @@ export function useAIRecommendations() {
       })
 
       if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || "Failed to get recommendations")
+        const body = await res.json().catch(() => null)
+        const raw = body?.error ?? body
+        const msg =
+          typeof raw === "string"
+            ? raw
+            : raw
+              ? JSON.stringify(raw)
+              : `Error ${res.status} al generar el análisis`
+        throw new Error(msg)
       }
 
       const data = await res.json()
