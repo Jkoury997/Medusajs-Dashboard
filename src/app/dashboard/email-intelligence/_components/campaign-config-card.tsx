@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { useUpdateEmailCampaign } from "@/hooks/use-email-intelligence"
+import { useUpdateEmailCampaign, useEvolveCampaign } from "@/hooks/use-email-intelligence"
 import {
   CAMPAIGN_KIND_LABELS,
   CAMPAIGN_KIND_DESCRIPTIONS,
@@ -18,7 +18,7 @@ import type {
   EmailCampaignPatch,
   SalesChannel,
 } from "@/types/email-intelligence"
-import { Save, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
+import { Save, Loader2, CheckCircle2, AlertCircle, Sparkles } from "lucide-react"
 
 interface FormState {
   enabled: boolean
@@ -68,6 +68,7 @@ export function CampaignConfigCard({
   channels: SalesChannel[]
 }) {
   const update = useUpdateEmailCampaign()
+  const evolve = useEvolveCampaign()
   const initial = useMemo(
     () => buildInitialState(campaign, channels),
     [campaign, channels],
@@ -296,7 +297,35 @@ export function CampaignConfigCard({
 
         {/* Acciones */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <div className="text-xs">
+          <div className="flex items-center gap-3 text-xs">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() =>
+                evolve.mutate(campaign.id, {
+                  onSuccess: () => setFeedback(null),
+                })
+              }
+              disabled={evolve.isPending}
+              title="La IA scorea las variantes, retira las de bajo CTR y genera nuevas si faltan."
+            >
+              {evolve.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              Generar variante (IA)
+            </Button>
+            {evolve.isSuccess && (
+              <span className="text-green-600">
+                +{evolve.data.result.total_generated} generadas ·{" "}
+                {evolve.data.result.total_retired} retiradas
+              </span>
+            )}
+            {evolve.isError && (
+              <span className="text-red-600">No se pudo generar.</span>
+            )}
             {feedback === "ok" && (
               <span className="flex items-center gap-1 text-green-600">
                 <CheckCircle2 className="h-4 w-4" /> Guardado
