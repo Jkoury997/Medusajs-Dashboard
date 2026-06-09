@@ -166,6 +166,7 @@ export const ROUTE_PERMISSIONS: { prefix: string; permission: Permission }[] = [
   // IA
   { prefix: "/dashboard/ai", permission: PERMISSIONS.AI_VIEW },
   { prefix: "/dashboard/email-intelligence", permission: PERMISSIONS.AI_VIEW },
+  { prefix: "/dashboard/envios-gratis", permission: PERMISSIONS.AI_VIEW },
 
   // Gestión de roles
   { prefix: "/dashboard/roles", permission: PERMISSIONS.ROLES_MANAGE },

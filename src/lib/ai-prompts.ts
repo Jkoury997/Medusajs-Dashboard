@@ -7,6 +7,7 @@ export type AIPageContext =
   | "marketing"
   | "analytics"
   | "unified"
+  | "free-shipping"
 
 export const PAGE_PROMPTS: Record<
   AIPageContext,
@@ -71,6 +72,18 @@ Sugerí mejoras en UX basadas en los datos de eventos del storefront.
 Formato: máximo 300 palabras.`,
     label: "Comportamiento y funnel",
     icon: "📡",
+  },
+  "free-shipping": {
+    focusInstruction: `Sos analista de pricing/logística de Marcela Koury / MakeYou. Te paso datos reales del checkout: embudo de caída, distribución del ticket, costo real de envío por canal × customer_group, recomendación de umbral retail, y by_cohort (ticket + umbral por grupo).
+Tu tarea: recomendar el **umbral de envío gratis ÓPTIMO por customer_group Y por canal** (retail/invitado, consumidor final, revendedora, mayorista), porque cada grupo maneja tickets muy distintos.
+Reglas:
+1. 🎯 Para CADA grupo con datos suficientes: un umbral concreto en ARS + el porqué (su ticket mediano y su costo de envío real). Retail ~1.2× su mediana; revendedora/mayorista tienen tickets mucho más altos y a veces ya viajan gratis (retiro) → puede no convenir promo o un umbral mucho más alto.
+2. 💸 Breakeven: cuánto se absorbe de envío vs el ticket de ese grupo. Si el envío es chico vs el ticket, el envío gratis paga; si es grande (mayorista), no.
+3. ⚠️ CAVEAT del embudo: NO asumas que la baja en los pasos contacto/envío es un bloqueo. Muchos clientes están logueados o ya tienen dirección/pago guardado y SALTEAN esos pasos yendo directo a pago/orden (o salen y vuelven directo al pago). Lo confiable es checkout→orden y la recomendación de umbral, no el conteo por paso intermedio.
+4. 🚀 Cerrá con 2-3 acciones concretas (qué umbral activar por grupo/canal primero).
+Formato: máximo 350 palabras, headers ## y bullets, montos en ARS reales.`,
+    label: "Recomendación de envío gratis por grupo",
+    icon: "🚚",
   },
   unified: {
     focusInstruction: `Sos el analista de datos de Marcela Koury. Tenés TODOS los datos cruzados del negocio.
