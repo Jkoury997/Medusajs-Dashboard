@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useSalesChannels } from "@/hooks/use-email-intelligence"
+import { useCustomerGroups } from "@/hooks/use-customers"
 import {
   useCheckoutDropoff,
   useShippingCostStats,
@@ -280,11 +281,16 @@ function SetFreeShippingCard({
   // recomendación). Así evitamos efectos que sincronicen estado desde props.
   const [channelOverride, setChannelOverride] = useState<string>("")
   const [thresholdOverride, setThresholdOverride] = useState<string>("")
+  // "retail" (default) = invitado + consumidor final (excluye wholesale). Sino, un grupo puntual.
+  const [groupId, setGroupId] = useState<string>("retail")
 
   const effectiveChannelId = channelOverride || defaultChannelId
   const thresholdValue =
     thresholdOverride !== "" ? thresholdOverride : recommended ? String(recommended) : ""
   const thresholdNum = Number(thresholdValue) || 0
+
+  const { data: groupsData } = useCustomerGroups()
+  const groups = (groupsData?.customer_groups ?? []) as Array<{ id: string; name: string }>
 
   const { data: status } = useFreeShippingStatus(effectiveChannelId || undefined)
   const setMut = useSetFreeShipping()
@@ -293,10 +299,16 @@ function SetFreeShippingCard({
 
   const guardrail = status?.guardrail
   const promotions = status?.promotions ?? []
+  const groupName = (id: string | null) =>
+    id ? (groups.find((g) => g.id === id)?.name ?? id.slice(0, 10)) : "Retail (invitado + final)"
 
   const handleActivate = () => {
     if (!effectiveChannelId || thresholdNum <= 0) return
-    setMut.mutate({ threshold_ars: thresholdNum, sales_channel_id: effectiveChannelId })
+    setMut.mutate({
+      threshold_ars: thresholdNum,
+      sales_channel_id: effectiveChannelId,
+      customer_group_id: groupId === "retail" ? null : groupId,
+    })
   }
 
   return (
@@ -325,7 +337,7 @@ function SetFreeShippingCard({
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <Label className="text-xs">Marca / canal</Label>
             <Select value={effectiveChannelId} onValueChange={setChannelOverride}>
@@ -336,6 +348,22 @@ function SetFreeShippingCard({
                 {channels.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Grupo de cliente</Label>
+            <Select value={groupId} onValueChange={setGroupId}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Grupo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="retail">Retail (invitado + final)</SelectItem>
+                {groups.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -363,8 +391,17 @@ function SetFreeShippingCard({
         </div>
 
         <p className="text-xs text-gray-400">
-          Aplica a <strong>invitados + consumidor final</strong> (excluye mayorista/revendedora). Si
-          el switch de arriba está apagado, solo devuelve una vista previa.
+          {groupId === "retail" ? (
+            <>
+              Aplica a <strong>invitados + consumidor final</strong> (excluye
+              mayorista/revendedora).
+            </>
+          ) : (
+            <>
+              Aplica <strong>solo al grupo {groupName(groupId)}</strong>.
+            </>
+          )}{" "}
+          Si el switch de arriba está apagado, solo devuelve una vista previa.
         </p>
 
         {/* Resultado */}
@@ -399,6 +436,9 @@ function SetFreeShippingCard({
                   <span>
                     Envío gratis ≥{" "}
                     {p.threshold_ars != null ? formatCurrency(p.threshold_ars) : "—"}
+                    <span className="ml-2 text-xs text-gray-400">
+                      · {groupName(p.customer_group_id)}
+                    </span>
                   </span>
                   <Button
                     variant="outline"
