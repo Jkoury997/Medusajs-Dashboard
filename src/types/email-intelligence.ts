@@ -185,6 +185,9 @@ export interface AlertsResponse {
 export interface EmailVariant {
   id: string
   campaign_id: string
+  sales_channel_id: string | null
+  sales_channel_name: string | null
+  template_key: "A" | "B"
   label: string
   status: VariantStatus
   subject_template: string

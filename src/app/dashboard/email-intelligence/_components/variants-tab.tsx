@@ -121,6 +121,8 @@ export function VariantsTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Variante / Asunto</TableHead>
+                  <TableHead>Marca</TableHead>
+                  <TableHead className="text-center">Layout</TableHead>
                   <TableHead className="text-center">Estado</TableHead>
                   <TableHead className="text-right">Envíos</TableHead>
                   <TableHead className="text-right">Apertura</TableHead>
@@ -133,7 +135,7 @@ export function VariantsTab() {
               <TableBody>
                 {(data?.variants ?? []).length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-sm text-gray-400 py-8">
+                    <TableCell colSpan={10} className="text-center text-sm text-gray-400 py-8">
                       No hay variantes para este filtro.
                     </TableCell>
                   </TableRow>
@@ -152,6 +154,12 @@ export function VariantsTab() {
                         <div className="text-xs text-gray-400 truncate max-w-xs">
                           {v.subject_template}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-600">
+                        {v.sales_channel_name ?? (v.sales_channel_id ? "—" : "Global")}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline">{v.template_key}</Badge>
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant={STATUS_VARIANT[v.status]}>
