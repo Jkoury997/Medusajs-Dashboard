@@ -307,6 +307,34 @@ export interface ReceiveFaltanteData {
 }
 
 // ============================================================
+// API KEYS (Seguridad)
+// ============================================================
+
+export interface PickingApiKey {
+  id: string
+  name: string
+  /** Enmascarada (mk_xxx...últimos4), excepto en la respuesta de creación. */
+  key: string
+  active: boolean
+  lastUsedAt?: string
+  createdByName: string
+  createdAt: string
+}
+
+export interface CreateApiKeyResponse {
+  success: boolean
+  apiKey: {
+    id: string
+    name: string
+    /** Key completa — se muestra UNA sola vez al crearla. */
+    key: string
+    active: boolean
+    createdAt: string
+  }
+  message?: string
+}
+
+// ============================================================
 // STORES
 // ============================================================
 

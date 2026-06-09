@@ -3,6 +3,7 @@ export type AIPageContext =
   | "orders"
   | "products"
   | "customers"
+  | "customer-followup"
   | "marketing"
   | "analytics"
   | "unified"
@@ -41,6 +42,19 @@ Sugerí acciones de WhatsApp específicas para cada segmento en riesgo.
 Formato: máximo 300 palabras.`,
     label: "Análisis de clientes",
     icon: "👥",
+  },
+  "customer-followup": {
+    focusInstruction: `Actuá como un COACH DE VENTAS del equipo de Marcela Koury.
+Tenés la COLA DE SEGUIMIENTO de clientes (a quién contactar) con sus datos reales.
+Tu objetivo: más recompra, más ventas y más productividad del equipo, sin quemar contactos.
+Generá un PLAN DE ACCIÓN PARA HOY, motivador y concreto:
+1. 🎯 A quién contactar primero: nombrá 3-5 clientas CONCRETAS de los datos, con el porqué (días sin comprar, valor gastado, contacto vencido).
+2. 💬 Para cada una, en una línea: qué decirle / qué ofrecerle (reactivación, novedad, beneficio según su perfil).
+3. 🚀 1-2 tips de productividad y ventas para hoy (cómo priorizar, mejor horario, cómo no ser invasivo).
+4. ⚠️ En riesgo: clientas valiosas que se están por perder y hay que recuperar ya.
+Tono de coach: directo, alentador y accionable. Máximo 280 palabras. Usá nombres y números REALES de los datos.`,
+    label: "Coach de seguimiento",
+    icon: "🧠",
   },
   marketing: {
     focusInstruction: `Enfocá el análisis en MARKETING Y CANALES.

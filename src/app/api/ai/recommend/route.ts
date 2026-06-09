@@ -4,7 +4,7 @@ import { getAIRecommendations, getAIPageInsight } from "@/lib/ai-client"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { metrics, provider = "openai", focusInstruction } = body
+    const { metrics, provider = "anthropic", focusInstruction } = body
 
     if (!metrics) {
       return NextResponse.json(

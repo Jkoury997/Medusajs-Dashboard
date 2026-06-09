@@ -120,7 +120,16 @@ export function CustomerTable({
 }: CustomerTableProps) {
   const [page, setPage] = useState(0)
 
-  // Reset page when data changes
+  // Al cambiar el orden o el filtro (cambia la cantidad), volver a la página 1
+  // para mostrar el verdadero inicio de la lista ordenada. Ajuste de estado en
+  // render (patrón recomendado por React, sin useEffect).
+  const resetKey = `${sortBy}|${sortDir}|${customers.length}`
+  const [prevResetKey, setPrevResetKey] = useState(resetKey)
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey)
+    setPage(0)
+  }
+
   const totalPages = Math.max(1, Math.ceil(customers.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages - 1)
   const paginatedCustomers = useMemo(

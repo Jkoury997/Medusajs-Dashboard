@@ -36,7 +36,7 @@ export function AIInsightWidget({
     aiMutation.mutate(
       {
         metrics,
-        provider: "openai",
+        provider: "anthropic",
         focusInstruction: config.focusInstruction,
       },
       {

@@ -1,7 +1,28 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { sdk } from "@/lib/medusa-sdk"
+
+// ============================================================
+// SEGUIMIENTO (follow-up) — persistido en customer.metadata.seguimiento
+// ============================================================
+
+export interface FollowupNote {
+  /** ISO timestamp del registro */
+  at: string
+  /** Texto de la nota / resultado del contacto */
+  text: string
+  /** Canal usado (whatsapp, llamada, email, otro) */
+  channel?: string
+}
+
+export interface CustomerFollowup {
+  /** Próximo contacto programado (YYYY-MM-DD) */
+  nextContact?: string
+  /** Último contacto registrado (ISO) */
+  lastContact?: string
+  notes?: FollowupNote[]
+}
 
 interface CustomerFilters {
   has_account?: boolean
@@ -149,6 +170,52 @@ export function resolveCustomerGroups(customers: any[], groupNameMap: Map<string
         customer_group_resolved: DEFAULT_GROUP,
       },
     }
+  })
+}
+
+/**
+ * Actualiza el metadata del cliente. Recibe el metadata COMPLETO ya mergeado
+ * (para no pisar dni/customer_group ni otros campos existentes).
+ */
+export function useUpdateCustomerMetadata(customerId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (metadata: Record<string, unknown>) => {
+      const response = await sdk.client.fetch(`/admin/customers/${customerId}`, {
+        method: "POST",
+        body: { metadata },
+      })
+      return response
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer", customerId] })
+    },
+  })
+}
+
+/**
+ * Igual que useUpdateCustomerMetadata pero recibe el customerId en cada
+ * llamada — útil para listas/colas donde no hay un id fijo por hook.
+ */
+export function useCustomerMetadataMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      customerId,
+      metadata,
+    }: {
+      customerId: string
+      metadata: Record<string, unknown>
+    }) => {
+      return sdk.client.fetch(`/admin/customers/${customerId}`, {
+        method: "POST",
+        body: { metadata },
+      })
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["customers", "all"] })
+      qc.invalidateQueries({ queryKey: ["customer", vars.customerId] })
+    },
   })
 }
 

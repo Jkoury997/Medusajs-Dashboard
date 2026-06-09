@@ -46,6 +46,7 @@ import {
   PanelLeftOpen,
   Brain,
   Mail,
+  Search,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -97,13 +98,17 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/products/facturacion", label: "Facturación", icon: DollarSign },
       { href: "/dashboard/products/unidades", label: "Unidades Compradas", icon: ShoppingCart },
       { href: "/dashboard/products/promedio", label: "Promedio por Compra", icon: BarChart3 },
-      { href: "/dashboard/products/ranking", label: "Ranking", icon: Trophy },
-      { href: "/dashboard/products/combos", label: "Combos", icon: Boxes },
       { href: "/dashboard/products/decisiones", label: "Decisiones Inventario", icon: ClipboardCheck },
-      { href: "/dashboard/products/ai-pending", label: "Descripciones IA", icon: Bot },
     ],
   },
-  { href: "/dashboard/customers", label: "Clientes", icon: Users },
+  {
+    label: "Clientes",
+    icon: Users,
+    children: [
+      { href: "/dashboard/customers", label: "Lista", icon: Users },
+      { href: "/dashboard/customers/seguimiento", label: "Seguimiento", icon: ClipboardList },
+    ],
+  },
   { href: "/dashboard/marketing", label: "Marketing", icon: TrendingUp },
   {
     label: "Picking",
@@ -113,6 +118,7 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/picking/audit", label: "Auditoría", icon: ClipboardList },
       { href: "/dashboard/picking/users", label: "Usuarios", icon: Users },
       { href: "/dashboard/picking/gestion", label: "Gestión", icon: Boxes },
+      { href: "/dashboard/picking/seguridad", label: "Seguridad", icon: KeyRound },
     ],
   },
   {
@@ -156,11 +162,21 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/analytics/utm", label: "UTM", icon: Megaphone },
       { href: "/dashboard/analytics/dispositivos", label: "Dispositivos", icon: Layers },
       { href: "/dashboard/analytics/inspire", label: "Inspirate", icon: Palette },
-      { href: "/dashboard/analytics/ai-pricing", label: "Inteligencia IA", icon: Brain },
     ],
   },
-  { href: "/dashboard/ai", label: "IA Insights", icon: Bot },
-  { href: "/dashboard/email-intelligence", label: "Email Intelligence", icon: Mail },
+  {
+    label: "Herramientas IA",
+    icon: Brain,
+    children: [
+      { href: "/dashboard/ai", label: "IA Insights", icon: Bot },
+      { href: "/dashboard/email-intelligence", label: "Email Intelligence", icon: Mail },
+      { href: "/dashboard/seo", label: "SEO", icon: Search },
+      { href: "/dashboard/analytics/ai-pricing", label: "Inteligencia de Precios", icon: DollarSign },
+      { href: "/dashboard/products/ranking", label: "Ranking", icon: Trophy },
+      { href: "/dashboard/products/combos", label: "Combos", icon: Boxes },
+      { href: "/dashboard/products/ai-pending", label: "Descripciones IA", icon: Bot },
+    ],
+  },
 ]
 
 // ============================================================

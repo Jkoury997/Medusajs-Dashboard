@@ -25,6 +25,8 @@ import type {
   ReceiveFaltanteData,
   PickingStore,
   CreateStoreData,
+  PickingApiKey,
+  CreateApiKeyResponse,
 } from "@/types/picking"
 
 const BASE = "/api/picking-proxy"
@@ -184,9 +186,9 @@ export function usePickingUsers(includeInactive = false) {
       if (!res.ok) throw new Error("Error al obtener usuarios")
       const data = await res.json()
       const raw = data.users ?? data
-      // API returns camelCase — transform to our snake_case types
+      // API returns camelCase con `id` (Mikro-ORM) — transform to our types
       return (raw as Record<string, unknown>[]).map((u) => ({
-        _id: (u._id as string) ?? "",
+        _id: (u.id as string) ?? (u._id as string) ?? "",
         name: (u.name as string) ?? "",
         pin: (u.pin as string) ?? "",
         role: (u.role as string) ?? "picker",
@@ -478,6 +480,64 @@ export function useReceiveFaltante() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["picking", "gestion"] })
       qc.invalidateQueries({ queryKey: ["picking", "gestion", "faltantes-receive"] })
+    },
+  })
+}
+
+// ============================================================
+// API KEYS (Seguridad)
+// ============================================================
+
+export function useApiKeys() {
+  return useQuery({
+    queryKey: ["picking", "api-keys"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/admin/api-keys`)
+      if (!res.ok) throw new Error("Error al obtener API keys")
+      const data = await res.json()
+      return (data.apiKeys ?? []) as PickingApiKey[]
+    },
+  })
+}
+
+export function useCreateApiKey() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const res = await fetch(`${BASE}/admin/api-keys`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al crear API key")
+      }
+      return res.json() as Promise<CreateApiKeyResponse>
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["picking", "api-keys"] })
+    },
+  })
+}
+
+export function useRevokeApiKey() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${BASE}/admin/api-keys`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+        throw new Error(err.error || "Error al revocar API key")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["picking", "api-keys"] })
     },
   })
 }
