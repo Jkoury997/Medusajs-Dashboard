@@ -31,6 +31,13 @@ export interface CheckoutDropoff {
     rationale: string
     scenarios: Array<{ threshold_ars: number; pct_already_qualify: number; nudge_zone_count: number }>
   }
+  by_cohort?: Array<{
+    cohort: string
+    count: number
+    ticket_p50: number
+    ticket_p75: number
+    recommended_threshold_ars: number
+  }>
   note: string
 }
 

@@ -35,6 +35,7 @@ import {
   useDeactivateFreeShipping,
 } from "@/hooks/use-free-shipping"
 import { formatCurrency, formatNumber } from "@/lib/format"
+import { AIInsightWidget } from "@/components/dashboard/ai-insight-widget"
 import { Truck } from "lucide-react"
 
 const pct = (n: number) => `${n.toFixed(0)}%`
@@ -139,16 +140,82 @@ export default function FreeShippingPage() {
                 <p className="mt-3 text-xs text-gray-500">
                   {dropoff.free_shipping_recommendation.rationale}
                 </p>
-                {dropoff.funnel.biggest_leak && (
-                  <p className="mt-2 text-xs text-amber-700">
-                    Mayor fuga del embudo: {dropoff.funnel.biggest_leak.from} →{" "}
-                    {dropoff.funnel.biggest_leak.to} (se cae {dropoff.funnel.biggest_leak.drop_pct}%).
-                    ⚠️ Los pasos intermedios (contacto/envío/pago) recién se instrumentaron — revalidar
-                    en unas semanas.
-                  </p>
-                )}
+                <p className="mt-2 text-xs text-gray-500">
+                  ℹ️ Embudo por paso: checkout {formatNumber(dropoff.funnel.checkout_started)} →
+                  contacto {formatNumber(dropoff.funnel.steps.contact)} → envío{" "}
+                  {formatNumber(dropoff.funnel.steps.delivery)} → pago{" "}
+                  {formatNumber(dropoff.funnel.steps.payment)} → orden{" "}
+                  {formatNumber(dropoff.funnel.order_placed)}. Ojo: muchos clientes logueados o que
+                  ya tienen dirección/pago guardado <strong>saltean contacto/envío</strong> y van
+                  directo a pago/orden, así que esos pasos intermedios pueden verse bajos sin ser un
+                  bloqueo real. Lo confiable es checkout→orden.
+                </p>
               </CardContent>
             </Card>
+
+            {/* Recomendación por grupo de cliente */}
+            {dropoff.by_cohort && dropoff.by_cohort.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Por grupo de cliente</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Grupo</TableHead>
+                        <TableHead className="text-right">Carritos</TableHead>
+                        <TableHead className="text-right">Ticket mediano</TableHead>
+                        <TableHead className="text-right">Umbral sugerido</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dropoff.by_cohort.map((c) => (
+                        <TableRow key={c.cohort}>
+                          <TableCell className="font-medium">{c.cohort}</TableCell>
+                          <TableCell className="text-right">{formatNumber(c.count)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(c.ticket_p50)}</TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(c.recommended_threshold_ars)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <p className="mt-2 text-xs text-gray-400">
+                    El grupo sale del evento de checkout (puede caer a “invitado” si el storefront no
+                    lo setea). Cruzá con la tabla de costos de envío de abajo, que usa el grupo real
+                    de la orden.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Conclusión IA: recomendación por grupo + canal */}
+            <AIInsightWidget
+              pageContext="free-shipping"
+              isDataLoading={dropoffLoading || costsLoading}
+              metricsBuilder={() =>
+                dropoff
+                  ? {
+                      canal: channel === "all" ? "todas las marcas" : channel,
+                      embudo: dropoff.funnel,
+                      ticket_retail: dropoff.ticket,
+                      envio_a_domicilio_ars: dropoff.shipping.representative_home_delivery_ars,
+                      recomendacion_retail: dropoff.free_shipping_recommendation,
+                      por_grupo_ticket: dropoff.by_cohort ?? [],
+                      costo_envio_por_grupo: (costs?.buckets ?? []).map((b) => ({
+                        marca: b.sales_channel_name,
+                        grupo: b.customer_group,
+                        metodo: b.shipping_method,
+                        ordenes: b.orders,
+                        envio_mediano_ars: b.median_shipping_ars,
+                        pct_gratis: b.free_pct,
+                      })),
+                    }
+                  : null
+              }
+            />
           </>
         ) : null}
 
