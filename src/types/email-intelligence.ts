@@ -75,6 +75,12 @@ export interface OverviewTotals {
   conv_rate: number
 }
 
+/**
+ * % de cambio relativo vs el período anterior, por métrica. null = el período
+ * anterior no tenía base (prev <= 0), por lo que no hay comparación.
+ */
+export type Deltas = Partial<Record<keyof OverviewTotals, number | null>>
+
 export interface CampaignBreakdown {
   campaign_id: string
   kind: EmailCampaignKind
@@ -89,6 +95,7 @@ export interface CampaignBreakdown {
   evolution_cost_usd: number
   ctr: number
   conv_rate: number
+  deltas?: Deltas
 }
 
 /**
@@ -107,11 +114,14 @@ export interface SegmentRow {
   llm_cost_usd: number
   ctr: number
   conv_rate: number
+  deltas?: Deltas
 }
 
 export interface OverviewResponse {
   range: { days: number; from: string; to: string }
+  range_prev?: { from: string; to: string }
   totals: OverviewTotals
+  totals_deltas?: Deltas
   per_campaign: CampaignBreakdown[]
   by_sales_channel: SegmentRow[]
   by_customer_group: SegmentRow[]
