@@ -23,7 +23,7 @@ import {
 import { useEmailOverview } from "@/hooks/use-email-intelligence"
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { CAMPAIGN_KIND_LABELS } from "@/types/email-intelligence"
-import type { EmailCampaignKind } from "@/types/email-intelligence"
+import type { EmailCampaignKind, SegmentRow } from "@/types/email-intelligence"
 import { Mail, MousePointerClick, ShoppingBag, DollarSign } from "lucide-react"
 
 const pct = (n: number): string => `${(n * 100).toFixed(1)}%`
@@ -145,8 +145,82 @@ export function OverviewTab() {
               </Table>
             </CardContent>
           </Card>
+
+          <SegmentTable
+            title="Por marca / canal"
+            segmentLabel="Canal"
+            rows={data!.by_sales_channel}
+          />
+
+          <SegmentTable
+            title="Por grupo de cliente"
+            segmentLabel="Grupo"
+            rows={data!.by_customer_group}
+          />
         </>
       )}
     </div>
+  )
+}
+
+function SegmentTable({
+  title,
+  segmentLabel,
+  rows,
+}: {
+  title: string
+  segmentLabel: string
+  rows: SegmentRow[]
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{segmentLabel}</TableHead>
+              <TableHead className="text-right">Enviados</TableHead>
+              <TableHead className="text-right">CTR</TableHead>
+              <TableHead className="text-right">Conv.</TableHead>
+              <TableHead className="text-right">Tasa conv.</TableHead>
+              <TableHead className="text-right">Ingresos</TableHead>
+              <TableHead className="text-right">Costo IA</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(rows ?? []).length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-gray-500 py-6">
+                  Sin datos en el período.
+                </TableCell>
+              </TableRow>
+            ) : (
+              (rows ?? []).map((r) => (
+                <TableRow key={r.key}>
+                  <TableCell className="font-medium">{r.name}</TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(r.sends)}
+                  </TableCell>
+                  <TableCell className="text-right">{pct(r.ctr)}</TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(r.conversions)}
+                  </TableCell>
+                  <TableCell className="text-right">{pct(r.conv_rate)}</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(r.revenue_ars)}
+                  </TableCell>
+                  <TableCell className="text-right text-gray-500">
+                    USD {r.llm_cost_usd.toFixed(2)}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   )
 }

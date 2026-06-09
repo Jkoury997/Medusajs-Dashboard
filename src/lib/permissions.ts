@@ -165,6 +165,7 @@ export const ROUTE_PERMISSIONS: { prefix: string; permission: Permission }[] = [
 
   // IA
   { prefix: "/dashboard/ai", permission: PERMISSIONS.AI_VIEW },
+  { prefix: "/dashboard/email-intelligence", permission: PERMISSIONS.AI_VIEW },
 
   // Gestión de roles
   { prefix: "/dashboard/roles", permission: PERMISSIONS.ROLES_MANAGE },
@@ -206,5 +207,6 @@ export const SIDEBAR_PERMISSIONS: Record<string, Permission> = {
   "Administración": PERMISSIONS.ADMIN_VIEW,
   "Analítica": PERMISSIONS.ANALYTICS_VIEW,
   "IA Insights": PERMISSIONS.AI_VIEW,
+  "Email Intelligence": PERMISSIONS.AI_VIEW,
   "Gestión de Roles": PERMISSIONS.ROLES_MANAGE,
 }

@@ -91,10 +91,30 @@ export interface CampaignBreakdown {
   conv_rate: number
 }
 
+/**
+ * Bucket de funnel por segmento (marca/canal o grupo de cliente).
+ * `key` es el id del segmento (o un sentinel como "__guest__"/"__none__");
+ * `name` es el label legible.
+ */
+export interface SegmentRow {
+  key: string
+  name: string
+  sends: number
+  opens: number
+  clicks: number
+  conversions: number
+  revenue_ars: number
+  llm_cost_usd: number
+  ctr: number
+  conv_rate: number
+}
+
 export interface OverviewResponse {
   range: { days: number; from: string; to: string }
   totals: OverviewTotals
   per_campaign: CampaignBreakdown[]
+  by_sales_channel: SegmentRow[]
+  by_customer_group: SegmentRow[]
 }
 
 // ---------- Variantes ----------
