@@ -21,12 +21,31 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useEmailOverview } from "@/hooks/use-email-intelligence"
-import { formatCurrency, formatNumber } from "@/lib/format"
+import { formatCurrency, formatNumber, formatPercent } from "@/lib/format"
 import { CAMPAIGN_KIND_LABELS } from "@/types/email-intelligence"
 import type { EmailCampaignKind, SegmentRow } from "@/types/email-intelligence"
 import { Mail, MousePointerClick, ShoppingBag, DollarSign } from "lucide-react"
 
 const pct = (n: number): string => `${(n * 100).toFixed(1)}%`
+
+/** Props de comparación para MetricCard (vacío si no hay base previa). */
+const deltaProps = (
+  d: number | null | undefined
+): { change?: string; changeType?: "positive" | "negative" | "neutral" } =>
+  d == null || !Number.isFinite(d)
+    ? {}
+    : { change: formatPercent(d), changeType: d >= 0 ? "positive" : "negative" }
+
+/** Δ% inline para celdas de tabla (vs período anterior). */
+function DeltaInline({ value }: { value?: number | null }) {
+  if (value == null || !Number.isFinite(value)) return null
+  const up = value >= 0
+  return (
+    <div className={`text-xs ${up ? "text-green-600" : "text-red-600"}`}>
+      {up ? "▲" : "▼"} {Math.abs(value).toFixed(1)}%
+    </div>
+  )
+}
 
 export function OverviewTab() {
   const [days, setDays] = useState(30)
@@ -75,18 +94,21 @@ export function OverviewTab() {
               value={formatNumber(data!.totals.sends)}
               icon={<Mail className="h-5 w-5 text-blue-500" />}
               subtitle={`Aperturas: ${formatNumber(data!.totals.opens)}`}
+              {...deltaProps(data!.totals_deltas?.sends)}
             />
             <MetricCard
               title="Clicks (CTR)"
               value={pct(data!.totals.ctr)}
               icon={<MousePointerClick className="h-5 w-5 text-violet-500" />}
               subtitle={`${formatNumber(data!.totals.clicks)} clicks`}
+              {...deltaProps(data!.totals_deltas?.ctr)}
             />
             <MetricCard
               title="Conversiones"
               value={formatNumber(data!.totals.conversions)}
               icon={<ShoppingBag className="h-5 w-5 text-green-500" />}
               subtitle={`Tasa: ${pct(data!.totals.conv_rate)}`}
+              {...deltaProps(data!.totals_deltas?.conversions)}
             />
             <MetricCard
               title="Ingresos atribuidos"
@@ -95,6 +117,7 @@ export function OverviewTab() {
               subtitle={`Costo IA: USD ${(
                 data!.totals.llm_cost_usd + data!.totals.evolution_cost_usd
               ).toFixed(2)}`}
+              {...deltaProps(data!.totals_deltas?.revenue_ars)}
             />
           </div>
 
@@ -123,6 +146,7 @@ export function OverviewTab() {
                       </TableCell>
                       <TableCell className="text-right">
                         {formatNumber(c.sends)}
+                        <DeltaInline value={c.deltas?.sends} />
                       </TableCell>
                       <TableCell className="text-right">{pct(c.ctr)}</TableCell>
                       <TableCell className="text-right">
@@ -130,6 +154,7 @@ export function OverviewTab() {
                       </TableCell>
                       <TableCell className="text-right">
                         {formatCurrency(c.revenue_ars)}
+                        <DeltaInline value={c.deltas?.revenue_ars} />
                       </TableCell>
                       <TableCell className="text-right text-gray-500">
                         USD {(c.llm_cost_usd + c.evolution_cost_usd).toFixed(2)}
@@ -203,6 +228,7 @@ function SegmentTable({
                   <TableCell className="font-medium">{r.name}</TableCell>
                   <TableCell className="text-right">
                     {formatNumber(r.sends)}
+                    <DeltaInline value={r.deltas?.sends} />
                   </TableCell>
                   <TableCell className="text-right">{pct(r.ctr)}</TableCell>
                   <TableCell className="text-right">
@@ -211,6 +237,7 @@ function SegmentTable({
                   <TableCell className="text-right">{pct(r.conv_rate)}</TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(r.revenue_ars)}
+                    <DeltaInline value={r.deltas?.revenue_ars} />
                   </TableCell>
                   <TableCell className="text-right text-gray-500">
                     USD {r.llm_cost_usd.toFixed(2)}
