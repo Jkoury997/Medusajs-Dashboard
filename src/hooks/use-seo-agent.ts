@@ -198,6 +198,9 @@ export function useRegenerateSeo() {
           product_id: productId,
           mode: mode ?? "regenerate",
           force: force ?? false,
+          // Fire-and-forget en el backend: responde 202 al toque y genera en
+          // background. Evita el 502 del proxy /medusa ante la llamada lenta al LLM.
+          async: true,
         }),
       })
       if (!res.ok) {
@@ -327,6 +330,8 @@ export function useRegenerateCategorySeo() {
           mode: mode ?? "create",
           force: force ?? false,
           sales_channel_id: salesChannelId,
+          // Fire-and-forget en el backend (202) para evitar el 502 del proxy.
+          async: true,
         }),
       })
       if (!res.ok) {
