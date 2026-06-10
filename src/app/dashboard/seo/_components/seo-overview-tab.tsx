@@ -26,9 +26,9 @@ import { FileText, CheckCircle2, AlertTriangle, DollarSign } from "lucide-react"
 
 const pct = (n: number): string => `${(n * 100).toFixed(1)}%`
 
-export function SeoOverviewTab() {
+export function SeoOverviewTab({ salesChannelId }: { salesChannelId?: string }) {
   const [range, setRange] = useState<"7d" | "30d" | "90d">("30d")
-  const { data, isLoading, error } = useSeoStats(range)
+  const { data, isLoading, error } = useSeoStats(range, salesChannelId)
 
   return (
     <div className="space-y-6">

@@ -25,6 +25,8 @@ export interface AiDescriptionResult {
   corta?: string
   media?: string
   larga?: string
+  /** Solo categorías: HTML introductorio (2-3 párrafos). */
+  intro_html?: string
   schema_description?: string
   alt_text?: string
   url_slug?: string
@@ -133,6 +135,118 @@ export interface ProductSearchItem {
   ai_status: "none" | "pending_review" | "approved"
   sales_channel_id: string | null
   sales_channel_name: string | null
+}
+
+// ---------- Entidad (toggle productos / categorías) ----------
+
+/** Las pestañas de propuestas y regeneración operan sobre productos o categorías. */
+export type EntityKind = "product" | "category"
+
+/** Item del autocomplete de categorías. La cola de propuestas de categorías
+ *  reusa el mismo shape que SeoProposal (product_id = category.id, etc.). */
+export interface CategorySearchItem {
+  id: string
+  name: string
+  handle: string
+  parent_handle: string | null
+  products_count: number
+  ai_status: "none" | "pending_review" | "approved"
+}
+
+// ---------- Search insights ----------
+
+export type SearchInsightKind = "top_search" | "no_results" | "no_clicks"
+
+export interface SearchInsight {
+  id: string
+  sales_channel_id: string | null
+  kind: SearchInsightKind
+  query: string
+  count: number
+  click_through_rate: number | null
+  conversion_rate: number | null
+  period_start: string | null
+  period_end: string | null
+  captured_at: string | null
+}
+
+export interface SearchInsightsResponse {
+  insights: SearchInsight[]
+  count: number
+}
+
+// ---------- Synonyms (Algolia) ----------
+
+export type SynonymType = "synonym" | "onewaysynonym"
+
+export interface Synonym {
+  objectID: string
+  type: SynonymType
+  synonyms?: string[]
+  /** Solo onewaysynonym: la palabra de entrada que mapea a synonyms[]. */
+  input?: string
+}
+
+export interface SynonymsResponse {
+  synonyms: Synonym[]
+  total: number
+}
+
+export interface SynonymSuggestion {
+  query: string
+  count: number
+  kind: "no_clicks" | "no_results" | "gsc_query"
+  outsider_word: string
+  suggested_catalog_word: string
+  candidate_products: Array<{ id: string; title: string; handle: string }>
+  confidence: number
+}
+
+export interface SynonymSuggestionsResponse {
+  suggestions: SynonymSuggestion[]
+}
+
+// ---------- Bulk regenerate (cursor-based, chunked) ----------
+
+export type BulkRegenerateMode = "missing_only" | "all"
+
+export interface BulkRegenerateDryRun {
+  ok: boolean
+  dry_run: true
+  mode: BulkRegenerateMode
+  total: number
+  estimated_usd: number
+  cost_per_item_usd: number
+  budget_spent_usd: number
+  budget_limit_usd: number
+  budget_remaining_usd: number
+  budget_stopped: boolean
+}
+
+export interface BulkRegenerateChunk {
+  ok: boolean
+  mode: BulkRegenerateMode
+  total: number
+  processed: number
+  chunk_processed: number
+  success_count: number
+  failure_count: number
+  next_cursor: number
+  done: boolean
+  budget_exhausted: boolean
+  budget_spent_usd: number
+  budget_limit_usd: number
+  budget_remaining_usd: number
+}
+
+/** Resultado agregado del loop de chunks que corre el hook. */
+export interface BulkRegenerateSummary {
+  total: number
+  processed: number
+  success_count: number
+  failure_count: number
+  budget_exhausted: boolean
+  budget_remaining_usd: number
 }
 
 // ---------- Guardrails (config) ----------
@@ -255,6 +369,7 @@ export const SEO_FIELD_LABELS: Record<string, string> = {
   corta: "Descripción corta",
   media: "Descripción media",
   larga: "Descripción larga",
+  intro_html: "Texto introductorio",
   schema_description: "Schema description",
   alt_text: "Alt text principal",
   url_slug: "URL slug",

@@ -20,10 +20,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useSeoProposals, useBulkApproveSeo } from "@/hooks/use-seo-agent"
+import {
+  useSeoProposals,
+  useCategorySeoProposals,
+  useBulkApproveSeo,
+} from "@/hooks/use-seo-agent"
 import { formatDateTime } from "@/lib/format"
 import { SeoProposalDialog } from "./seo-proposal-dialog"
-import type { SeoProposal, SeoProposalStatus } from "@/types/seo-agent"
+import { EntityToggle } from "./entity-toggle"
+import type { SeoProposal, SeoProposalStatus, EntityKind } from "@/types/seo-agent"
 import { CheckCheck, Loader2 } from "lucide-react"
 
 const STATUS_BADGE: Record<SeoProposalStatus, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -35,16 +40,20 @@ const STATUS_BADGE: Record<SeoProposalStatus, { label: string; variant: "default
   failed: { label: "Falló", variant: "destructive" },
 }
 
-export function SeoProposalsTab() {
+export function SeoProposalsTab({ salesChannelId }: { salesChannelId?: string }) {
+  const [entity, setEntity] = useState<EntityKind>("product")
   const [status, setStatus] = useState<string>("proposed")
-  const { data, isLoading, error } = useSeoProposals(status)
+  const productQuery = useSeoProposals(status, salesChannelId)
+  const categoryQuery = useCategorySeoProposals(status, salesChannelId)
+  const { data, isLoading, error } = entity === "category" ? categoryQuery : productQuery
   const bulkApprove = useBulkApproveSeo()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [active, setActive] = useState<SeoProposal | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const proposals = data?.proposals ?? []
-  const isProposed = status === "proposed"
+  // El bulk-approve y el reject solo existen para productos.
+  const isProposed = status === "proposed" && entity === "product"
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -75,17 +84,26 @@ export function SeoProposalsTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Select value={status} onValueChange={(v) => { setStatus(v); setSelected(new Set()) }}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="proposed">Pendientes</SelectItem>
-            <SelectItem value="applied">Aplicadas</SelectItem>
-            <SelectItem value="rejected">Rechazadas</SelectItem>
-            <SelectItem value="all">Todas</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-3">
+          <EntityToggle
+            value={entity}
+            onChange={(v) => {
+              setEntity(v)
+              setSelected(new Set())
+            }}
+          />
+          <Select value={status} onValueChange={(v) => { setStatus(v); setSelected(new Set()) }}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="proposed">Pendientes</SelectItem>
+              <SelectItem value="applied">Aplicadas</SelectItem>
+              <SelectItem value="rejected">Rechazadas</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         {isProposed && selected.size > 0 && (
           <Button onClick={handleBulk} disabled={bulkApprove.isPending}>
@@ -123,7 +141,7 @@ export function SeoProposalsTab() {
                       />
                     </TableHead>
                   )}
-                  <TableHead>Producto</TableHead>
+                  <TableHead>{entity === "category" ? "Categoría" : "Producto"}</TableHead>
                   <TableHead>Marca</TableHead>
                   <TableHead>Meta título propuesto</TableHead>
                   <TableHead className="text-center">Estado</TableHead>
@@ -182,7 +200,12 @@ export function SeoProposalsTab() {
         </Card>
       )}
 
-      <SeoProposalDialog proposal={active} open={dialogOpen} onOpenChange={setDialogOpen} />
+      <SeoProposalDialog
+        proposal={active}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        entity={entity}
+      />
     </div>
   )
 }
