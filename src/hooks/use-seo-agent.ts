@@ -9,6 +9,17 @@ import type {
   GuardrailsResponse,
   Guardrail,
   AiDescriptionResult,
+  EntityKind,
+  CategorySearchItem,
+  SearchInsightKind,
+  SearchInsightsResponse,
+  SynonymsResponse,
+  SynonymSuggestionsResponse,
+  SynonymType,
+  BulkRegenerateMode,
+  BulkRegenerateDryRun,
+  BulkRegenerateChunk,
+  BulkRegenerateSummary,
 } from "@/types/seo-agent"
 
 const BACKEND_URL =
@@ -244,8 +255,337 @@ export function useUpdateGuardrail() {
   })
 }
 
+// ============================================================
+// Categorías (mismo shape de propuesta que productos)
+// ============================================================
+
+export function useCategorySeoProposals(
+  status: string = "proposed",
+  salesChannelId?: string,
+) {
+  return useQuery({
+    queryKey: ["seo", "category-proposals", status, salesChannelId || "all"],
+    queryFn: async (): Promise<ProposalsResponse> => {
+      const params = new URLSearchParams({ status, limit: "100" })
+      if (salesChannelId) params.set("sales_channel_id", salesChannelId)
+      const res = await fetch(`${SEO_BASE}/categories/proposals?${params.toString()}`, {
+        headers: authHeaders(),
+      })
+      if (!res.ok) throw new Error(`${res.status} - Error al obtener propuestas de categorías`)
+      return res.json()
+    },
+    retry: shouldRetry,
+  })
+}
+
+export function useApproveCategorySeoProposal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      id,
+      note,
+      edits,
+    }: {
+      id: string
+      note?: string
+      edits?: Partial<AiDescriptionResult>
+    }) => {
+      const res = await fetch(`${SEO_BASE}/categories/proposals/${id}/approve`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ note, edits }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || `${res.status} - Error al aprobar`)
+      }
+      return res.json()
+    },
+    onSuccess: () => invalidateSeo(qc),
+  })
+}
+
+export function useRegenerateCategorySeo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      categoryId,
+      mode,
+      force,
+      salesChannelId,
+    }: {
+      categoryId: string
+      mode?: "create" | "regenerate"
+      force?: boolean
+      salesChannelId?: string
+    }) => {
+      const res = await fetch(`${SEO_BASE}/categories/regenerate`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          category_id: categoryId,
+          mode: mode ?? "create",
+          force: force ?? false,
+          sales_channel_id: salesChannelId,
+        }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || `${res.status} - Error al regenerar`)
+      }
+      return res.json()
+    },
+    onSuccess: () => invalidateSeo(qc),
+  })
+}
+
+export function useCategorySearch(q: string) {
+  return useQuery({
+    queryKey: ["seo", "category-search", q],
+    queryFn: async (): Promise<CategorySearchItem[]> => {
+      const res = await fetch(
+        `${SEO_BASE}/categories/search?q=${encodeURIComponent(q)}`,
+        { headers: authHeaders() },
+      )
+      if (!res.ok) throw new Error(`${res.status} - Error al buscar categorías`)
+      const data = await res.json()
+      return (data.categories ?? []) as CategorySearchItem[]
+    },
+    enabled: q.trim().length >= 2,
+    retry: shouldRetry,
+  })
+}
+
+// ============================================================
+// Regeneración masiva (cursor-based, productos o categorías)
+// ============================================================
+
+function bulkUrl(entity: EntityKind): string {
+  return entity === "category"
+    ? `${SEO_BASE}/categories/bulk-regenerate`
+    : `${SEO_BASE}/bulk-regenerate`
+}
+
+/** Dry run: cuántos faltan + costo estimado + estado del presupuesto. */
+export function useBulkRegeneratePreview(entity: EntityKind) {
+  return useMutation({
+    mutationFn: async ({
+      mode,
+      salesChannelId,
+    }: {
+      mode: BulkRegenerateMode
+      salesChannelId?: string
+    }): Promise<BulkRegenerateDryRun> => {
+      const res = await fetch(bulkUrl(entity), {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ mode, dry_run: true, sales_channel_id: salesChannelId }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || body.message || `${res.status} - Error en el preview`)
+      }
+      return res.json()
+    },
+  })
+}
+
+/**
+ * Corre la regeneración masiva en loop: el backend procesa por chunks con
+ * cursor, así que iteramos hasta `done` (o hasta que se agote el presupuesto).
+ */
+export function useBulkRegenerate(entity: EntityKind) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      mode,
+      salesChannelId,
+      chunkSize = 5,
+      onProgress,
+    }: {
+      mode: BulkRegenerateMode
+      salesChannelId?: string
+      chunkSize?: number
+      onProgress?: (p: { processed: number; total: number }) => void
+    }): Promise<BulkRegenerateSummary> => {
+      let cursor = 0
+      let total = 0
+      let success = 0
+      let failure = 0
+      let budgetExhausted = false
+      let budgetRemaining = 0
+      const MAX_ITERATIONS = 500 // backstop anti-loop infinito
+
+      for (let i = 0; i < MAX_ITERATIONS; i++) {
+        const res = await fetch(bulkUrl(entity), {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            mode,
+            chunk_size: chunkSize,
+            cursor,
+            sales_channel_id: salesChannelId,
+          }),
+        })
+        if (res.status === 429) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body.message || "Presupuesto mensual agotado.")
+        }
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(
+            body.error || body.message || `${res.status} - Error en regeneración masiva`,
+          )
+        }
+        const chunk = (await res.json()) as BulkRegenerateChunk
+        total = chunk.total
+        success += chunk.success_count
+        failure += chunk.failure_count
+        cursor = chunk.next_cursor
+        budgetExhausted = chunk.budget_exhausted
+        budgetRemaining = chunk.budget_remaining_usd
+        onProgress?.({ processed: chunk.processed, total })
+        if (chunk.done) break
+      }
+
+      return {
+        total,
+        processed: cursor,
+        success_count: success,
+        failure_count: failure,
+        budget_exhausted: budgetExhausted,
+        budget_remaining_usd: budgetRemaining,
+      }
+    },
+    onSuccess: () => invalidateSeo(qc),
+  })
+}
+
+// ============================================================
+// Search insights
+// ============================================================
+
+export function useSearchInsights(kind: SearchInsightKind, salesChannelId?: string) {
+  return useQuery({
+    queryKey: ["seo", "search-insights", kind, salesChannelId || "all"],
+    queryFn: async (): Promise<SearchInsightsResponse> => {
+      const params = new URLSearchParams({ kind, limit: "50" })
+      if (salesChannelId) params.set("sales_channel_id", salesChannelId)
+      const res = await fetch(`${SEO_BASE}/search-insights?${params.toString()}`, {
+        headers: authHeaders(),
+      })
+      if (!res.ok) throw new Error(`${res.status} - Error al obtener insights de búsqueda`)
+      return res.json()
+    },
+    retry: shouldRetry,
+  })
+}
+
+export function useRefreshSearchInsights() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${SEO_BASE}/search-insights/refresh`, {
+        method: "POST",
+        headers: authHeaders(),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || `${res.status} - Error al refrescar desde Algolia`)
+      }
+      return res.json()
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["seo", "search-insights"] }),
+  })
+}
+
+// ============================================================
+// Synonyms (Algolia)
+// ============================================================
+
+export function useSynonyms(query: string = "") {
+  return useQuery({
+    queryKey: ["seo", "synonyms", query],
+    queryFn: async (): Promise<SynonymsResponse> => {
+      const params = new URLSearchParams({ limit: "200" })
+      if (query) params.set("query", query)
+      const res = await fetch(`${SEO_BASE}/synonyms?${params.toString()}`, {
+        headers: authHeaders(),
+      })
+      if (!res.ok) throw new Error(`${res.status} - Error al obtener synonyms`)
+      return res.json()
+    },
+    retry: shouldRetry,
+  })
+}
+
+export function useCreateSynonym() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      synonyms,
+      type,
+      input,
+    }: {
+      synonyms: string[]
+      type: SynonymType
+      input?: string
+    }) => {
+      const res = await fetch(`${SEO_BASE}/synonyms`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ synonyms, type, input }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.message || body.error || `${res.status} - Error al crear synonym`)
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["seo", "synonyms"] })
+      qc.invalidateQueries({ queryKey: ["seo", "synonym-suggestions"] })
+    },
+  })
+}
+
+export function useDeleteSynonym() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (objectID: string) => {
+      const res = await fetch(`${SEO_BASE}/synonyms/${encodeURIComponent(objectID)}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.message || body.error || `${res.status} - Error al borrar synonym`)
+      }
+      return res.json()
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["seo", "synonyms"] }),
+  })
+}
+
+export function useSynonymSuggestions(salesChannelId?: string) {
+  return useQuery({
+    queryKey: ["seo", "synonym-suggestions", salesChannelId || "all"],
+    queryFn: async (): Promise<SynonymSuggestionsResponse> => {
+      const params = new URLSearchParams()
+      if (salesChannelId) params.set("sales_channel_id", salesChannelId)
+      const res = await fetch(`${SEO_BASE}/synonym-suggestions?${params.toString()}`, {
+        headers: authHeaders(),
+      })
+      if (!res.ok) throw new Error(`${res.status} - Error al obtener sugerencias`)
+      return res.json()
+    },
+    retry: shouldRetry,
+  })
+}
+
 function invalidateSeo(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["seo", "proposals"] })
+  qc.invalidateQueries({ queryKey: ["seo", "category-proposals"] })
   qc.invalidateQueries({ queryKey: ["seo", "stats"] })
 }
 

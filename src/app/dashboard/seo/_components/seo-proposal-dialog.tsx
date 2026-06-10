@@ -16,10 +16,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import {
   useApproveSeoProposal,
+  useApproveCategorySeoProposal,
   useRejectSeoProposal,
 } from "@/hooks/use-seo-agent"
 import { SEO_FIELD_LABELS } from "@/types/seo-agent"
-import type { SeoProposal, ProposalDiffEntry } from "@/types/seo-agent"
+import type { SeoProposal, ProposalDiffEntry, EntityKind } from "@/types/seo-agent"
 import { Check, X, Loader2 } from "lucide-react"
 
 const DIFF_BADGE: Record<ProposalDiffEntry["kind"], { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -47,13 +48,19 @@ export function SeoProposalDialog({
   proposal,
   open,
   onOpenChange,
+  entity = "product",
 }: {
   proposal: SeoProposal | null
   open: boolean
   onOpenChange: (v: boolean) => void
+  entity?: EntityKind
 }) {
-  const approve = useApproveSeoProposal()
+  const approveProduct = useApproveSeoProposal()
+  const approveCategory = useApproveCategorySeoProposal()
+  const approve = entity === "category" ? approveCategory : approveProduct
   const reject = useRejectSeoProposal()
+  // Las categorías no tienen endpoint de reject: solo se aprueban o se ignoran.
+  const canReject = entity === "product"
   const [rejectMode, setRejectMode] = useState(false)
   const [note, setNote] = useState("")
   const [editMetaTitle, setEditMetaTitle] = useState<string | null>(null)
@@ -212,9 +219,11 @@ export function SeoProposalDialog({
             </>
           ) : (
             <>
-              <Button variant="outline" onClick={() => setRejectMode(true)}>
-                <X className="h-4 w-4" /> Rechazar
-              </Button>
+              {canReject && (
+                <Button variant="outline" onClick={() => setRejectMode(true)}>
+                  <X className="h-4 w-4" /> Rechazar
+                </Button>
+              )}
               <Button onClick={handleApprove} disabled={approve.isPending}>
                 {approve.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
