@@ -48,6 +48,7 @@ import {
   Mail,
   Search,
   Truck,
+  BookOpen,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -173,6 +174,7 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/email-intelligence", label: "Email Intelligence", icon: Mail },
       { href: "/dashboard/envios-gratis", label: "Envío Gratis", icon: Truck },
       { href: "/dashboard/seo", label: "SEO", icon: Search },
+      { href: "/dashboard/geo", label: "GEO / Guías", icon: BookOpen },
       { href: "/dashboard/analytics/ai-pricing", label: "Inteligencia de Precios", icon: DollarSign },
       { href: "/dashboard/products/ranking", label: "Ranking", icon: Trophy },
       { href: "/dashboard/ranking-dinamico", label: "Ranking Dinámico", icon: TrendingUp },
