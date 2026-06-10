@@ -175,6 +175,7 @@ const staticNavEntries: NavEntry[] = [
       { href: "/dashboard/seo", label: "SEO", icon: Search },
       { href: "/dashboard/analytics/ai-pricing", label: "Inteligencia de Precios", icon: DollarSign },
       { href: "/dashboard/products/ranking", label: "Ranking", icon: Trophy },
+      { href: "/dashboard/ranking-dinamico", label: "Ranking Dinámico", icon: TrendingUp },
       { href: "/dashboard/products/combos", label: "Combos", icon: Boxes },
       { href: "/dashboard/products/ai-pending", label: "Descripciones IA", icon: Bot },
     ],
