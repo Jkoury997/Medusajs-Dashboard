@@ -173,7 +173,7 @@ export function SeoRegenerateTab({ salesChannelId }: { salesChannelId?: string }
                       ) : (
                         <Sparkles className="h-4 w-4" />
                       )}
-                      {justDone ? "Propuesta creada" : "Regenerar"}
+                      {justDone ? "En cola (~1 min)" : "Regenerar"}
                     </Button>
                   </div>
                 )
@@ -185,8 +185,9 @@ export function SeoRegenerateTab({ salesChannelId }: { salesChannelId?: string }
             <p className="text-sm text-red-600">{(regenerate.error as Error).message}</p>
           )}
           <p className="text-[11px] text-gray-400">
-            Regenerando SEO de {noun}s. La generación masiva respeta el presupuesto mensual
-            configurado en la pestaña “Configuración”.
+            La generación corre en segundo plano (≈1 min): la propuesta de cada {noun} aparece
+            en la pestaña “Propuestas” al terminar. La generación masiva respeta el presupuesto
+            mensual configurado en “Configuración”.
           </p>
         </CardContent>
       </Card>
