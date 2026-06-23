@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useEmployees, useCreateEmployee } from "@/hooks/use-employees"
+import { useEmployees, useCreateEmployee, type EmployeeBreakdown } from "@/hooks/use-employees"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,7 @@ import {
 import { Users, DollarSign, ShoppingCart, Percent, UserPlus, Copy } from "lucide-react"
 
 const STOREFRONT_URL = "https://marcelakoury.com"
+const DEFAULT_PCT = 2
 
 function formatCentavos(centavos: number): string {
   return ((centavos || 0) / 100).toLocaleString("es-AR", {
@@ -35,20 +36,32 @@ function formatCentavos(centavos: number): string {
   })
 }
 
+// Suma los desgloses (por canal o por grupo) de todos los empleados.
+function mergeBreakdowns(rows: EmployeeBreakdown[][]): EmployeeBreakdown[] {
+  const m = new Map<string, EmployeeBreakdown>()
+  for (const list of rows) {
+    for (const r of list) {
+      const e = m.get(r.id) ?? { id: r.id, name: r.name, sales: 0, commission: 0, orders: 0 }
+      e.sales += r.sales || 0
+      e.commission += r.commission || 0
+      e.orders += r.orders || 0
+      m.set(r.id, e)
+    }
+  }
+  return Array.from(m.values()).sort((a, b) => b.sales - a.sales)
+}
+
 export default function EmpleadosPage() {
   const { data, isLoading, error } = useEmployees()
   const createEmployee = useCreateEmployee()
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState({
+    name: "",
     email: "",
-    password: "",
-    first_name: "",
-    last_name: "",
     commission_percentage: "",
   })
 
   const employees = data?.employees ?? []
-  const defaultPct = data?.commission_percentage_default ?? 2
 
   const totals = employees.reduce(
     (acc, e) => {
@@ -60,19 +73,20 @@ export default function EmpleadosPage() {
     { sales: 0, commissions: 0, orders: 0 },
   )
 
+  const byChannel = mergeBreakdowns(employees.map((e) => e.by_channel ?? []))
+  const byGroup = mergeBreakdowns(employees.map((e) => e.by_group ?? []))
+
   async function handleCreate() {
     try {
       await createEmployee.mutateAsync({
+        name: form.name,
         email: form.email,
-        password: form.password,
-        first_name: form.first_name,
-        last_name: form.last_name,
         commission_percentage: form.commission_percentage
           ? Number(form.commission_percentage)
           : undefined,
       })
       setShowCreate(false)
-      setForm({ email: "", password: "", first_name: "", last_name: "", commission_percentage: "" })
+      setForm({ name: "", email: "", commission_percentage: "" })
     } catch {
       /* el error se muestra en el dialog */
     }
@@ -101,7 +115,8 @@ export default function EmpleadosPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Empleados</h1>
           <p className="text-sm text-gray-500">
-            Cada empleado comparte su link <code>?ref=</code> y se le atribuye la venta web + comisión.
+            Cada empleado comparte su link <code>?ref=</code> y se le atribuye la venta web +
+            comisión.
           </p>
         </div>
         <Dialog open={showCreate} onOpenChange={setShowCreate}>
@@ -116,39 +131,22 @@ export default function EmpleadosPage() {
               <DialogTitle>Crear Empleado</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Nombre *</Label>
-                  <Input
-                    value={form.first_name}
-                    onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Apellido *</Label>
-                  <Input
-                    value={form.last_name}
-                    onChange={(e) => setForm({ ...form, last_name: e.target.value })}
-                  />
-                </div>
-              </div>
               <div>
-                <Label>Email *</Label>
+                <Label>Nombre *</Label>
                 <Input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="empleado@marcelakoury.com"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Nombre y apellido"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Contraseña *</Label>
+                  <Label>Email *</Label>
                   <Input
-                    type="text"
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    placeholder="Mínimo 6 caracteres"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="empleado@marcelakoury.com"
                   />
                 </div>
                 <div>
@@ -157,22 +155,18 @@ export default function EmpleadosPage() {
                     type="number"
                     value={form.commission_percentage}
                     onChange={(e) => setForm({ ...form, commission_percentage: e.target.value })}
-                    placeholder={`Default ${defaultPct}%`}
+                    placeholder={`Default ${DEFAULT_PCT}%`}
                   />
                 </div>
               </div>
               <p className="text-xs text-gray-500">
-                Con email + contraseña el empleado puede entrar al portal a ver sus comisiones. El
-                código de referido se genera automáticamente.
+                El código de referido se genera automáticamente. La atribución mide la venta web por
+                canal (MK/MakeYou/ML) y por grupo de cliente.
               </p>
               <Button
                 onClick={handleCreate}
                 disabled={
-                  !form.email ||
-                  form.password.length < 6 ||
-                  !form.first_name ||
-                  !form.last_name ||
-                  createEmployee.isPending
+                  !form.name || !form.email || !form.email.includes("@") || createEmployee.isPending
                 }
                 className="w-full"
               >
@@ -204,7 +198,7 @@ export default function EmpleadosPage() {
               title="Empleados"
               value={String(employees.length)}
               icon={<Users className="h-5 w-5" />}
-              subtitle={`${employees.filter((e) => e.status === "active").length} activos`}
+              subtitle={`${employees.filter((e) => e.active).length} activos`}
             />
             <MetricCard
               title="Ventas atribuidas"
@@ -220,9 +214,9 @@ export default function EmpleadosPage() {
             />
             <MetricCard
               title="Comisión default"
-              value={`${defaultPct}%`}
+              value={`${DEFAULT_PCT}%`}
               icon={<Percent className="h-5 w-5" />}
-              subtitle="Tipo Empleado"
+              subtitle="Sobre venta web"
             />
           </div>
 
@@ -254,9 +248,7 @@ export default function EmpleadosPage() {
                       .map((e) => (
                         <TableRow key={e.id}>
                           <TableCell>
-                            <p className="font-medium">
-                              {[e.first_name, e.last_name].filter(Boolean).join(" ") || e.email}
-                            </p>
+                            <p className="font-medium">{e.name || e.email}</p>
                             <p className="text-xs text-gray-500">{e.email}</p>
                           </TableCell>
                           <TableCell>
@@ -288,6 +280,78 @@ export default function EmpleadosPage() {
               )}
             </CardContent>
           </Card>
+
+          {(byChannel.length > 0 || byGroup.length > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Por canal de venta</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {byChannel.length === 0 ? (
+                    <p className="text-center text-gray-500 py-6">Sin datos todavía.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Canal</TableHead>
+                          <TableHead className="text-right">Ventas</TableHead>
+                          <TableHead className="text-right">Órdenes</TableHead>
+                          <TableHead className="text-right">Comisión</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {byChannel.map((r) => (
+                          <TableRow key={r.id}>
+                            <TableCell className="font-medium">{r.name}</TableCell>
+                            <TableCell className="text-right">{formatCentavos(r.sales)}</TableCell>
+                            <TableCell className="text-right">{r.orders}</TableCell>
+                            <TableCell className="text-right">
+                              {formatCentavos(r.commission)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Por grupo de cliente</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {byGroup.length === 0 ? (
+                    <p className="text-center text-gray-500 py-6">Sin datos todavía.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Grupo</TableHead>
+                          <TableHead className="text-right">Ventas</TableHead>
+                          <TableHead className="text-right">Órdenes</TableHead>
+                          <TableHead className="text-right">Comisión</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {byGroup.map((r) => (
+                          <TableRow key={r.id}>
+                            <TableCell className="font-medium">{r.name}</TableCell>
+                            <TableCell className="text-right">{formatCentavos(r.sales)}</TableCell>
+                            <TableCell className="text-right">{r.orders}</TableCell>
+                            <TableCell className="text-right">
+                              {formatCentavos(r.commission)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </>
       )}
     </div>
