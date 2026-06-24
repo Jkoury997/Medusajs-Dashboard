@@ -204,6 +204,7 @@ export const SIDEBAR_PERMISSIONS: Record<string, Permission> = {
   "Marketing": PERMISSIONS.MARKETING_VIEW,
   "Picking": PERMISSIONS.PICKING_VIEW,
   "Revendedoras": PERMISSIONS.RESELLERS_VIEW,
+  "Equipo & Referidos": PERMISSIONS.RESELLERS_VIEW,
   "Revendedoras Físicas": PERMISSIONS.RESELLERS_FISICAS_VIEW,
   "Administración": PERMISSIONS.ADMIN_VIEW,
   "Analítica": PERMISSIONS.ANALYTICS_VIEW,
