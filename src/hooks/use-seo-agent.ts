@@ -75,11 +75,20 @@ export function useSeoStats(range: "7d" | "30d" | "90d" = "30d", salesChannelId?
 // Propuestas
 // ============================================================
 
-export function useSeoProposals(status: string = "proposed", salesChannelId?: string) {
+export function useSeoProposals(
+  status: string = "proposed",
+  salesChannelId?: string,
+  limit: number = 50,
+  offset: number = 0,
+) {
   return useQuery({
-    queryKey: ["seo", "proposals", status, salesChannelId || "all"],
+    queryKey: ["seo", "proposals", status, salesChannelId || "all", limit, offset],
     queryFn: async (): Promise<ProposalsResponse> => {
-      const params = new URLSearchParams({ status, limit: "100" })
+      const params = new URLSearchParams({
+        status,
+        limit: String(limit),
+        offset: String(offset),
+      })
       if (salesChannelId) params.set("sales_channel_id", salesChannelId)
       const res = await fetch(`${SEO_BASE}/proposals?${params.toString()}`, {
         headers: authHeaders(),
@@ -265,11 +274,17 @@ export function useUpdateGuardrail() {
 export function useCategorySeoProposals(
   status: string = "proposed",
   salesChannelId?: string,
+  limit: number = 50,
+  offset: number = 0,
 ) {
   return useQuery({
-    queryKey: ["seo", "category-proposals", status, salesChannelId || "all"],
+    queryKey: ["seo", "category-proposals", status, salesChannelId || "all", limit, offset],
     queryFn: async (): Promise<ProposalsResponse> => {
-      const params = new URLSearchParams({ status, limit: "100" })
+      const params = new URLSearchParams({
+        status,
+        limit: String(limit),
+        offset: String(offset),
+      })
       if (salesChannelId) params.set("sales_channel_id", salesChannelId)
       const res = await fetch(`${SEO_BASE}/categories/proposals?${params.toString()}`, {
         headers: authHeaders(),

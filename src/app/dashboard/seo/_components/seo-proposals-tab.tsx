@@ -29,7 +29,9 @@ import { formatDateTime } from "@/lib/format"
 import { SeoProposalDialog } from "./seo-proposal-dialog"
 import { EntityToggle } from "./entity-toggle"
 import type { SeoProposal, SeoProposalStatus, EntityKind } from "@/types/seo-agent"
-import { CheckCheck, Loader2 } from "lucide-react"
+import { CheckCheck, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+
+const PAGE_SIZE = 50
 
 const STATUS_BADGE: Record<SeoProposalStatus, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   proposed: { label: "Pendiente", variant: "default" },
@@ -43,15 +45,33 @@ const STATUS_BADGE: Record<SeoProposalStatus, { label: string; variant: "default
 export function SeoProposalsTab({ salesChannelId }: { salesChannelId?: string }) {
   const [entity, setEntity] = useState<EntityKind>("product")
   const [status, setStatus] = useState<string>("proposed")
-  const productQuery = useSeoProposals(status, salesChannelId)
-  const categoryQuery = useCategorySeoProposals(status, salesChannelId)
-  const { data, isLoading, error } = entity === "category" ? categoryQuery : productQuery
-  const bulkApprove = useBulkApproveSeo()
+  const [page, setPage] = useState(0)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [active, setActive] = useState<SeoProposal | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
+  // Al cambiar entidad/estado/marca, volvemos a la página 1 y limpiamos selección.
+  // Patrón "ajustar estado en render" (sin useEffect).
+  const filterKey = `${entity}|${status}|${salesChannelId ?? "all"}`
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey)
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey)
+    setPage(0)
+    setSelected(new Set())
+  }
+
+  const offset = page * PAGE_SIZE
+  const productQuery = useSeoProposals(status, salesChannelId, PAGE_SIZE, offset)
+  const categoryQuery = useCategorySeoProposals(status, salesChannelId, PAGE_SIZE, offset)
+  const { data, isLoading, error } = entity === "category" ? categoryQuery : productQuery
+  const bulkApprove = useBulkApproveSeo()
+
   const proposals = data?.proposals ?? []
+  const total = data?.count ?? 0
+  const fromRow = total === 0 ? 0 : offset + 1
+  const toRow = offset + proposals.length
+  const canPrev = page > 0
+  const canNext = toRow < total
   // El bulk-approve y el reject solo existen para productos.
   const isProposed = status === "proposed" && entity === "product"
 
@@ -85,14 +105,8 @@ export function SeoProposalsTab({ salesChannelId }: { salesChannelId?: string })
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <EntityToggle
-            value={entity}
-            onChange={(v) => {
-              setEntity(v)
-              setSelected(new Set())
-            }}
-          />
-          <Select value={status} onValueChange={(v) => { setStatus(v); setSelected(new Set()) }}>
+          <EntityToggle value={entity} onChange={setEntity} />
+          <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
@@ -126,6 +140,7 @@ export function SeoProposalsTab({ salesChannelId }: { salesChannelId?: string })
       ) : isLoading ? (
         <Skeleton className="h-64 w-full" />
       ) : (
+        <>
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -198,6 +213,33 @@ export function SeoProposalsTab({ salesChannelId }: { salesChannelId?: string })
             </Table>
           </CardContent>
         </Card>
+
+        <div className="flex items-center justify-between text-sm text-gray-500">
+          <span>
+            {total === 0
+              ? "Sin propuestas"
+              : `Mostrando ${fromRow}–${toRow} de ${total}`}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!canPrev}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+            >
+              <ChevronLeft className="h-4 w-4" /> Anterior
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!canNext}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Siguiente <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        </>
       )}
 
       <SeoProposalDialog
