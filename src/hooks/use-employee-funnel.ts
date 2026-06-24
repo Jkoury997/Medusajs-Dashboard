@@ -57,11 +57,18 @@ export interface FunnelResponse {
   by_employee: FunnelEmployeeBucket[]
 }
 
-export function useEmployeeFunnel(days: number) {
+export function useEmployeeFunnel(
+  days: number,
+  referralCode?: string,
+  enabled = true,
+) {
   return useQuery({
-    queryKey: ["employees", "funnel", days],
+    queryKey: ["employees", "funnel", days, referralCode ?? null],
+    enabled,
     queryFn: async () => {
-      const res = await fetch(`${BASE}?days=${days}`, { headers: authHeaders() })
+      const params = new URLSearchParams({ days: String(days) })
+      if (referralCode) params.set("referral_code", referralCode)
+      const res = await fetch(`${BASE}?${params.toString()}`, { headers: authHeaders() })
       if (!res.ok) throw new Error("Error al obtener el funnel de empleados")
       return res.json() as Promise<FunnelResponse>
     },

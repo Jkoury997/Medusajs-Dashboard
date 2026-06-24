@@ -142,6 +142,41 @@ function FunnelTable({
   )
 }
 
+// Desglose de comisiones cerradas (por canal o grupo) de un empleado.
+function CommissionBreakdownTable({
+  label,
+  rows,
+}: {
+  label: string
+  rows: EmployeeBreakdown[]
+}) {
+  if (rows.length === 0) {
+    return <p className="text-center text-gray-500 py-4 text-sm">Sin datos.</p>
+  }
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{label}</TableHead>
+          <TableHead className="text-right">Ventas</TableHead>
+          <TableHead className="text-right">Órdenes</TableHead>
+          <TableHead className="text-right">Comisión</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((r) => (
+          <TableRow key={r.id}>
+            <TableCell className="font-medium">{r.name}</TableCell>
+            <TableCell className="text-right">{formatCentavos(r.sales)}</TableCell>
+            <TableCell className="text-right">{r.orders}</TableCell>
+            <TableCell className="text-right">{formatCentavos(r.commission)}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+}
+
 // Multi-select de customer groups (allowlist de comisión). Sin selección = todos.
 function GroupMultiSelect({
   groups,
@@ -231,6 +266,13 @@ export default function EmpleadosPage() {
   })
   const [createGroups, setCreateGroups] = useState<string[]>([])
   const [editing, setEditing] = useState<EditState | null>(null)
+  const [detail, setDetail] = useState<EmployeeRow | null>(null)
+  // Funnel filtrado al empleado abierto en el detalle (solo cuando hay uno).
+  const { data: detailFunnel, isLoading: detailFunnelLoading } = useEmployeeFunnel(
+    funnelDays,
+    detail?.referral_code,
+    detail !== null,
+  )
 
   const employees = data?.employees ?? []
 
@@ -459,8 +501,15 @@ export default function EmpleadosPage() {
                       .map((e) => (
                         <TableRow key={e.id}>
                           <TableCell>
-                            <p className="font-medium">{e.name || e.email}</p>
-                            <p className="text-xs text-gray-500">{e.email}</p>
+                            <button
+                              type="button"
+                              onClick={() => setDetail(e)}
+                              className="text-left hover:underline"
+                              title="Ver estadísticas del empleado"
+                            >
+                              <p className="font-medium text-indigo-700">{e.name || e.email}</p>
+                              <p className="text-xs text-gray-500">{e.email}</p>
+                            </button>
                           </TableCell>
                           <TableCell>
                             <button
@@ -759,6 +808,145 @@ export default function EmpleadosPage() {
                 <p className="text-sm text-red-500">{(updateEmployee.error as Error).message}</p>
               )}
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={detail !== null} onOpenChange={(o) => !o && setDetail(null)}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          {detail && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {detail.name || detail.email}
+                  <code className="text-xs bg-gray-100 px-2 py-0.5 rounded">
+                    {detail.referral_code}
+                  </code>
+                  {!detail.active && (
+                    <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
+                      Inactivo
+                    </span>
+                  )}
+                </DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-gray-500 -mt-2">
+                {detail.email} · Comisión {detail.commission_percentage}% · Grupos:{" "}
+                {detail.allowed_customer_groups.length === 0
+                  ? "Todos"
+                  : detail.allowed_customer_groups.map((g) => g.name).join(", ")}
+              </p>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <MetricCard
+                  title="Ventas atribuidas"
+                  value={formatCentavos(detail.total_sales_amount)}
+                  icon={<ShoppingCart className="h-5 w-5" />}
+                  subtitle={`${detail.total_orders} órdenes`}
+                />
+                <MetricCard
+                  title="Comisión ganada"
+                  value={formatCentavos(detail.total_commissions_earned)}
+                  icon={<DollarSign className="h-5 w-5" />}
+                />
+                <MetricCard
+                  title="Pendiente"
+                  value={formatCentavos(detail.pending_balance)}
+                  icon={<DollarSign className="h-5 w-5" />}
+                />
+                <MetricCard
+                  title="Comisión"
+                  value={`${detail.commission_percentage}%`}
+                  icon={<Percent className="h-5 w-5" />}
+                  subtitle="Sobre venta web"
+                />
+              </div>
+
+              <h3 className="text-sm font-semibold text-gray-900 mt-2">
+                Conversión del link (últimos {funnelDays} días)
+              </h3>
+              {detailFunnelLoading ? (
+                <p className="text-sm text-gray-400">Cargando…</p>
+              ) : !detailFunnel || detailFunnel.totals.referral_carts === 0 ? (
+                <p className="text-sm text-gray-500">
+                  Sin carritos con este código en los últimos {funnelDays} días.
+                </p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <MetricCard
+                      title="Carritos"
+                      value={String(detailFunnel.totals.referral_carts)}
+                      icon={<ShoppingCart className="h-5 w-5" />}
+                    />
+                    <MetricCard
+                      title="Compraron"
+                      value={String(detailFunnel.totals.completed)}
+                      icon={<CheckCircle2 className="h-5 w-5" />}
+                    />
+                    <MetricCard
+                      title="No compraron"
+                      value={String(detailFunnel.totals.abandoned)}
+                      icon={<XCircle className="h-5 w-5" />}
+                    />
+                    <MetricCard
+                      title="Conversión"
+                      value={`${detailFunnel.totals.conversion_rate.toFixed(1)}%`}
+                      icon={<TrendingUp className="h-5 w-5" />}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-3">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Conversión por canal</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {detailFunnel.by_channel.length === 0 ? (
+                          <p className="text-center text-gray-500 py-4 text-sm">Sin datos.</p>
+                        ) : (
+                          <FunnelTable label="Canal" rows={detailFunnel.by_channel} />
+                        )}
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Conversión por grupo</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {detailFunnel.by_group.length === 0 ? (
+                          <p className="text-center text-gray-500 py-4 text-sm">Sin datos.</p>
+                        ) : (
+                          <FunnelTable label="Grupo" rows={detailFunnel.by_group} />
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </>
+              )}
+
+              {(detail.by_channel.length > 0 || detail.by_group.length > 0) && (
+                <>
+                  <h3 className="text-sm font-semibold text-gray-900 mt-2">Comisiones cerradas</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Por canal</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <CommissionBreakdownTable label="Canal" rows={detail.by_channel} />
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Por grupo</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <CommissionBreakdownTable label="Grupo" rows={detail.by_group} />
+                      </CardContent>
+                    </Card>
+                  </div>
+                </>
+              )}
+            </>
           )}
         </DialogContent>
       </Dialog>
