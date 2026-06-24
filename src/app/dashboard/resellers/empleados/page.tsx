@@ -2,6 +2,11 @@
 
 import { useState } from "react"
 import { useEmployees, useCreateEmployee, type EmployeeBreakdown } from "@/hooks/use-employees"
+import {
+  useEmployeeFunnel,
+  type FunnelBucket,
+  type FunnelEmployeeBucket,
+} from "@/hooks/use-employee-funnel"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,13 +27,34 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Users, DollarSign, ShoppingCart, Percent, UserPlus, Copy } from "lucide-react"
+import {
+  Users,
+  DollarSign,
+  ShoppingCart,
+  Percent,
+  UserPlus,
+  Copy,
+  TrendingUp,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react"
 
 const STOREFRONT_URL = "https://marcelakoury.com"
 const DEFAULT_PCT = 2
+const FUNNEL_RANGES = [30, 90, 180] as const
 
 function formatCentavos(centavos: number): string {
   return ((centavos || 0) / 100).toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+}
+
+// El funnel devuelve montos en pesos (no centavos).
+function formatPesos(pesos: number): string {
+  return (pesos || 0).toLocaleString("es-AR", {
     style: "currency",
     currency: "ARS",
     minimumFractionDigits: 0,
@@ -51,9 +77,67 @@ function mergeBreakdowns(rows: EmployeeBreakdown[][]): EmployeeBreakdown[] {
   return Array.from(m.values()).sort((a, b) => b.sales - a.sales)
 }
 
+function ConversionBar({ rate }: { rate: number }) {
+  const pct = Math.max(0, Math.min(100, rate))
+  const color = pct >= 40 ? "bg-green-500" : pct >= 20 ? "bg-amber-500" : "bg-red-500"
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <div className="h-1.5 w-16 rounded-full bg-gray-100 overflow-hidden">
+        <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="tabular-nums w-12 text-right">{pct.toFixed(1)}%</span>
+    </div>
+  )
+}
+
+// Tabla genérica del funnel (canal / grupo / empleado).
+function FunnelTable({
+  label,
+  rows,
+}: {
+  label: string
+  rows: Array<FunnelBucket | FunnelEmployeeBucket>
+}) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{label}</TableHead>
+          <TableHead className="text-right">Carritos</TableHead>
+          <TableHead className="text-right">Compraron</TableHead>
+          <TableHead className="text-right">No compraron</TableHead>
+          <TableHead className="text-right">Conversión</TableHead>
+          <TableHead className="text-right">Ventas</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((r) => (
+          <TableRow key={r.id}>
+            <TableCell className="font-medium">
+              {r.name}
+              {"referral_code" in r && (
+                <span className="ml-1 text-xs text-gray-400">({r.referral_code})</span>
+              )}
+            </TableCell>
+            <TableCell className="text-right">{r.carts}</TableCell>
+            <TableCell className="text-right text-green-600">{r.completed}</TableCell>
+            <TableCell className="text-right text-gray-500">{r.abandoned}</TableCell>
+            <TableCell className="text-right">
+              <ConversionBar rate={r.conversion_rate} />
+            </TableCell>
+            <TableCell className="text-right">{formatPesos(r.completed_sales_amount)}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+}
+
 export default function EmpleadosPage() {
   const { data, isLoading, error } = useEmployees()
   const createEmployee = useCreateEmployee()
+  const [funnelDays, setFunnelDays] = useState<number>(90)
+  const { data: funnel, isLoading: funnelLoading } = useEmployeeFunnel(funnelDays)
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState({
     name: "",
@@ -352,6 +436,131 @@ export default function EmpleadosPage() {
               </Card>
             </div>
           )}
+
+          {/* Funnel de conversión del link de referido: quién compró vs quién no. */}
+          <div className="pt-2">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Funnel de conversión</h2>
+                <p className="text-sm text-gray-500">
+                  Carritos que entraron con un link <code>?ref=</code>: cuántos terminaron comprando
+                  y cuántos no, por canal, grupo y empleado.
+                </p>
+              </div>
+              <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-1">
+                {FUNNEL_RANGES.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setFunnelDays(d)}
+                    className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                      funnelDays === d
+                        ? "bg-white shadow-sm font-medium text-gray-900"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {funnelLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-6">
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-24 mb-3" />
+                      <div className="h-8 bg-gray-200 rounded animate-pulse w-16" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : !funnel || funnel.totals.referral_carts === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center text-gray-500">
+                  Todavía no hay carritos con código de referido en los últimos {funnelDays} días.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard
+                    title="Carritos con código"
+                    value={String(funnel.totals.referral_carts)}
+                    icon={<ShoppingCart className="h-5 w-5" />}
+                    subtitle={`Últimos ${funnelDays} días`}
+                  />
+                  <MetricCard
+                    title="Compraron"
+                    value={String(funnel.totals.completed)}
+                    icon={<CheckCircle2 className="h-5 w-5" />}
+                    subtitle={formatPesos(funnel.totals.completed_sales_amount)}
+                  />
+                  <MetricCard
+                    title="No compraron"
+                    value={String(funnel.totals.abandoned)}
+                    icon={<XCircle className="h-5 w-5" />}
+                    subtitle="Carritos abandonados"
+                  />
+                  <MetricCard
+                    title="Conversión"
+                    value={`${funnel.totals.conversion_rate.toFixed(1)}%`}
+                    icon={<TrendingUp className="h-5 w-5" />}
+                    subtitle="Compraron / total"
+                  />
+                </div>
+
+                {funnel.truncated && (
+                  <p className="text-xs text-amber-600">
+                    Se alcanzó el tope de carritos analizados; achicá el rango de días para datos
+                    exactos.
+                  </p>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Por canal de venta</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {funnel.by_channel.length === 0 ? (
+                        <p className="text-center text-gray-500 py-6">Sin datos.</p>
+                      ) : (
+                        <FunnelTable label="Canal" rows={funnel.by_channel} />
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Por grupo de cliente</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {funnel.by_group.length === 0 ? (
+                        <p className="text-center text-gray-500 py-6">Sin datos.</p>
+                      ) : (
+                        <FunnelTable label="Grupo" rows={funnel.by_group} />
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Por empleado</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {funnel.by_employee.length === 0 ? (
+                      <p className="text-center text-gray-500 py-6">Sin datos.</p>
+                    ) : (
+                      <FunnelTable label="Empleado" rows={funnel.by_employee} />
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
