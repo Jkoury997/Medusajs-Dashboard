@@ -6,7 +6,28 @@ import type {
   InfluencerDetailResponse,
 } from "@/types/reseller"
 
-const BASE = "/api/reseller-proxy"
+// Pega al backend de Medusa (mismo patrón que empleados/GEO): proxy /medusa + JWT.
+// Reemplaza la versión anterior que pegaba al reseller-api (se da de baja).
+const BACKEND_URL =
+  typeof window !== "undefined"
+    ? `${window.location.origin}/medusa`
+    : process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL!
+
+const SDK_JWT_KEY = "medusa_auth_token"
+
+function getToken(): string {
+  if (typeof window === "undefined") return ""
+  return window.localStorage.getItem(SDK_JWT_KEY) || ""
+}
+
+function authHeaders(): HeadersInit {
+  return {
+    Authorization: `Bearer ${getToken()}`,
+    "Content-Type": "application/json",
+  }
+}
+
+const BASE = `${BACKEND_URL}/admin/ai-agents/influencers`
 
 // ============================================================
 // STATS
@@ -16,10 +37,9 @@ export function useInfluencerStats() {
   return useQuery({
     queryKey: ["influencers", "stats"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/admin/influencer-stats`)
+      const res = await fetch(`${BASE}/stats`, { headers: authHeaders() })
       if (!res.ok) throw new Error("Error al obtener estadísticas de influencers")
-      const data = await res.json()
-      return data as InfluencerStatsResponse
+      return res.json() as Promise<InfluencerStatsResponse>
     },
   })
 }
@@ -38,9 +58,9 @@ export function useInfluencers(filters: { status?: string; platform?: string; ca
       if (filters.campaign) params.set("campaign", filters.campaign)
       params.set("limit", "100")
 
-      const res = await fetch(`${BASE}/admin/influencers?${params}`)
+      const res = await fetch(`${BASE}?${params}`, { headers: authHeaders() })
       if (!res.ok) throw new Error("Error al obtener lista de influencers")
-      return res.json() as Promise<{ influencers: any[]; count: number }>
+      return res.json() as Promise<{ influencers: unknown[]; count: number }>
     },
   })
 }
@@ -53,7 +73,7 @@ export function useInfluencerDetail(id: string | undefined) {
   return useQuery({
     queryKey: ["influencers", "detail", id],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/admin/influencer-stats/${id}`)
+      const res = await fetch(`${BASE}/${id}`, { headers: authHeaders() })
       if (!res.ok) throw new Error("Error al obtener detalle del influencer")
       return res.json() as Promise<InfluencerDetailResponse>
     },
@@ -69,7 +89,7 @@ export function useInfluencerCampaigns() {
   return useQuery({
     queryKey: ["influencers", "campaigns"],
     queryFn: async () => {
-      const res = await fetch(`${BASE}/admin/influencers/campaigns`)
+      const res = await fetch(`${BASE}/campaigns`, { headers: authHeaders() })
       if (!res.ok) throw new Error("Error al obtener campañas")
       return res.json() as Promise<{ campaigns: string[] }>
     },
@@ -83,17 +103,15 @@ export function useInfluencerCampaigns() {
 export function useCreateInfluencer() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (data: Record<string, any>) => {
-      const res = await fetch(`${BASE}/admin/influencers`, {
+    mutationFn: async (data: Record<string, unknown>) => {
+      const res = await fetch(BASE, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify(data),
       })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.message || "Error al crear influencer")
-      }
-      return res.json()
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || body.message || "Error al crear influencer")
+      return body
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["influencers"] })
@@ -104,17 +122,15 @@ export function useCreateInfluencer() {
 export function useUpdateInfluencer() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, ...data }: { id: string } & Record<string, any>) => {
-      const res = await fetch(`${BASE}/admin/influencers/${id}`, {
+    mutationFn: async ({ id, ...data }: { id: string } & Record<string, unknown>) => {
+      const res = await fetch(`${BASE}/${id}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify(data),
       })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.message || "Error al actualizar influencer")
-      }
-      return res.json()
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || body.message || "Error al actualizar influencer")
+      return body
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["influencers"] })
@@ -126,8 +142,9 @@ export function useDeleteInfluencer() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`${BASE}/admin/influencers/${id}`, {
+      const res = await fetch(`${BASE}/${id}`, {
         method: "DELETE",
+        headers: authHeaders(),
       })
       if (!res.ok) throw new Error("Error al eliminar influencer")
       return res.json()
