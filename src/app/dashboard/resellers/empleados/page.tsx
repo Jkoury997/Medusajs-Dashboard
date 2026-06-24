@@ -1,7 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { useEmployees, useCreateEmployee, type EmployeeBreakdown } from "@/hooks/use-employees"
+import {
+  useEmployees,
+  useCreateEmployee,
+  useUpdateEmployee,
+  type EmployeeBreakdown,
+  type EmployeeRow,
+} from "@/hooks/use-employees"
+import { useCustomerGroups } from "@/hooks/use-customers"
 import {
   useEmployeeFunnel,
   type FunnelBucket,
@@ -37,6 +44,8 @@ import {
   TrendingUp,
   CheckCircle2,
   XCircle,
+  Pencil,
+  Tag,
 } from "lucide-react"
 
 const STOREFRONT_URL = "https://marcelakoury.com"
@@ -133,9 +142,85 @@ function FunnelTable({
   )
 }
 
+// Multi-select de customer groups (allowlist de comisión). Sin selección = todos.
+function GroupMultiSelect({
+  groups,
+  selected,
+  onChange,
+}: {
+  groups: { id: string; name: string }[]
+  selected: string[]
+  onChange: (ids: string[]) => void
+}) {
+  function toggle(id: string) {
+    onChange(selected.includes(id) ? selected.filter((g) => g !== id) : [...selected, id])
+  }
+  return (
+    <div>
+      <div className="max-h-40 overflow-y-auto rounded border border-gray-200 divide-y">
+        {groups.length === 0 ? (
+          <p className="text-xs text-gray-400 p-2">No hay customer groups.</p>
+        ) : (
+          groups.map((g) => (
+            <label
+              key={g.id}
+              className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(g.id)}
+                onChange={() => toggle(g.id)}
+              />
+              <span>{g.name}</span>
+            </label>
+          ))
+        )}
+      </div>
+      <p className="text-xs text-gray-500 mt-1">
+        {selected.length === 0
+          ? "Sin selección = comisiona TODOS los grupos."
+          : `Solo comisiona ${selected.length} grupo(s) seleccionado(s).`}
+      </p>
+    </div>
+  )
+}
+
+// Badge de los grupos permitidos de un empleado en la tabla.
+function GroupsBadge({ groups }: { groups: { id: string; name: string }[] }) {
+  if (groups.length === 0) {
+    return <span className="text-xs text-gray-400">Todos</span>
+  }
+  return (
+    <div className="flex flex-wrap gap-1 justify-end">
+      {groups.map((g) => (
+        <span
+          key={g.id}
+          className="inline-flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded"
+        >
+          <Tag className="h-3 w-3" />
+          {g.name}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+type EditState = {
+  id: string
+  name: string
+  commission_percentage: string
+  active: boolean
+  groups: string[]
+}
+
 export default function EmpleadosPage() {
   const { data, isLoading, error } = useEmployees()
   const createEmployee = useCreateEmployee()
+  const updateEmployee = useUpdateEmployee()
+  const { data: groupsData } = useCustomerGroups()
+  const customerGroups: { id: string; name: string }[] = (groupsData?.customer_groups ?? []).map(
+    (g: { id: string; name: string }) => ({ id: g.id, name: g.name }),
+  )
   const [funnelDays, setFunnelDays] = useState<number>(90)
   const { data: funnel, isLoading: funnelLoading } = useEmployeeFunnel(funnelDays)
   const [showCreate, setShowCreate] = useState(false)
@@ -144,6 +229,8 @@ export default function EmpleadosPage() {
     email: "",
     commission_percentage: "",
   })
+  const [createGroups, setCreateGroups] = useState<string[]>([])
+  const [editing, setEditing] = useState<EditState | null>(null)
 
   const employees = data?.employees ?? []
 
@@ -168,9 +255,39 @@ export default function EmpleadosPage() {
         commission_percentage: form.commission_percentage
           ? Number(form.commission_percentage)
           : undefined,
+        allowed_customer_group_ids: createGroups.length ? createGroups : undefined,
       })
       setShowCreate(false)
       setForm({ name: "", email: "", commission_percentage: "" })
+      setCreateGroups([])
+    } catch {
+      /* el error se muestra en el dialog */
+    }
+  }
+
+  function openEdit(e: EmployeeRow) {
+    setEditing({
+      id: e.id,
+      name: e.name,
+      commission_percentage: String(e.commission_percentage ?? ""),
+      active: e.active,
+      groups: e.allowed_customer_group_ids ?? [],
+    })
+  }
+
+  async function handleEdit() {
+    if (!editing) return
+    try {
+      await updateEmployee.mutateAsync({
+        id: editing.id,
+        name: editing.name,
+        commission_percentage: editing.commission_percentage
+          ? Number(editing.commission_percentage)
+          : undefined,
+        active: editing.active,
+        allowed_customer_group_ids: editing.groups,
+      })
+      setEditing(null)
     } catch {
       /* el error se muestra en el dialog */
     }
@@ -242,6 +359,14 @@ export default function EmpleadosPage() {
                     placeholder={`Default ${DEFAULT_PCT}%`}
                   />
                 </div>
+              </div>
+              <div>
+                <Label>Restringir a grupos de cliente (opcional)</Label>
+                <GroupMultiSelect
+                  groups={customerGroups}
+                  selected={createGroups}
+                  onChange={setCreateGroups}
+                />
               </div>
               <p className="text-xs text-gray-500">
                 El código de referido se genera automáticamente. La atribución mide la venta web por
@@ -320,10 +445,12 @@ export default function EmpleadosPage() {
                       <TableHead>Empleado</TableHead>
                       <TableHead>Código</TableHead>
                       <TableHead className="text-right">Comisión</TableHead>
+                      <TableHead className="text-right">Grupos</TableHead>
                       <TableHead className="text-right">Ventas</TableHead>
                       <TableHead className="text-right">Órdenes</TableHead>
                       <TableHead className="text-right">Comisión ganada</TableHead>
                       <TableHead className="text-right">Pendiente</TableHead>
+                      <TableHead className="text-right"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -348,6 +475,9 @@ export default function EmpleadosPage() {
                           </TableCell>
                           <TableCell className="text-right">{e.commission_percentage}%</TableCell>
                           <TableCell className="text-right">
+                            <GroupsBadge groups={e.allowed_customer_groups ?? []} />
+                          </TableCell>
+                          <TableCell className="text-right">
                             {formatCentavos(e.total_sales_amount)}
                           </TableCell>
                           <TableCell className="text-right">{e.total_orders}</TableCell>
@@ -356,6 +486,16 @@ export default function EmpleadosPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             {formatCentavos(e.pending_balance)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <button
+                              type="button"
+                              onClick={() => openEdit(e)}
+                              className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-gray-100 text-gray-500"
+                              title="Editar empleado"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -563,6 +703,65 @@ export default function EmpleadosPage() {
           </div>
         </>
       )}
+
+      <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar empleado</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-4">
+              <div>
+                <Label>Nombre</Label>
+                <Input
+                  value={editing.name}
+                  onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Comisión %</Label>
+                  <Input
+                    type="number"
+                    value={editing.commission_percentage}
+                    onChange={(e) =>
+                      setEditing({ ...editing, commission_percentage: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="flex items-end pb-2">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editing.active}
+                      onChange={(e) => setEditing({ ...editing, active: e.target.checked })}
+                    />
+                    Activo
+                  </label>
+                </div>
+              </div>
+              <div>
+                <Label>Restringir a grupos de cliente</Label>
+                <GroupMultiSelect
+                  groups={customerGroups}
+                  selected={editing.groups}
+                  onChange={(ids) => setEditing({ ...editing, groups: ids })}
+                />
+              </div>
+              <Button
+                onClick={handleEdit}
+                disabled={!editing.name || updateEmployee.isPending}
+                className="w-full"
+              >
+                {updateEmployee.isPending ? "Guardando..." : "Guardar cambios"}
+              </Button>
+              {updateEmployee.isError && (
+                <p className="text-sm text-red-500">{(updateEmployee.error as Error).message}</p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
