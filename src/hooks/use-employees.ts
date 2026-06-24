@@ -40,6 +40,8 @@ export interface EmployeeRow {
   referral_code: string
   commission_percentage: number
   active: boolean
+  allowed_customer_group_ids: string[]
+  allowed_customer_groups: { id: string; name: string }[]
   total_sales_amount: number
   total_commissions_earned: number
   pending_balance: number
@@ -67,7 +69,12 @@ export function useEmployees() {
 export function useCreateEmployee() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (data: { name: string; email: string; commission_percentage?: number }) => {
+    mutationFn: async (data: {
+      name: string
+      email: string
+      commission_percentage?: number
+      allowed_customer_group_ids?: string[]
+    }) => {
       const res = await fetch(BASE, {
         method: "POST",
         headers: authHeaders(),
@@ -75,6 +82,32 @@ export function useCreateEmployee() {
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || body.message || "Error al crear empleado")
+      return body
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["employees"] }),
+  })
+}
+
+export function useUpdateEmployee() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      id,
+      ...data
+    }: {
+      id: string
+      name?: string
+      commission_percentage?: number
+      active?: boolean
+      allowed_customer_group_ids?: string[]
+    }) => {
+      const res = await fetch(`${BASE}/${id}`, {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || body.message || "Error al actualizar empleado")
       return body
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["employees"] }),
